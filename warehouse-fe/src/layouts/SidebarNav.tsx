@@ -60,12 +60,12 @@ const menuItems: MenuProps["items"] = [
   {
     key: "reports",
     icon: <FileTextOutlined />,
-    label: "Reports",
+    label: <Link to="/reports">Reports</Link>,
   },
   {
     key: "users",
     icon: <UserOutlined />,
-    label: "User Management",
+    label: <Link to="/users">Users Management</Link>,
   },
   {
     key: "settings",

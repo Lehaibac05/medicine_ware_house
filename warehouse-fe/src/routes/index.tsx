@@ -11,6 +11,8 @@ import ForecastPage from "../pages/forecast/ForecastPage"
 import AlertPage from "../pages/alerts/AlertsPage"
 import SettingsPage from "../pages/settings/SettingsPage"
 import OrdersPage from "../pages/orders/OrdersPage"
+import ReportPage from "../pages/reports/ReportPage"
+import UserPage from "../pages/users/UserPage"
 
 const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const token = getAuthToken()
@@ -102,6 +104,22 @@ const AppRouter = () => {
           element={
             <ProtectedRoute>
               <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute>
+              <ReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute>
+              <UserPage />
             </ProtectedRoute>
           }
         />

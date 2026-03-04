@@ -1,10 +1,5 @@
-import {
-  Button,
-  Input,
-  Layout,
-  Select,
-  Typography,
-} from "antd";
+import { Button, Layout, Select, Typography } from "antd";
+import { useState } from "react";
 import BaseFilterCard from "../../components/base/BaseFilterCard";
 import BatchTable from "./components/BatchTable";
 import SidebarNav from "../../layouts/SidebarNav";
@@ -15,29 +10,56 @@ const { Text } = Typography;
 
 const manufacturerOptions = [
   { value: "all", label: "All manufacturer" },
-  { value: "dhg-pharma", label: "DHG Pharma"},
-  { value: "imexpharm", label: "Imexpharm" },
-  { value: "sanofi", label: "Sanofi" },
-  { value: "traphaco", label: "Traphaco" },
+  { value: "DHG Pharma", label: "DHG Pharma" },
+  { value: "Imexpharm", label: "Imexpharm" },
+  { value: "Sanofi", label: "Sanofi" },
+  { value: "Traphaco", label: "Traphaco" },
 ];
 
 const conditionOptions = [
   { value: "all", label: "All condition" },
-  { value: "room-temp", label: "Room temperature" },
-  { value: "dry-place", label: "Dry place"},
-  { value: "cold-storage", label: "Cold storage" },
-  { value: "refrigerated", label: "Refrigerated" },
-]
+  { value: "Room temperature", label: "Room temperature" },
+  { value: "Dry place", label: "Dry place" },
+  { value: "Cold storage", label: "Cold storage" },
+  { value: "Refrigerated", label: "Refrigerated" },
+];
 
 const statusOptions = [
   { value: "all", label: "All status" },
-  { value: "in-stock", label: "In stock" },
-  { value: "low", label: "Low" },
-  { value: "overstock", label: "Overstock" },
+  { value: "In stock", label: "In stock" },
+  { value: "Near Expiry", label: "Near expiry" },
+  { value: "Expired", label: "Expired" },
 ];
 
+type BatchFilters = {
+  medicineName: string;
+  manufacturer: string;
+  storageCondition: string;
+  status: string;
+};
 
-const MedicinePage = () => {
+const BatchPage = () => {
+  const [medicineName] = useState("");
+  const [manufacturer, setManufacturer] = useState("all");
+  const [storageCondition, setStorageCondition] = useState("all");
+  const [status, setStatus] = useState("all");
+  const [search, setSearch] = useState("");
+  const [appliedFilters, setAppliedFilters] = useState<BatchFilters>({
+    medicineName: "",
+    manufacturer: "all",
+    storageCondition: "all",
+    status: "all",
+  });
+
+  const handleApplyFilters = () => {
+    setAppliedFilters({
+      medicineName: medicineName.trim(),
+      manufacturer,
+      storageCondition,
+      status,
+    });
+  };
+
   return (
     <Layout className="min-h-screen bg-slate-100">
       <Sider
@@ -53,37 +75,51 @@ const MedicinePage = () => {
         <Content className="flex flex-col gap-6 p-6 pt-[114px]">
           <BaseFilterCard
             actions={
-              <Button type="primary" className="h-[40px]">
+              <Button
+                type="primary"
+                className="h-[40px]"
+                onClick={handleApplyFilters}
+              >
                 Apply
               </Button>
             }
           >
             <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Medicine name</Text>
-              <Input placeholder="Enter medicine name" />
-            </div>
-
-            <div className="flex flex-col gap-2">
               <Text className="text-xs text-slate-500">Manufacturer</Text>
-              <Select options={manufacturerOptions} defaultValue="all" />
+              <Select
+                options={manufacturerOptions}
+                value={manufacturer}
+                onChange={setManufacturer}
+              />
             </div>
 
             <div className="flex flex-col gap-2">
               <Text className="text-xs text-slate-500">Storage Condition</Text>
-              <Select options={conditionOptions} defaultValue="all" />
+              <Select
+                options={conditionOptions}
+                value={storageCondition}
+                onChange={setStorageCondition}
+              />
             </div>
 
             <div className="flex flex-col gap-2">
               <Text className="text-xs text-slate-500">Status</Text>
-              <Select options={statusOptions} defaultValue="all" />
+              <Select
+                options={statusOptions}
+                value={status}
+                onChange={setStatus}
+              />
             </div>
           </BaseFilterCard>
-
-          <BatchTable />
+          <BatchTable
+            filters={appliedFilters}
+            search={search}
+            onSearch={setSearch}
+          />
         </Content>
       </Layout>
     </Layout>
   );
 };
 
-export default MedicinePage;
+export default BatchPage;

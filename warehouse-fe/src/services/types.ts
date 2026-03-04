@@ -7,6 +7,14 @@ export type Medicine = {
   description: string
 }
 
+export type PageResponse<T> = {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+}
+
 export type Warehouse = {
   warehouseId: number
   name: string

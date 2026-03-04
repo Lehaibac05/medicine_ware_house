@@ -1,9 +1,5 @@
 package com.pharmacy.warehouse.config;
 
-<<<<<<< HEAD
-=======
-import com.pharmacy.warehouse.config.JwtFilter;
->>>>>>> 1cd68f6a43bf2c1f3c2c1a8b62f0d2a30f3990a5
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,20 +13,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-<<<<<<< HEAD
 import org.springframework.web.cors.CorsConfigurationSource;
-=======
->>>>>>> 1cd68f6a43bf2c1f3c2c1a8b62f0d2a30f3990a5
 
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
-<<<<<<< HEAD
     private final CorsConfigurationSource corsConfigurationSource;
-=======
->>>>>>> 1cd68f6a43bf2c1f3c2c1a8b62f0d2a30f3990a5
 
     @Bean
     public PasswordEncoder passwordEncoder() {
