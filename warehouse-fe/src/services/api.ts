@@ -1,4 +1,3 @@
-// API helper functions
 import { AUTH_TOKEN_KEY } from '../utils/auth'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? ""
@@ -51,10 +50,10 @@ export const apiFetch = async <T>(
     headers["Authorization"] = `Bearer ${token}`
     console.log("🔑 Sending request with token:", token.substring(0, 20) + "...")
   } else {
-    console.warn("⚠️ No token found in localStorage")
+    console.warn("No token found in localStorage")
   }
 
-  console.log("📡 API Request:", endpoint, "Method:", options.method || "GET")
+  console.log("API Request:", endpoint, "Method:", options.method || "GET")
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,

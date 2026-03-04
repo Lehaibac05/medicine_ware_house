@@ -8,7 +8,7 @@ import AlertsStatsGrid from './components/AlertsStatsGrid'
 import AlertsTable from './components/AlertsTable'
 
 const { Content, Sider } = Layout
-const { Text, Title } = Typography
+const { Text } = Typography
 
 const alertTypeOptions = [
   { value: 'all', label: 'All types' },
@@ -121,26 +121,7 @@ const AlertsPage = () => {
             </div>
           </BaseFilterCard>
 
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col">
-              <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-                Alerts list
-              </Text>
-              <Title level={4} className="!m-0">
-                Current alerts
-              </Title>
-            </div>
-
-            <Input.Search
-              placeholder="Search by alert id, medicine, warehouse..."
-              className="w-full md:max-w-sm"
-              allowClear
-              onSearch={handleSearch}
-              onChange={(e) => !e.target.value && handleSearch('')}
-            />
-          </div>
-
-          <AlertsTable filters={filters} />
+          <AlertsTable filters={filters} onSearch={handleSearch}/>
         </Content>
       </Layout>
     </Layout>

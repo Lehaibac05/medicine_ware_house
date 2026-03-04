@@ -1,54 +1,54 @@
-import { Button, DatePicker, Input, Layout, Select, Typography } from 'antd'
-import { useState } from 'react'
-import type { Dayjs } from 'dayjs'
-import BaseFilterCard from '../../components/base/BaseFilterCard'
-import OrdersStatsGrid from './components/OrdersStatsGrid'
-import OrdersTable from './components/OrdersTable'
-import SidebarNav from '../../layouts/SidebarNav'
-import TopBar from '../../layouts/TopBar'
+import { Button, DatePicker, Layout, Select, Typography } from "antd";
+import { useState } from "react";
+import type { Dayjs } from "dayjs";
+import BaseFilterCard from "../../components/base/BaseFilterCard";
+import OrdersStatsGrid from "./components/OrdersStatsGrid";
+import OrdersTable from "./components/OrdersTable";
+import SidebarNav from "../../layouts/SidebarNav";
+import TopBar from "../../layouts/TopBar";
 
-const { Content, Sider } = Layout
-const { Text, Title } = Typography
+const { Content, Sider } = Layout;
+const { Text } = Typography;
 
 const statusOptions = [
-  { value: 'all', label: 'All statuses' },
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'PROCESSING', label: 'Processing' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-]
+  { value: "all", label: "All statuses" },
+  { value: "PENDING", label: "Pending" },
+  { value: "PROCESSING", label: "Processing" },
+  { value: "COMPLETED", label: "Completed" },
+  { value: "CANCELLED", label: "Cancelled" },
+];
 
 const sortOptions = [
-  { value: 'date-desc', label: 'Date (newest)' },
-  { value: 'date-asc', label: 'Date (oldest)' },
-  { value: 'amount-desc', label: 'Amount (high → low)' },
-  { value: 'amount-asc', label: 'Amount (low → high)' },
-]
+  { value: "date-desc", label: "Date (newest)" },
+  { value: "date-asc", label: "Date (oldest)" },
+  { value: "amount-desc", label: "Amount (high → low)" },
+  { value: "amount-asc", label: "Amount (low → high)" },
+];
 
 export type OrderFilters = {
-  status: string
-  sortBy: string
-  dateRange: [Dayjs | null, Dayjs | null] | null
-  searchText: string
-}
+  status: string;
+  sortBy: string;
+  dateRange: [Dayjs | null, Dayjs | null] | null;
+  searchText: string;
+};
 
 const OrdersPage = () => {
   const [filters, setFilters] = useState<OrderFilters>({
-    status: 'all',
-    sortBy: 'date-desc',
+    status: "all",
+    sortBy: "date-desc",
     dateRange: null,
-    searchText: '',
-  })
-  
-  const [tempFilters, setTempFilters] = useState<OrderFilters>(filters)
+    searchText: "",
+  });
+
+  const [tempFilters, setTempFilters] = useState<OrderFilters>(filters);
 
   const handleApplyFilters = () => {
-    setFilters(tempFilters)
-  }
-  
+    setFilters(tempFilters);
+  };
+
   const handleSearch = (value: string) => {
-    setFilters(prev => ({ ...prev, searchText: value }))
-  }
+    setFilters((prev) => ({ ...prev, searchText: value }));
+  };
 
   return (
     <Layout className="min-h-screen bg-slate-100">
@@ -69,64 +69,55 @@ const OrdersPage = () => {
 
           <BaseFilterCard
             actions={
-              <Button type="primary" className="h-[40px]" onClick={handleApplyFilters}>
+              <Button
+                type="primary"
+                className="h-[40px]"
+                onClick={handleApplyFilters}
+              >
                 Apply filters
               </Button>
             }
           >
             <div className="flex flex-col gap-2">
               <Text className="text-xs text-slate-500">Order status</Text>
-              <Select 
-                options={statusOptions} 
+              <Select
+                options={statusOptions}
                 value={tempFilters.status}
-                onChange={(value) => setTempFilters(prev => ({ ...prev, status: value }))}
+                onChange={(value) =>
+                  setTempFilters((prev) => ({ ...prev, status: value }))
+                }
               />
             </div>
 
             <div className="flex flex-col gap-2">
               <Text className="text-xs text-slate-500">Sort by</Text>
-              <Select 
-                options={sortOptions} 
+              <Select
+                options={sortOptions}
                 value={tempFilters.sortBy}
-                onChange={(value) => setTempFilters(prev => ({ ...prev, sortBy: value }))}
+                onChange={(value) =>
+                  setTempFilters((prev) => ({ ...prev, sortBy: value }))
+                }
               />
             </div>
 
             <div className="flex flex-col gap-2">
               <Text className="text-xs text-slate-500">Date range</Text>
-              <DatePicker.RangePicker 
-                format="DD/MM/YYYY" 
+              <DatePicker.RangePicker
+                format="DD/MM/YYYY"
                 className="w-full"
                 value={tempFilters.dateRange}
-                onChange={(dates) => setTempFilters(prev => ({ ...prev, dateRange: dates }))}
+                onChange={(dates) =>
+                  setTempFilters((prev) => ({ ...prev, dateRange: dates }))
+                }
               />
             </div>
           </BaseFilterCard>
 
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col">
-              <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-                Orders list
-              </Text>
-              <Title level={4} className="!m-0">
-                All orders
-              </Title>
-            </div>
-
-            <Input.Search
-              placeholder="Search by order ID, customer name..."
-              className="w-full md:max-w-sm"
-              allowClear
-              onSearch={handleSearch}
-              onChange={(e) => !e.target.value && handleSearch('')}
-            />
-          </div>
-
-          <OrdersTable filters={filters} />
+          <OrdersTable filters={filters} onSearch={handleSearch} />
         </Content>
       </Layout>
     </Layout>
-  )
-}
+  );
+};
 
-export default OrdersPage
+export default OrdersPage;
