@@ -1,8 +1,8 @@
-import { Button, Card, Checkbox, Input, Layout, Select, Typography, message, InputNumber, Switch, Divider, Spin } from 'antd'
+import { Button, Card, Input, Layout, Select, Typography, message, InputNumber, Switch, Divider, Spin } from 'antd'
 import { useState, useEffect } from 'react'
 import { SaveOutlined, ReloadOutlined, BellOutlined, LockOutlined, SettingOutlined, DatabaseOutlined } from '@ant-design/icons'
-import SidebarNav from '../dashboard/components/SidebarNav'
-import TopBar from '../dashboard/components/TopBar'
+import SidebarNav from "../../layouts/SidebarNav";
+import TopBar from "../../layouts/TopBar";
 import { 
   getSettings, 
   updateGeneralSettings, 

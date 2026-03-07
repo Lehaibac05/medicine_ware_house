@@ -5,7 +5,6 @@ import BaseTable from '../../../components/base/BaseTable'
 import { type Alert, getAllAlerts, resolveAlert, checkAndGenerateAlerts } from '../../../services/alerts'
 import type { AlertFilters } from '../AlertsPage'
 import dayjs from 'dayjs'
-import { getAuthToken } from '../../../services/api'
 
 const { Text } = Typography
 

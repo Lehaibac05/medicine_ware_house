@@ -1,9 +1,8 @@
-import { Button, Space, Tag, Typography, message } from "antd";
+import { Button, Space, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useState } from "react";
 import BaseTable from "../../../components/base/BaseTable";
 import { getMedicines } from "../../../services/medicines";
-import type { Medicine } from "../../../services/types";
 
 const { Text } = Typography;
 

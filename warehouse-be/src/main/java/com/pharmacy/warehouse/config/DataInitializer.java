@@ -56,7 +56,7 @@ public class DataInitializer implements CommandLineRunner {
 
         User adminUser = new User();
         adminUser.setUsername("admin");
-        adminUser.setPasswordHash(passwordEncoder.encode("123456"));
+        adminUser.setPasswordHash(passwordEncoder.encode("password123"));
         adminUser.setFullName("Administrator");
         adminUser.setEmail("admin@example.com");
         adminUser.setStatus("ACTIVE");

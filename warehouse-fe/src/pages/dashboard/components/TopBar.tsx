@@ -50,7 +50,7 @@ function TopBar({ title = 'Inventory', subtitle = 'Warehouse' }: TopBarProps) {
             </Text>
 
             <div className="text-sm font-semibold text-slate-900">
-              Fck Luv
+              fck luv
             </div>
           </div>
 

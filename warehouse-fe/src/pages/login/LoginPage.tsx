@@ -6,7 +6,7 @@ import {
 } from "@ant-design/icons"
 import { Navigate, useNavigate } from "react-router-dom"
 import { login } from "../../services/auth"
-import { getAuthToken } from "../../utils/auth"
+import { getAuthToken, setAuthToken } from "../../utils/auth"
 
 type LoginFormValues = {
   username: string
@@ -26,7 +26,8 @@ const LoginPage = () => {
 
   const handleLogin = async (values: LoginFormValues) => {
     try {
-      await login(values)
+      const response = await login(values)
+      setAuthToken(response.token)
       messageApi.success("Login successful")
       navigate("/dashboard", { replace: true })
     } catch {
