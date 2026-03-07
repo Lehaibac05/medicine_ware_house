@@ -5,13 +5,13 @@ import {
   Select,
   Typography,
 } from "antd";
-import SidebarNav from "../dashboard/components/SidebarNav";
-import TopBar from "../dashboard/components/TopBar";
 import BaseFilterCard from "../../components/base/BaseFilterCard";
 import BatchTable from "./components/BatchTable";
+import SidebarNav from "../../layouts/SidebarNav";
+import TopBar from "../../layouts/TopBar";
 
 const { Content, Sider } = Layout;
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 const manufacturerOptions = [
   { value: "all", label: "All manufacturer" },
@@ -48,18 +48,9 @@ const MedicinePage = () => {
       </Sider>
       <Layout className="lg:ml-[260px]">
         <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Medicine" subtitle="Warehouse" />
+          <TopBar title="Batches" subtitle="Warehouse" />
         </div>
         <Content className="flex flex-col gap-6 p-6 pt-[114px]">
-          <div>
-            <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-              Medicine
-            </Text>
-            <Title level={3} className="!m-0">
-              Medicine Management
-            </Title>
-          </div>
-
           <BaseFilterCard
             actions={
               <Button type="primary" className="h-[40px]">

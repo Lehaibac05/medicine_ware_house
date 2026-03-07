@@ -9,14 +9,6 @@ import TopBar from './components/TopBar'
 const { Content, Sider } = Layout
 
 const DashboardPage = () => {
-  // Default filter for dashboard
-  const defaultFilter = {
-    warehouse: "all",
-    medicineName: "",
-    status: "all",
-    expiryDateRange: null,
-  };
-
   return (
     <Layout className="min-h-screen bg-slate-100">
       <Sider
@@ -35,7 +27,7 @@ const DashboardPage = () => {
             <ForecastPanel />
             <AlertsPanel />
           </div>
-          <InventoryTable filter={defaultFilter} />
+          <InventoryTable />
         </Content>
       </Layout>
     </Layout>

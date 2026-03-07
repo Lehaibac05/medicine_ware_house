@@ -7,13 +7,13 @@ const menuItems: MenuProps["items"] = [
   { key: "inventory", label: <Link to="/inventory">Inventory</Link> },
   { key: "medicines", label: <Link to="/medicines">Medicines</Link> },
   { key: "batches", label: <Link to="/batches">Batches</Link> },
-  { key: "orders", label: <Link to="/orders">Orders</Link> },
+  { key: "orders", label: "Orders" },
   { key: "payments", label: "Payments" },
   { key: "forecast", label: "AI Forecast" },
-  { key: "alerts", label: <Link to="/alerts">Alerts</Link> },
+  { key: "alerts", label: "Alerts" },
   { key: "reports", label: "Reports" },
   { key: "users", label: "User Management" },
-  { key: "settings", label: <Link to="/settings">System Settings</Link> },
+  { key: "settings", label: "System Settings" },
 ];
 
 function SidebarNav() {

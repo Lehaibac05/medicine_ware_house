@@ -1,8 +1,8 @@
 import { Button, DatePicker, Input, Layout, Select, Typography } from 'antd'
 import { useState } from 'react'
 import type { Dayjs } from 'dayjs'
-import SidebarNav from '../dashboard/components/SidebarNav'
-import TopBar from '../dashboard/components/TopBar'
+import SidebarNav from "../../layouts/SidebarNav";
+import TopBar from "../../layouts/TopBar";
 import BaseFilterCard from '../../components/base/BaseFilterCard'
 import AlertsStatsGrid from './components/AlertsStatsGrid'
 import AlertsTable from './components/AlertsTable'
@@ -74,15 +74,6 @@ const AlertsPage = () => {
         </div>
 
         <Content className="flex flex-col gap-6 p-6 pt-[114px]">
-          <div>
-            <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-              Alerts
-            </Text>
-            <Title level={3} className="!m-0">
-              Alert Management
-            </Title>
-          </div>
-
           <AlertsStatsGrid />
 
           <BaseFilterCard
