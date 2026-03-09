@@ -12,7 +12,8 @@ import java.util.stream.Collectors;
 public class JwtUtil {
 
     private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
-    private final long EXPIRATION = 1000 * 60 * 60; // 1 giờ
+    private final long EXPIRATION = 1000 * 60 * 60; // 1 giờ - access token
+    private final long REFRESH_EXPIRATION = 1000L * 60 * 60 * 24 * 7; // 7 ngày - refresh token
 
     public String generateToken(String username, Collection<String> roles) {
 
@@ -21,6 +22,20 @@ public class JwtUtil {
                 .claim("roles", roles)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
+                .signWith(key)
+                .compact();
+    }
+
+    public String generateAccessToken(String username, Collection<String> roles) {
+        return generateToken(username, roles);
+    }
+
+    public String generateRefreshToken(String username) {
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("type", "refresh")
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRATION))
                 .signWith(key)
                 .compact();
     }
@@ -35,6 +50,10 @@ public class JwtUtil {
 
     public String getUsername(String token) {
         return getClaims(token).getSubject();
+    }
+
+    public String extractUsernameOrEmail(String token) {
+        return getUsername(token);
     }
 
     public List<String> getRoles(String token) {
