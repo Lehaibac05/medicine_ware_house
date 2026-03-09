@@ -1,5 +1,7 @@
 package com.pharmacy.warehouse.config;
 
+import com.pharmacy.warehouse.model.User;
+import com.pharmacy.warehouse.repository.UserRepository;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import lombok.RequiredArgsConstructor;
@@ -17,11 +19,12 @@ import java.util.stream.Collectors;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        return path.startsWith("/auth/") || 
+        return path.startsWith("/auth/") ||
                path.equals("/alerts/scan") ||
                path.startsWith("/test/");
     }
@@ -41,15 +44,20 @@ public class JwtFilter extends OncePerRequestFilter {
 
             if (jwtUtil.isTokenValid(token)) {
 
-                var auth = new UsernamePasswordAuthenticationToken(
-                        jwtUtil.getUsername(token),
-                        null,
-                        jwtUtil.getRoles(token).stream()
-                                .map(SimpleGrantedAuthority::new)
-                                .collect(Collectors.toList())
-                );
+                String username = jwtUtil.getUsername(token);
+                User user = userRepository.findByUsername(username).orElse(null);
 
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                if (user != null && user.getRefreshToken() != null) {
+                    var auth = new UsernamePasswordAuthenticationToken(
+                            username,
+                            null,
+                            jwtUtil.getRoles(token).stream()
+                                    .map(SimpleGrantedAuthority::new)
+                                    .collect(Collectors.toList())
+                    );
+
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
             }
         }
 
