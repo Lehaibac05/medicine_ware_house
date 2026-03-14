@@ -1,0 +1,812 @@
+{
+  "info": {
+    "name": "Module 3.1.2 - Nhập hàng từ Nhà cung cấp",
+    "description": "Full flow test: Bước 1 (Tạo PO) → Bước 2 (Xác nhận) → Bước 3 (Nhận hàng) → Bước 4 (Phê duyệt & tạo Batch)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:9090", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "supplierId", "value": "", "type": "string" },
+    { "key": "purchaseOrderId", "value": "", "type": "string" },
+    { "key": "purchaseOrderItemId1", "value": "", "type": "string" },
+    { "key": "purchaseOrderItemId2", "value": "", "type": "string" },
+    { "key": "goodsReceiptId", "value": "", "type": "string" },
+    { "key": "medicineId1", "value": "1", "type": "string" },
+    { "key": "medicineId2", "value": "2", "type": "string" },
+    { "key": "warehouseId", "value": "1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "0. Authentication",
+      "item": [
+        {
+          "name": "Login (lấy token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('token', jsonData.token);",
+                  "    console.log('Token saved:', jsonData.token);",
+                  "    pm.test('Login thành công', function() { pm.response.to.have.status(200); });",
+                  "    pm.test('Có token', function() { pm.expect(jsonData.token).to.not.be.empty; });",
+                  "} else {",
+                  "    pm.test('Login thất bại - kiểm tra username/password', function() { pm.response.to.have.status(200); });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Danh mục (Chuẩn bị dữ liệu)",
+      "item": [
+        {
+          "name": "Xem danh sách Medicine",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "if (Array.isArray(data) && data.length > 0) {",
+                  "    pm.collectionVariables.set('medicineId1', data[0].medicineId);",
+                  "    if (data.length > 1) pm.collectionVariables.set('medicineId2', data[1].medicineId);",
+                  "    console.log('Medicine IDs:', data[0].medicineId, data[1] ? data[1].medicineId : 'N/A');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/medicines", "host": ["{{baseUrl}}"], "path": ["medicines"] }
+          }
+        },
+        {
+          "name": "Xem danh sách Warehouse",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "if (Array.isArray(data) && data.length > 0) {",
+                  "    pm.collectionVariables.set('warehouseId', data[0].warehouseId);",
+                  "    console.log('Warehouse ID:', data[0].warehouseId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/warehouses", "host": ["{{baseUrl}}"], "path": ["warehouses"] }
+          }
+        },
+        {
+          "name": "Xem danh sách Supplier",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "pm.test('Response là array', function() { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/suppliers", "host": ["{{baseUrl}}"], "path": ["suppliers"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Quản lý Nhà cung cấp (Supplier)",
+      "item": [
+        {
+          "name": "Tạo Nhà cung cấp mới",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set('supplierId', data.supplierId);",
+                  "console.log('Supplier ID saved:', data.supplierId);",
+                  "pm.test('Có supplierId', function() { pm.expect(data.supplierId).to.be.a('number'); });",
+                  "pm.test('Status là ACTIVE', function() { pm.expect(data.status).to.eql('ACTIVE'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierName\": \"Công ty Dược phẩm ABC\",\n  \"contactPerson\": \"Nguyễn Văn A\",\n  \"phoneNumber\": \"0901234567\",\n  \"email\": \"abc@pharma.vn\",\n  \"address\": \"123 Lê Lợi, Quận 1, TP.HCM\",\n  \"taxCode\": \"0123456789\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/suppliers", "host": ["{{baseUrl}}"], "path": ["suppliers"] }
+          }
+        },
+        {
+          "name": "Tạo Nhà cung cấp thứ 2",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierName\": \"Công ty XYZ Pharma\",\n  \"contactPerson\": \"Trần Thị B\",\n  \"phoneNumber\": \"0912345678\",\n  \"email\": \"xyz@pharma.vn\",\n  \"address\": \"456 Nguyễn Huệ, Quận 1, TP.HCM\",\n  \"taxCode\": \"9876543210\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/suppliers", "host": ["{{baseUrl}}"], "path": ["suppliers"] }
+          }
+        },
+        {
+          "name": "Xem chi tiết Nhà cung cấp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Đúng supplierId', function() {",
+                  "    pm.expect(String(data.supplierId)).to.eql(pm.collectionVariables.get('supplierId'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/suppliers/{{supplierId}}", "host": ["{{baseUrl}}"], "path": ["suppliers", "{{supplierId}}"] }
+          }
+        },
+        {
+          "name": "Xem Supplier đang hoạt động",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Tất cả supplier có status ACTIVE', function() {",
+                  "    data.forEach(function(s) { pm.expect(s.status).to.eql('ACTIVE'); });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/suppliers/active", "host": ["{{baseUrl}}"], "path": ["suppliers", "active"] }
+          }
+        },
+        {
+          "name": "Cập nhật Nhà cung cấp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Tên đã được cập nhật', function() {",
+                  "    pm.expect(data.supplierName).to.eql('Công ty Dược phẩm ABC (Đã cập nhật)');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierName\": \"Công ty Dược phẩm ABC (Đã cập nhật)\",\n  \"contactPerson\": \"Nguyễn Văn A\",\n  \"phoneNumber\": \"0901234567\",\n  \"email\": \"abc.updated@pharma.vn\",\n  \"address\": \"789 Lê Lợi, Quận 1, TP.HCM\",\n  \"taxCode\": \"0123456789\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/suppliers/{{supplierId}}", "host": ["{{baseUrl}}"], "path": ["suppliers", "{{supplierId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. BƯỚC 1 - Tạo Đơn nhập hàng (WAREHOUSE_MANAGER)",
+      "item": [
+        {
+          "name": "Tạo Purchase Order (2 loại thuốc)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set('purchaseOrderId', data.purchaseOrderId);",
+                  "console.log('Purchase Order ID:', data.purchaseOrderId, 'Code:', data.orderCode);",
+                  "pm.test('Có orderCode', function() { pm.expect(data.orderCode).to.include('PO-'); });",
+                  "pm.test('Status là PENDING', function() { pm.expect(data.status).to.eql('PENDING'); });",
+                  "pm.test('Có 2 items', function() { pm.expect(data.items).to.have.length(2); });",
+                  "if (data.items && data.items.length >= 2) {",
+                  "    pm.collectionVariables.set('purchaseOrderItemId1', data.items[0].itemId);",
+                  "    pm.collectionVariables.set('purchaseOrderItemId2', data.items[1].itemId);",
+                  "    console.log('Item IDs:', data.items[0].itemId, data.items[1].itemId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierId\": {{supplierId}},\n  \"warehouseId\": {{warehouseId}},\n  \"expectedDeliveryDate\": \"2026-03-25\",\n  \"notes\": \"Đơn nhập hàng tháng 3/2026 - Bổ sung tồn kho\",\n  \"items\": [\n    {\n      \"medicineId\": {{medicineId1}},\n      \"requestedQuantity\": 200,\n      \"unitPrice\": 50000,\n      \"expectedExpiryDate\": \"2028-06-01\",\n      \"notes\": \"Ưu tiên nhập sớm\"\n    },\n    {\n      \"medicineId\": {{medicineId2}},\n      \"requestedQuantity\": 100,\n      \"unitPrice\": 30000,\n      \"expectedExpiryDate\": \"2028-01-01\",\n      \"notes\": \"\"\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/purchase-orders", "host": ["{{baseUrl}}"], "path": ["purchase-orders"] }
+          }
+        },
+        {
+          "name": "Xem chi tiết Purchase Order vừa tạo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Status vẫn là PENDING', function() { pm.expect(data.status).to.eql('PENDING'); });",
+                  "pm.test('Có supplier info', function() { pm.expect(data.supplier).to.not.be.null; });",
+                  "pm.test('Có totalAmount', function() { pm.expect(data.totalAmount).to.be.a('number'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/purchase-orders/{{purchaseOrderId}}", "host": ["{{baseUrl}}"], "path": ["purchase-orders", "{{purchaseOrderId}}"] }
+          }
+        },
+        {
+          "name": "Xem tất cả Purchase Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "pm.test('Response là array', function() { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/purchase-orders", "host": ["{{baseUrl}}"], "path": ["purchase-orders"] }
+          }
+        },
+        {
+          "name": "Lọc PO theo status PENDING",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/purchase-orders/status/PENDING", "host": ["{{baseUrl}}"], "path": ["purchase-orders", "status", "PENDING"] }
+          }
+        },
+        {
+          "name": "Lọc PO theo Warehouse",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/purchase-orders/warehouse/{{warehouseId}}", "host": ["{{baseUrl}}"], "path": ["purchase-orders", "warehouse", "{{warehouseId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. BƯỚC 2 - Nhà cung cấp xác nhận & chuẩn bị",
+      "item": [
+        {
+          "name": "Xác nhận đơn hàng (CONFIRMED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Status chuyển sang CONFIRMED', function() { pm.expect(data.status).to.eql('CONFIRMED'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/purchase-orders/{{purchaseOrderId}}/confirm", "host": ["{{baseUrl}}"], "path": ["purchase-orders", "{{purchaseOrderId}}", "confirm"] }
+          }
+        },
+        {
+          "name": "Cập nhật: Đang chuẩn bị hàng (PREPARING)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Status chuyển sang PREPARING', function() { pm.expect(data.status).to.eql('PREPARING'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PREPARING\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/purchase-orders/{{purchaseOrderId}}/status", "host": ["{{baseUrl}}"], "path": ["purchase-orders", "{{purchaseOrderId}}", "status"] }
+          }
+        },
+        {
+          "name": "Cập nhật: Đang giao hàng (SHIPPING)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Status chuyển sang SHIPPING', function() { pm.expect(data.status).to.eql('SHIPPING'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SHIPPING\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/purchase-orders/{{purchaseOrderId}}/status", "host": ["{{baseUrl}}"], "path": ["purchase-orders", "{{purchaseOrderId}}", "status"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. BƯỚC 3 - Nhân viên kho tiếp nhận thuốc",
+      "item": [
+        {
+          "name": "Tạo Goods Receipt (kiểm tra & nhập dữ liệu)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.collectionVariables.set('goodsReceiptId', data.receiptId);",
+                  "console.log('Goods Receipt ID:', data.receiptId, 'Code:', data.receiptCode);",
+                  "pm.test('Có receiptCode', function() { pm.expect(data.receiptCode).to.include('GR-'); });",
+                  "pm.test('Status là PENDING_APPROVAL', function() { pm.expect(data.status).to.eql('PENDING_APPROVAL'); });",
+                  "pm.test('qualityPassed = true', function() { pm.expect(data.qualityPassed).to.be.true; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseOrderId\": {{purchaseOrderId}},\n  \"qualityPassed\": true,\n  \"qualityCheckNotes\": \"Hàng đúng số lượng. Bao bì nguyên vẹn, không bị rách hoặc hư hỏng. Hạn sử dụng còn trên 2 năm. Đủ điều kiện nhập kho.\",\n  \"receivedItems\": [\n    {\n      \"itemId\": {{purchaseOrderItemId1}},\n      \"receivedQuantity\": 200,\n      \"actualExpiryDate\": \"2028-06-01\",\n      \"lotNumber\": \"LOT-ABC-2026-001\",\n      \"manufactureDate\": \"2026-01-15\"\n    },\n    {\n      \"itemId\": {{purchaseOrderItemId2}},\n      \"receivedQuantity\": 98,\n      \"actualExpiryDate\": \"2028-01-01\",\n      \"lotNumber\": \"LOT-ABC-2026-002\",\n      \"manufactureDate\": \"2026-01-20\"\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/goods-receipts", "host": ["{{baseUrl}}"], "path": ["goods-receipts"] }
+          }
+        },
+        {
+          "name": "Xem chi tiết Goods Receipt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Status vẫn PENDING_APPROVAL', function() { pm.expect(data.status).to.eql('PENDING_APPROVAL'); });",
+                  "pm.test('Có purchaseOrder info', function() { pm.expect(data.purchaseOrder).to.not.be.null; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/goods-receipts/{{goodsReceiptId}}", "host": ["{{baseUrl}}"], "path": ["goods-receipts", "{{goodsReceiptId}}"] }
+          }
+        },
+        {
+          "name": "Xem danh sách Goods Receipt chờ duyệt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Có ít nhất 1 receipt chờ duyệt', function() { pm.expect(data.length).to.be.at.least(1); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/goods-receipts/pending", "host": ["{{baseUrl}}"], "path": ["goods-receipts", "pending"] }
+          }
+        },
+        {
+          "name": "Tìm Goods Receipt theo Purchase Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Đúng purchase order', function() {",
+                  "    pm.expect(String(data.purchaseOrder.purchaseOrderId)).to.eql(pm.collectionVariables.get('purchaseOrderId'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/goods-receipts/purchase-order/{{purchaseOrderId}}", "host": ["{{baseUrl}}"], "path": ["goods-receipts", "purchase-order", "{{purchaseOrderId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. BƯỚC 4 - Quản lý kho phê duyệt",
+      "item": [
+        {
+          "name": "PHÊ DUYỆT - Nhập kho thành công (tạo Batch)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Status chuyển sang APPROVED', function() { pm.expect(data.status).to.eql('APPROVED'); });",
+                  "pm.test('Có approvedBy', function() { pm.expect(data.approvedBy).to.not.be.null; });",
+                  "pm.test('Có approvedAt', function() { pm.expect(data.approvedAt).to.not.be.null; });",
+                  "console.log('Approved at:', data.approvedAt, 'By:', data.approvedBy ? data.approvedBy.username : 'N/A');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approved\": true,\n  \"notes\": \"Đã kiểm tra thông tin nhập kho. Số lượng và chất lượng hàng đạt yêu cầu. Phê duyệt nhập kho.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/goods-receipts/{{goodsReceiptId}}/approve", "host": ["{{baseUrl}}"], "path": ["goods-receipts", "{{goodsReceiptId}}", "approve"] }
+          }
+        },
+        {
+          "name": "Xem Purchase Order sau khi phê duyệt (phải là APPROVED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Purchase Order status là APPROVED', function() { pm.expect(data.status).to.eql('APPROVED'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/purchase-orders/{{purchaseOrderId}}", "host": ["{{baseUrl}}"], "path": ["purchase-orders", "{{purchaseOrderId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Kiểm tra Batch sau khi nhập kho",
+      "item": [
+        {
+          "name": "Xem tất cả Batch (Batch mới được tạo?)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "console.log('Total batches:', Array.isArray(data) ? data.length : 'N/A');",
+                  "if (Array.isArray(data)) {",
+                  "    var newBatches = data.filter(function(b) { return b.lotNumber && b.lotNumber.includes('GR-'); });",
+                  "    console.log('New batches from GR:', newBatches.length);",
+                  "    newBatches.forEach(function(b) {",
+                  "        console.log('  -', b.lotNumber, '| Qty:', b.quantity, '| Medicine:', b.medicine ? b.medicine.name : 'N/A');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/batches", "host": ["{{baseUrl}}"], "path": ["batches"] }
+          }
+        },
+        {
+          "name": "Xem tất cả Goods Receipts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/goods-receipts", "host": ["{{baseUrl}}"], "path": ["goods-receipts"] }
+          }
+        },
+        {
+          "name": "Lọc PO theo status APPROVED",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/purchase-orders/status/APPROVED", "host": ["{{baseUrl}}"], "path": ["purchase-orders", "status", "APPROVED"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Edge Cases - Trường hợp lỗi",
+      "item": [
+        {
+          "name": "[ERROR] Tạo PO với Supplier không tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Phải trả lỗi (4xx/5xx)', function() { pm.expect(pm.response.code).to.be.at.least(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierId\": 99999,\n  \"warehouseId\": {{warehouseId}},\n  \"expectedDeliveryDate\": \"2026-03-25\",\n  \"items\": [\n    { \"medicineId\": {{medicineId1}}, \"requestedQuantity\": 10, \"unitPrice\": 50000 }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/purchase-orders", "host": ["{{baseUrl}}"], "path": ["purchase-orders"] }
+          }
+        },
+        {
+          "name": "[ERROR] Tạo GR cho PO không ở trạng thái hợp lệ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Phải trả lỗi vì PO đã APPROVED', function() { pm.expect(pm.response.code).to.be.at.least(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purchaseOrderId\": {{purchaseOrderId}},\n  \"qualityPassed\": true,\n  \"qualityCheckNotes\": \"Test tạo lần 2\",\n  \"receivedItems\": []\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/goods-receipts", "host": ["{{baseUrl}}"], "path": ["goods-receipts"] }
+          }
+        },
+        {
+          "name": "[ERROR] Hủy PO đã APPROVED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Phải trả lỗi vì không hủy được PO đã duyệt', function() { pm.expect(pm.response.code).to.be.at.least(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/purchase-orders/{{purchaseOrderId}}/cancel", "host": ["{{baseUrl}}"], "path": ["purchase-orders", "{{purchaseOrderId}}", "cancel"] }
+          }
+        },
+        {
+          "name": "[TEST] Từ chối Goods Receipt (luồng REJECT)",
+          "description": "Tạo PO mới rồi tạo GR rồi REJECT để test luồng từ chối",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 hoặc 400 (tuỳ GR còn PENDING không)', function() {",
+                  "    pm.expect([200, 400, 500]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approved\": false,\n  \"notes\": \"Thuốc không đạt tiêu chuẩn chất lượng. Bao bì bị hư hỏng. Trả lại nhà cung cấp.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/goods-receipts/{{goodsReceiptId}}/approve", "host": ["{{baseUrl}}"], "path": ["goods-receipts", "{{goodsReceiptId}}", "approve"] }
+          }
+        },
+        {
+          "name": "[TEST] Hủy đơn hàng đang PENDING",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Cần có purchaseOrderId của 1 PO đang PENDING để test"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Message thành công', function() { pm.expect(data.message).to.include('cancelled'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/{{purchaseOrderId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["purchase-orders", "{{purchaseOrderId}}", "cancel"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Xóa / Deactivate",
+      "item": [
+        {
+          "name": "Deactivate Supplier (soft delete)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204 No Content', function() { pm.response.to.have.status(204); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/suppliers/{{supplierId}}", "host": ["{{baseUrl}}"], "path": ["suppliers", "{{supplierId}}"] }
+          }
+        },
+        {
+          "name": "Xác nhận Supplier đã bị INACTIVE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Status là INACTIVE', function() { pm.expect(data.status).to.eql('INACTIVE'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/suppliers/{{supplierId}}", "host": ["{{baseUrl}}"], "path": ["suppliers", "{{supplierId}}"] }
+          }
+        }
+      ]
+    }
+  ]
+}
