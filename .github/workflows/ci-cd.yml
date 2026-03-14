@@ -3,9 +3,9 @@ name: Spring Boot CI/CD Pipeline
 # Kích hoạt pipeline khi có code được Push hoặc tạo Pull Request vào nhánh 'main'
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main, develop" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main, develop" ]
 
 jobs:
   # Phần CI: Xây dựng và kiểm thử ứng dụng
