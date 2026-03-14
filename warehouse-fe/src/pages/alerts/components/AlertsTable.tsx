@@ -1,16 +1,10 @@
-import { Button, Flex, Input, Space, Tag, Typography, message } from "antd";
-import type { ColumnsType } from "antd/es/table";
-import { useEffect, useState, useMemo } from "react";
-import BaseTable from "../../../components/base/BaseTable";
-import {
-  type Alert,
-  getAllAlerts,
-  resolveAlert,
-  checkAndGenerateAlerts,
-} from "../../../services/alerts";
-import type { AlertFilters } from "../AlertsPage";
-import dayjs from "dayjs";
-import { getAuthToken } from "../../../services/api";
+import { Button, Space, Tag, Typography, message } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { useEffect, useState, useMemo } from 'react'
+import BaseTable from '../../../components/base/BaseTable'
+import { type Alert, getAllAlerts, resolveAlert, checkAndGenerateAlerts } from '../../../services/alerts'
+import type { AlertFilters } from '../AlertsPage'
+import dayjs from 'dayjs'
 
 const { Text } = Typography;
 

@@ -1,6 +1,8 @@
 package com.pharmacy.warehouse.config;
 
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.config.Customizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -45,8 +47,21 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/test/**").permitAll()
-                .requestMatchers("/alerts/scan").permitAll()  // Temporary for testing
+                .requestMatchers("/alerts/**").permitAll()  // Temporary for testing
                 .requestMatchers("/error").permitAll()
+
+                // Supplier Management - ADMIN and WAREHOUSE_MANAGER
+                .requestMatchers("/suppliers/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+
+                // Purchase Order Management
+                .requestMatchers("/purchase-orders/*/confirm").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                .requestMatchers("/purchase-orders/*/cancel").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                .requestMatchers("/purchase-orders/*/status").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                .requestMatchers("/purchase-orders").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF")
+
+                // Goods Receipt Management
+                .requestMatchers("/goods-receipts/*/approve").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                .requestMatchers("/goods-receipts").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF")
 
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/warehouse/manager/**").hasRole("WAREHOUSE_MANAGER")
