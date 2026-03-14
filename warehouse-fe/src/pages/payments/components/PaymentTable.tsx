@@ -1,6 +1,8 @@
-import { Button, Space, Tag } from "antd";
+import { Button, Flex, Input, Space, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import BaseTable from "../../../components/base/BaseTable";
+
+const { Text } = Typography;
 
 type PaymentRow = {
   key: string;
@@ -102,7 +104,25 @@ const columns: ColumnsType<PaymentRow> = [
 ];
 
 function PaymentTable() {
-  return <BaseTable columns={columns} dataSource={data} />;
+  const tableHeader = (
+    <Flex justify="space-between" align="center">
+      <div className="flex flex-col">
+        <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+          Payments list
+        </Text>
+      </div>
+      <div className="w-[200px]">
+        <Input.Search
+          placeholder="Search by payment ID..."
+          className="w-[320px]"
+          allowClear
+          // onSearch={onSearch}
+          // onChange={(e) => !e.target.value && onSearch("")}
+        />
+      </div>
+    </Flex>
+  );
+  return <BaseTable title={() => tableHeader}columns={columns} dataSource={data} />;
 }
 
 export default PaymentTable;
