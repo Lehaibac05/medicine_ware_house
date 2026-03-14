@@ -1,8 +1,18 @@
-import { Button, Space, Typography, message } from "antd";
+import { Button, Input, Popconfirm, Space, Typography, message } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import BaseTable from "../../../components/base/BaseTable";
-import { getMedicines } from "../../../services/medicines";
+import {
+  createMedicine,
+  deleteMedicine,
+  getMedicines,
+  updateMedicine,
+} from "../../../services/medicines";
+import type { Medicine } from "../../../services/types";
+import MedicineFormModal, {
+  type MedicineFormValues,
+} from "./MedicineFormModal";
 
 const { Text } = Typography;
 
