@@ -32,6 +32,16 @@ public class User {
 
     private LocalDateTime lastLogin;
 
+    // Refresh token for issuing new access tokens
+    private String refreshToken;
+    private LocalDateTime refreshTokenExpiry;
+
+    // Fields for password reset flow
+    private String resetOtp;
+    private LocalDateTime resetOtpExpiry;
+    private String resetToken;
+    private LocalDateTime resetTokenExpiry;
+
     @ManyToOne
     @JoinColumn(name = "role_id")
     private Role role;
