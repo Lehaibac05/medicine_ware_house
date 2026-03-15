@@ -29,6 +29,7 @@ jobs:
       - name: Build Spring Boot project
         run: |
           cd warehouse-be
+          chmod +x mvnw
           ./mvnw clean package
 
       - name: Upload Artifact
