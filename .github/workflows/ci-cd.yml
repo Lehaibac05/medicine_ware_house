@@ -26,11 +26,13 @@ jobs:
           java-version: 17
           cache: maven
 
-      - name: Build project
-        run: ./mvnw clean package
+      - name: Build Spring Boot project
+        run: |
+          cd warehouse-be
+          ./mvnw clean package
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: spring-boot-app
-          path: target/*.jar
+          path: warehouse-be/target/*.jar
