@@ -1,6 +1,7 @@
 package com.pharmacy.warehouse.service;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -124,6 +125,10 @@ public class GoodsReceiptService {
     @Transactional
     public GoodsReceiptResponse approveGoodsReceipt(Long receiptId, ApproveGoodsReceiptRequest request, Long userId) {
         log.info("Approving goods receipt: {}", receiptId);
+
+        if (request == null || request.getApproved() == null) {
+            throw new IllegalArgumentException("approved flag is required");
+        }
         
         GoodsReceipt receipt = goodsReceiptRepository.findById(receiptId)
                 .orElseThrow(() -> new RuntimeException("Goods receipt not found"));
@@ -142,7 +147,10 @@ public class GoodsReceiptService {
             receipt.setApprovedAt(LocalDateTime.now());
             
             if (request.getNotes() != null && !request.getNotes().isEmpty()) {
-                receipt.setQualityCheckNotes(receipt.getQualityCheckNotes() + "\n" + request.getNotes());
+                String currentNotes = receipt.getQualityCheckNotes() != null ? receipt.getQualityCheckNotes() : "";
+                receipt.setQualityCheckNotes(currentNotes.isBlank()
+                        ? request.getNotes()
+                        : currentNotes + "\n" + request.getNotes());
             }
             
             // Update purchase order status
@@ -188,16 +196,20 @@ public class GoodsReceiptService {
                 batch.setMedicine(item.getMedicine());
                 batch.setWarehouse(purchaseOrder.getWarehouse());
                 batch.setQuantity(item.getReceivedQuantity());
-                batch.setExpiryDate(item.getActualExpiryDate());
+                LocalDate expiryDate = item.getActualExpiryDate() != null
+                        ? item.getActualExpiryDate()
+                        : item.getExpectedExpiryDate();
+                if (expiryDate == null) {
+                    expiryDate = LocalDate.now().plusYears(2);
+                }
+                batch.setExpiryDate(expiryDate);
                 batch.setStatus("AVAILABLE");
                 
                 // Generate lot number from receipt code
-                batch.setLotNumber(receipt.getReceiptCode() + "-" + item.getItemId());
+                batch.setLotNumber(receipt.getReceiptCode() + "-" + item.getItemId() + "-" + (System.currentTimeMillis() % 1000));
                 
                 // Set manufacture date (estimate based on expiry date)
-                if (item.getActualExpiryDate() != null) {
-                    batch.setManufactureDate(item.getActualExpiryDate().minusYears(2));
-                }
+                batch.setManufactureDate(expiryDate.minusYears(2));
                 
                 batchRepository.save(batch);
                 log.info("Created batch {} for medicine {} with quantity {}", 

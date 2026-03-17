@@ -2,6 +2,7 @@ package com.pharmacy.warehouse.controller;
 
 import com.pharmacy.warehouse.model.Medicine;
 import com.pharmacy.warehouse.service.MedicineService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -38,14 +39,14 @@ public class MedicineController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','WAREHOUSE_MANAGER')")
-    public Medicine create(@RequestBody Medicine medicine) {
+    public Medicine create(@Valid @RequestBody Medicine medicine) {
         return medicineService.create(medicine);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','WAREHOUSE_MANAGER')")
     public Medicine update(@PathVariable Long id,
-                           @RequestBody Medicine medicine) {
+                           @Valid @RequestBody Medicine medicine) {
         return medicineService.update(id, medicine);
     }
 

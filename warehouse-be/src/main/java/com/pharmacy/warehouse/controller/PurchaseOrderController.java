@@ -4,6 +4,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +21,8 @@ import com.pharmacy.warehouse.dto.CreatePurchaseOrderRequest;
 import com.pharmacy.warehouse.dto.PurchaseOrderResponse;
 import com.pharmacy.warehouse.model.User;
 import com.pharmacy.warehouse.repository.UserRepository;
+import com.pharmacy.warehouse.service.PurchaseOrderEmailService;
+import com.pharmacy.warehouse.service.PurchaseOrderPdfService;
 import com.pharmacy.warehouse.service.PurchaseOrderService;
 
 import lombok.RequiredArgsConstructor;
@@ -30,6 +35,8 @@ import lombok.extern.slf4j.Slf4j;
 public class PurchaseOrderController {
 
     private final PurchaseOrderService purchaseOrderService;
+    private final PurchaseOrderPdfService purchaseOrderPdfService;
+    private final PurchaseOrderEmailService purchaseOrderEmailService;
     private final UserRepository userRepository;
 
     @GetMapping
@@ -44,6 +51,23 @@ public class PurchaseOrderController {
         log.info("GET /purchase-orders/{} - Fetching purchase order", id);
         PurchaseOrderResponse order = purchaseOrderService.getPurchaseOrderById(id);
         return ResponseEntity.ok(order);
+    }
+
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> exportPurchaseOrderPdf(@PathVariable Long id) {
+        log.info("GET /purchase-orders/{}/pdf - Export purchase order PDF", id);
+
+        PurchaseOrderResponse order = purchaseOrderService.getPurchaseOrderById(id);
+        byte[] pdfBytes = purchaseOrderPdfService.generatePurchaseOrderPdf(id);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+            ContentDisposition.attachment().filename(order.getOrderCode() + ".pdf").build());
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
     }
 
     @GetMapping("/status/{status}")
@@ -72,6 +96,15 @@ public class PurchaseOrderController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         PurchaseOrderResponse order = purchaseOrderService.createPurchaseOrder(request, user.getUserId());
+        return ResponseEntity.ok(order);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<PurchaseOrderResponse> updatePurchaseOrder(
+            @PathVariable Long id,
+            @RequestBody CreatePurchaseOrderRequest request) {
+        log.info("PUT /purchase-orders/{} - Updating purchase order", id);
+        PurchaseOrderResponse order = purchaseOrderService.updatePurchaseOrder(id, request);
         return ResponseEntity.ok(order);
     }
 
@@ -104,6 +137,20 @@ public class PurchaseOrderController {
         
         Map<String, String> response = new HashMap<>();
         response.put("message", "Purchase order cancelled successfully");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/send-email")
+    public ResponseEntity<Map<String, String>> sendPurchaseOrderEmail(@PathVariable Long id) {
+        log.info("POST /purchase-orders/{}/send-email - Sending purchase order email", id);
+
+        PurchaseOrderResponse order = purchaseOrderService.getPurchaseOrderById(id);
+        purchaseOrderEmailService.sendPurchaseOrderEmail(id);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Purchase order email sent successfully");
+        response.put("orderCode", order.getOrderCode());
+        response.put("supplierEmail", order.getSupplier() != null ? order.getSupplier().getEmail() : "");
         return ResponseEntity.ok(response);
     }
 }
