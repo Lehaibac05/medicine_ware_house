@@ -18,6 +18,7 @@ import com.pharmacy.warehouse.model.Supplier;
 import com.pharmacy.warehouse.model.User;
 import com.pharmacy.warehouse.model.Warehouse;
 import com.pharmacy.warehouse.repository.MedicineRepository;
+import com.pharmacy.warehouse.repository.PurchaseOrderItemRepository;
 import com.pharmacy.warehouse.repository.PurchaseOrderRepository;
 import com.pharmacy.warehouse.repository.SupplierRepository;
 import com.pharmacy.warehouse.repository.UserRepository;
@@ -32,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PurchaseOrderService {
 
     private final PurchaseOrderRepository purchaseOrderRepository;
+        private final PurchaseOrderItemRepository purchaseOrderItemRepository;
     private final SupplierRepository supplierRepository;
     private final WarehouseRepository warehouseRepository;
     private final MedicineRepository medicineRepository;
@@ -46,12 +48,18 @@ public class PurchaseOrderService {
 
     @Transactional(readOnly = true)
     public PurchaseOrderResponse getPurchaseOrderById(Long id) {
-        PurchaseOrder order = purchaseOrderRepository.findByIdWithItems(id);
-        if (order == null) {
-            throw new RuntimeException("Purchase order not found with id: " + id);
-        }
+                PurchaseOrder order = getPurchaseOrderEntityById(id);
         return convertToResponse(order);
     }
+
+        @Transactional(readOnly = true)
+        public PurchaseOrder getPurchaseOrderEntityById(Long id) {
+                PurchaseOrder order = purchaseOrderRepository.findByIdWithItems(id);
+                if (order == null) {
+                        throw new RuntimeException("Purchase order not found with id: " + id);
+                }
+                return order;
+        }
 
     @Transactional(readOnly = true)
     public List<PurchaseOrderResponse> getPurchaseOrdersByStatus(String status) {
@@ -93,41 +101,46 @@ public class PurchaseOrderService {
         purchaseOrder.setExpectedDeliveryDate(request.getExpectedDeliveryDate());
         purchaseOrder.setNotes(request.getNotes());
         purchaseOrder.setStatus(PurchaseOrderStatus.PENDING);
-        
-        // Calculate total amount and create items
-        BigDecimal totalAmount = BigDecimal.ZERO;
-        
-        for (CreatePurchaseOrderRequest.PurchaseOrderItemRequest itemRequest : request.getItems()) {
-            Medicine medicine = medicineRepository.findById(itemRequest.getMedicineId())
-                    .orElseThrow(() -> new RuntimeException("Medicine not found with id: " + itemRequest.getMedicineId()));
-            
-            PurchaseOrderItem item = new PurchaseOrderItem();
-            item.setPurchaseOrder(purchaseOrder);
-            item.setMedicine(medicine);
-            item.setRequestedQuantity(itemRequest.getRequestedQuantity());
-            item.setUnitPrice(itemRequest.getUnitPrice());
-            
-            BigDecimal itemTotal = itemRequest.getUnitPrice()
-                    .multiply(BigDecimal.valueOf(itemRequest.getRequestedQuantity()));
-            item.setTotalPrice(itemTotal);
-            totalAmount = totalAmount.add(itemTotal);
-            
-            item.setExpectedExpiryDate(itemRequest.getExpectedExpiryDate());
-            item.setNotes(itemRequest.getNotes());
-            
-            if (purchaseOrder.getItems() == null) {
-                purchaseOrder.setItems(new java.util.ArrayList<>());
-            }
-            purchaseOrder.getItems().add(item);
-        }
-        
-        purchaseOrder.setTotalAmount(totalAmount);
+
+                rebuildItemsAndTotal(purchaseOrder, request);
         
         PurchaseOrder savedOrder = purchaseOrderRepository.save(purchaseOrder);
         log.info("Purchase order created successfully with code: {}", savedOrder.getOrderCode());
         
         return convertToResponse(savedOrder);
     }
+
+        @Transactional
+        public PurchaseOrderResponse updatePurchaseOrder(Long orderId, CreatePurchaseOrderRequest request) {
+                log.info("Updating purchase order: {}", orderId);
+
+                PurchaseOrder order = getPurchaseOrderEntityById(orderId);
+                if (order.getStatus() != PurchaseOrderStatus.PENDING) {
+                        throw new IllegalStateException("Only PENDING purchase orders can be updated");
+                }
+
+                Supplier supplier = supplierRepository.findById(request.getSupplierId())
+                                .orElseThrow(() -> new RuntimeException("Supplier not found"));
+
+                Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
+                                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+
+                if (order.getItems() != null && !order.getItems().isEmpty()) {
+                        purchaseOrderItemRepository.deleteAll(order.getItems());
+                        order.getItems().clear();
+                }
+
+                order.setSupplier(supplier);
+                order.setWarehouse(warehouse);
+                order.setExpectedDeliveryDate(request.getExpectedDeliveryDate());
+                order.setNotes(request.getNotes());
+
+                rebuildItemsAndTotal(order, request);
+
+                PurchaseOrder updatedOrder = purchaseOrderRepository.save(order);
+                log.info("Purchase order updated successfully: {}", updatedOrder.getOrderCode());
+                return convertToResponse(updatedOrder);
+        }
 
     // Bước 2: Nhà cung cấp xác nhận và chuẩn bị
     @Transactional
@@ -155,7 +168,26 @@ public class PurchaseOrderService {
         PurchaseOrder order = purchaseOrderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Purchase order not found"));
         
-        PurchaseOrderStatus newStatus = PurchaseOrderStatus.valueOf(status);
+                PurchaseOrderStatus newStatus = PurchaseOrderStatus.valueOf(status);
+
+                if (newStatus == PurchaseOrderStatus.RECEIVED || newStatus == PurchaseOrderStatus.APPROVED) {
+                        throw new IllegalStateException(
+                                        "Use goods receipt workflow to move purchase order to RECEIVED/APPROVED");
+                }
+
+                if (newStatus == PurchaseOrderStatus.CONFIRMED && order.getStatus() == PurchaseOrderStatus.PENDING) {
+                        throw new IllegalStateException("Use confirm endpoint to confirm purchase order");
+                }
+
+                if (order.getStatus() == newStatus) {
+                        return convertToResponse(order);
+                }
+
+                if (!(order.getStatus() == PurchaseOrderStatus.CONFIRMED && newStatus == PurchaseOrderStatus.SHIPPING)) {
+                        throw new IllegalStateException(
+                                        String.format("Invalid status transition: %s -> %s", order.getStatus(), newStatus));
+                }
+
         order.setStatus(newStatus);
         
         PurchaseOrder updatedOrder = purchaseOrderRepository.save(order);
@@ -240,4 +272,35 @@ public class PurchaseOrderService {
                 .updatedAt(supplier.getUpdatedAt())
                 .build();
     }
+
+        private void rebuildItemsAndTotal(PurchaseOrder order, CreatePurchaseOrderRequest request) {
+                if (request.getItems() == null || request.getItems().isEmpty()) {
+                        throw new IllegalArgumentException("Purchase order must include at least one item");
+                }
+
+                BigDecimal totalAmount = BigDecimal.ZERO;
+                order.setItems(new java.util.ArrayList<>());
+
+                for (CreatePurchaseOrderRequest.PurchaseOrderItemRequest itemRequest : request.getItems()) {
+                        Medicine medicine = medicineRepository.findById(itemRequest.getMedicineId())
+                                        .orElseThrow(() -> new RuntimeException("Medicine not found with id: " + itemRequest.getMedicineId()));
+
+                        PurchaseOrderItem item = new PurchaseOrderItem();
+                        item.setPurchaseOrder(order);
+                        item.setMedicine(medicine);
+                        item.setRequestedQuantity(itemRequest.getRequestedQuantity());
+                        item.setUnitPrice(itemRequest.getUnitPrice());
+
+                        BigDecimal itemTotal = itemRequest.getUnitPrice()
+                                        .multiply(BigDecimal.valueOf(itemRequest.getRequestedQuantity()));
+                        item.setTotalPrice(itemTotal);
+                        totalAmount = totalAmount.add(itemTotal);
+
+                        item.setExpectedExpiryDate(itemRequest.getExpectedExpiryDate());
+                        item.setNotes(itemRequest.getNotes());
+                        order.getItems().add(item);
+                }
+
+                order.setTotalAmount(totalAmount);
+        }
 }

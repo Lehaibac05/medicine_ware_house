@@ -1,7 +1,5 @@
 package com.pharmacy.warehouse.model;
 
-import java.time.LocalDateTime;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -14,27 +12,24 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "payment")
+@Table(name = "medicine_request_item")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Payment {
+public class MedicineRequestItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long paymentId;
+    private Long requestItemId;
 
-    private LocalDateTime paymentDate;
-    private Double amount;
-    private String method;
-    private String status;
+    @ManyToOne
+    @JoinColumn(name = "request_id")
+    private MedicineRequest request;
+
+    @ManyToOne
+    @JoinColumn(name = "medicine_id")
+    private Medicine medicine;
+
+    private Integer quantity;
     private String notes;
-
-    @ManyToOne
-    @JoinColumn(name = "order_id")
-    private Order order;
-
-    @ManyToOne
-    @JoinColumn(name = "supplier_invoice_id")
-    private SupplierInvoice supplierInvoice;
 }

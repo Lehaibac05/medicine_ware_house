@@ -12,6 +12,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -57,11 +58,33 @@ public class SecurityConfig {
                 .requestMatchers("/purchase-orders/*/confirm").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                 .requestMatchers("/purchase-orders/*/cancel").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                 .requestMatchers("/purchase-orders/*/status").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                .requestMatchers("/purchase-orders/*/pdf").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                .requestMatchers("/purchase-orders/*/send-email").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                .requestMatchers(HttpMethod.PUT, "/purchase-orders/*").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                 .requestMatchers("/purchase-orders").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF")
+
+                // Medicine Request Management
+                .requestMatchers("/medicine-requests/*/approve").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                .requestMatchers("/medicine-requests/*/reject").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                .requestMatchers(HttpMethod.POST, "/medicine-requests").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF")
+                .requestMatchers(HttpMethod.GET, "/medicine-requests").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF")
+                .requestMatchers(HttpMethod.GET, "/medicine-requests/my").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF")
 
                 // Goods Receipt Management
                 .requestMatchers("/goods-receipts/*/approve").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                 .requestMatchers("/goods-receipts").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF")
+
+                // Supplier Invoice Management
+                .requestMatchers(HttpMethod.POST, "/supplier-invoices").hasRole("ACCOUNTANT")
+                .requestMatchers(HttpMethod.POST, "/supplier-invoices/*/verify").hasRole("ACCOUNTANT")
+                .requestMatchers(HttpMethod.POST, "/supplier-invoices/*/reject").hasRole("ACCOUNTANT")
+                .requestMatchers(HttpMethod.POST, "/supplier-invoices/*/pay").hasRole("ACCOUNTANT")
+                .requestMatchers(HttpMethod.POST, "/supplier-invoices/*/pay/confirm").hasRole("ACCOUNTANT")
+                .requestMatchers(HttpMethod.GET, "/supplier-invoices").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "ACCOUNTANT")
+                .requestMatchers(HttpMethod.GET, "/supplier-invoices/*").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "ACCOUNTANT")
+
+                // Inventory Management
+                .requestMatchers("/inventory/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT")
 
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/warehouse/manager/**").hasRole("WAREHOUSE_MANAGER")
