@@ -1,6 +1,6 @@
 package com.pharmacy.warehouse.model;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -14,27 +14,26 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "payment")
+@Table(name = "supplier_invoice_item")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Payment {
+public class SupplierInvoiceItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long paymentId;
-
-    private LocalDateTime paymentDate;
-    private Double amount;
-    private String method;
-    private String status;
-    private String notes;
+    private Long invoiceItemId;
 
     @ManyToOne
-    @JoinColumn(name = "order_id")
-    private Order order;
-
-    @ManyToOne
-    @JoinColumn(name = "supplier_invoice_id")
+    @JoinColumn(name = "invoice_id")
     private SupplierInvoice supplierInvoice;
+
+    @ManyToOne
+    @JoinColumn(name = "medicine_id")
+    private Medicine medicine;
+
+    private Integer quantity;
+    private BigDecimal unitPrice;
+    private BigDecimal totalPrice;
+    private String notes;
 }

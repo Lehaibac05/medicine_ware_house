@@ -35,4 +35,17 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
     List<Alert> findActiveAlertByBatchAndType(
             @Param("batchId") Long batchId, 
             @Param("type") String type);
+
+    @Query("""
+            SELECT a
+            FROM Alert a
+            WHERE a.medicine.medicineId = :medicineId
+              AND a.warehouse.warehouseId = :warehouseId
+              AND a.alertType = :type
+              AND a.status != 'RESOLVED'
+            """)
+    List<Alert> findActiveAlertByMedicineWarehouseAndType(
+            @Param("medicineId") Long medicineId,
+            @Param("warehouseId") Long warehouseId,
+            @Param("type") String type);
 }
