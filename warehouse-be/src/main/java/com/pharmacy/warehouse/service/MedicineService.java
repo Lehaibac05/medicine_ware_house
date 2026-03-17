@@ -20,6 +20,8 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class MedicineService {
 
+    private static final int DEFAULT_REORDER_LEVEL = 10;
+
     private final MedicineRepository medicineRepository;
 
     public Page<Medicine> getMedicines(
@@ -88,19 +90,56 @@ public class MedicineService {
     }
 
     public Medicine create(Medicine medicine) {
+        normalizeTextFields(medicine);
+        normalizeReorderLevel(medicine);
         return medicineRepository.save(medicine);
     }
 
     public Medicine update(Long id, Medicine data) {
         Medicine m = getById(id);
-        m.setName(data.getName());
-        m.setManufacturer(data.getManufacturer());
-        m.setStorageCondition(data.getStorageCondition());
-        m.setDescription(data.getDescription());
+        m.setName(normalizeRequiredText(data.getName(), "Medicine name is required"));
+        m.setManufacturer(normalizeRequiredText(data.getManufacturer(), "Manufacturer is required"));
+        m.setStorageCondition(normalizeRequiredText(data.getStorageCondition(), "Storage condition is required"));
+        m.setDescription(normalizeRequiredText(data.getDescription(), "Description is required"));
+        m.setReorderLevel(resolveReorderLevel(data.getReorderLevel(), m.getReorderLevel()));
         return medicineRepository.save(m);
     }
 
     public void delete(Long id) {
         medicineRepository.deleteById(id);
+    }
+
+    private void normalizeReorderLevel(Medicine medicine) {
+        medicine.setReorderLevel(resolveReorderLevel(medicine.getReorderLevel(), null));
+    }
+
+    private void normalizeTextFields(Medicine medicine) {
+        medicine.setName(normalizeRequiredText(medicine.getName(), "Medicine name is required"));
+        medicine.setManufacturer(normalizeRequiredText(medicine.getManufacturer(), "Manufacturer is required"));
+        medicine.setStorageCondition(normalizeRequiredText(medicine.getStorageCondition(), "Storage condition is required"));
+        medicine.setDescription(normalizeRequiredText(medicine.getDescription(), "Description is required"));
+    }
+
+    private String normalizeRequiredText(String value, String errorMessage) {
+        if (value == null) {
+            throw new IllegalArgumentException(errorMessage);
+        }
+
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException(errorMessage);
+        }
+
+        return trimmed;
+    }
+
+    private Integer resolveReorderLevel(Integer candidate, Integer fallback) {
+        if (candidate != null && candidate >= 0) {
+            return candidate;
+        }
+        if (fallback != null && fallback >= 0) {
+            return fallback;
+        }
+        return DEFAULT_REORDER_LEVEL;
     }
 }
