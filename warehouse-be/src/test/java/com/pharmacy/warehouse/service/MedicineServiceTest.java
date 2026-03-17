@@ -50,6 +50,7 @@ public class MedicineServiceTest {
         medicineMock.setName("Paracetamol");
         medicineMock.setManufacturer("Pfizer");
         medicineMock.setStorageCondition("Normal");
+        medicineMock.setDescription("Pain relief medication");
     }
 
     // ==========================================
