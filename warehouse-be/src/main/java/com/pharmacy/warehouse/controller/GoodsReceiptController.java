@@ -67,9 +67,8 @@ public class GoodsReceiptController {
             Authentication authentication) {
         log.info("POST /goods-receipts - Creating goods receipt by user: {}", 
                 authentication != null ? authentication.getName() : "unknown");
-        
-        User user = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        User user = resolveAuthenticatedUser(authentication);
         
         GoodsReceiptResponse receipt = goodsReceiptService.createGoodsReceipt(request, user.getUserId());
         return ResponseEntity.ok(receipt);
@@ -83,11 +82,21 @@ public class GoodsReceiptController {
             Authentication authentication) {
         log.info("POST /goods-receipts/{}/approve - Approving goods receipt by user: {}", 
                 id, authentication != null ? authentication.getName() : "unknown");
-        
-        User user = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        User user = resolveAuthenticatedUser(authentication);
         
         GoodsReceiptResponse receipt = goodsReceiptService.approveGoodsReceipt(id, request, user.getUserId());
         return ResponseEntity.ok(receipt);
+    }
+
+    private User resolveAuthenticatedUser(Authentication authentication) {
+        String principal = authentication != null ? authentication.getName() : null;
+        if (principal == null || principal.isBlank()) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        return userRepository.findByUsername(principal)
+                .or(() -> userRepository.findByEmail(principal))
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }

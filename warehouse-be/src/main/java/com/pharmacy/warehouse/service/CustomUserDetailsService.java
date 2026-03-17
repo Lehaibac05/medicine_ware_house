@@ -50,8 +50,17 @@ public class CustomUserDetailsService implements UserDetailsService {
                 user.getRole() == null
                         ? java.util.Collections.emptySet()
                         : java.util.Collections.singleton(
-                                new SimpleGrantedAuthority("ROLE_" + user.getRole().getRoleName())
+                                                                new SimpleGrantedAuthority(normalizeAuthority(user.getRole().getRoleName()))
                         )
         );
     }
+
+        private String normalizeAuthority(String roleName) {
+                if (roleName == null || roleName.isBlank()) {
+                        return "ROLE_USER";
+                }
+
+                String trimmed = roleName.trim();
+                return trimmed.startsWith("ROLE_") ? trimmed : "ROLE_" + trimmed;
+        }
 }
