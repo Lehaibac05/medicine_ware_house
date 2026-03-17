@@ -52,6 +52,8 @@ public class MedicineControllerTest {
         medicine.setMedicineId(1L);
         medicine.setName("Ibuprofen");
         medicine.setManufacturer("PharmaCorp");
+        medicine.setStorageCondition("Room Temperature");
+        medicine.setDescription("Pain reliever medication");
     }
 
     @Test
