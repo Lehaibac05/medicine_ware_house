@@ -15,7 +15,7 @@ import java.util.Map;
 
 @Slf4j
 @RestController
-@RequestMapping("/alerts")
+@RequestMapping({"/alerts", "/alerts/"})
 @RequiredArgsConstructor
 public class AlertController {
 

@@ -11,7 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -23,9 +25,10 @@ public class AlertService {
     private final AlertHistoryRepository alertHistoryRepository;
     private final BatchRepository batchRepository;
     private final UserRepository userRepository;
+    private final MedicineRepository medicineRepository;
+    private final WarehouseRepository warehouseRepository;
+    private final InventoryService inventoryService;
 
-    // Constants for alert thresholds
-    private static final int LOW_STOCK_THRESHOLD = 10;
     private static final int EXPIRING_SOON_DAYS = 30;
 
     @Transactional(readOnly = true)
@@ -160,19 +163,62 @@ public class AlertService {
 
     @Transactional
     public void checkLowStockAlerts() {
-        List<Batch> batches = batchRepository.findAll();
-        
-        for (Batch batch : batches) {
-            if (batch.getQuantity() != null && batch.getQuantity() <= LOW_STOCK_THRESHOLD) {
-                // Check if alert already exists
-                List<Alert> existing = alertRepository.findActiveAlertByBatchAndType(
-                        batch.getBatchId(), "LOW_STOCK");
-                
-                if (existing.isEmpty()) {
-                    createLowStockAlert(batch);
-                }
+        List<InventoryResponse> lowStockInventory = inventoryService.getLowStockInventory();
+        Set<String> lowStockKeys = new HashSet<>();
+
+        for (InventoryResponse inventory : lowStockInventory) {
+            lowStockKeys.add(buildMedicineWarehouseKey(inventory.getMedicineId(), inventory.getWarehouseId()));
+
+            List<Alert> existing = alertRepository.findActiveAlertByMedicineWarehouseAndType(
+                    inventory.getMedicineId(), inventory.getWarehouseId(), "LOW_STOCK");
+
+            if (existing.isEmpty()) {
+                createLowStockAlert(inventory);
             }
         }
+
+        autoResolveRecoveredLowStockAlerts(lowStockKeys);
+    }
+
+    private void autoResolveRecoveredLowStockAlerts(Set<String> lowStockKeys) {
+        List<Alert> lowStockAlerts = alertRepository.findByAlertType("LOW_STOCK");
+
+        for (Alert alert : lowStockAlerts) {
+            boolean activeAlert = "OPEN".equals(alert.getStatus()) || "IN_PROGRESS".equals(alert.getStatus());
+            if (!activeAlert || alert.getMedicine() == null || alert.getWarehouse() == null) {
+                continue;
+            }
+
+            String key = buildMedicineWarehouseKey(
+                    alert.getMedicine().getMedicineId(),
+                    alert.getWarehouse().getWarehouseId());
+
+            if (!lowStockKeys.contains(key)) {
+                String oldStatus = alert.getStatus();
+                alert.setStatus("RESOLVED");
+                alert.setResolvedAt(LocalDateTime.now());
+                alert.setResolvedBy(null);
+
+                Alert updated = alertRepository.save(alert);
+                createHistoryEntry(
+                        updated,
+                        "AUTO_RESOLVED",
+                        oldStatus,
+                        "RESOLVED",
+                        "Auto-resolved: stock returned to normal level",
+                        null);
+
+                log.info(
+                        "Auto-resolved LOW_STOCK alert {} for medicine {} in warehouse {}",
+                        updated.getAlertId(),
+                        updated.getMedicine().getMedicineId(),
+                        updated.getWarehouse().getWarehouseId());
+            }
+        }
+    }
+
+    private String buildMedicineWarehouseKey(Long medicineId, Long warehouseId) {
+        return medicineId + "-" + warehouseId;
     }
 
     @Transactional
@@ -215,22 +261,28 @@ public class AlertService {
         }
     }
 
-    private void createLowStockAlert(Batch batch) {
+        private void createLowStockAlert(InventoryResponse inventory) {
+        Medicine medicine = medicineRepository.findById(inventory.getMedicineId())
+            .orElseThrow(() -> new RuntimeException("Medicine not found with id: " + inventory.getMedicineId()));
+        Warehouse warehouse = warehouseRepository.findById(inventory.getWarehouseId())
+            .orElseThrow(() -> new RuntimeException("Warehouse not found with id: " + inventory.getWarehouseId()));
+
         Alert alert = new Alert();
         alert.setAlertType("LOW_STOCK");
-        alert.setSeverity(batch.getQuantity() <= 5 ? "CRITICAL" : "HIGH");
+        alert.setSeverity(inventory.getTotalStock() <= 5 ? "CRITICAL" : "HIGH");
         alert.setStatus("OPEN");
-        alert.setMessage("Low stock: " + batch.getMedicine().getName());
-        alert.setDescription("Stock level is " + batch.getQuantity() + " units");
+        alert.setMessage("Low stock: " + medicine.getName());
+        alert.setDescription("Stock level in warehouse '" + warehouse.getName() + "' is "
+            + inventory.getTotalStock() + " units");
         alert.setCreatedAt(LocalDateTime.now());
-        alert.setBatch(batch);
-        alert.setMedicine(batch.getMedicine());
-        alert.setWarehouse(batch.getWarehouse());
+        alert.setBatch(null);
+        alert.setMedicine(medicine);
+        alert.setWarehouse(warehouse);
         
         alertRepository.save(alert);
         createHistoryEntry(alert, "CREATED", null, "OPEN", "Auto-generated alert", null);
         
-        log.info("Created LOW_STOCK alert for batch {}", batch.getBatchId());
+        log.info("Created LOW_STOCK alert for medicine {} in warehouse {}", medicine.getMedicineId(), warehouse.getWarehouseId());
     }
 
     private void createExpiringSoonAlert(Batch batch) {
