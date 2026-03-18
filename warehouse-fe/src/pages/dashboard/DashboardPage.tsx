@@ -3,8 +3,8 @@ import AlertsPanel from './components/AlertsPanel'
 import ForecastPanel from './components/ForecastPanel'
 import InventoryTable from '../inventory/components/InventoryTable'
 import StatsGrid from './components/StatsGrid'
-import SidebarNav from './components/SidebarNav'
-import TopBar from './components/TopBar'
+import SidebarNav from '../../layouts/SidebarNav'
+import TopBar from '../../layouts/TopBar'
 
 const { Content, Sider } = Layout
 

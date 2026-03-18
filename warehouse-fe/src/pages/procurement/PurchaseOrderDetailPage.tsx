@@ -177,7 +177,7 @@ export default function PurchaseOrderDetailPage() {
               Mark Shipped
             </Button>
             <Link to={order ? `/goods-receipts/new/${order.purchaseOrderId}` : "#"}>
-              <Button disabled={!order || (currentStatus !== "SHIPPING" && currentStatus !== "CONFIRMED")}>
+              <Button disabled={!order || currentStatus !== "SHIPPING"}>
                 Create Goods Receipt
               </Button>
             </Link>

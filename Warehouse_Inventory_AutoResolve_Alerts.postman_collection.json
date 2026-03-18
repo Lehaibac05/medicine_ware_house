@@ -1,0 +1,583 @@
+{
+  "info": {
+    "name": "Warehouse Inventory + Auto Resolve Alerts",
+    "description": "End-to-end flow: login -> create low-stock inventory -> scan alerts -> replenish stock -> scan again -> verify alert auto-resolved",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:9090", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "warehouseId", "value": "1", "type": "string" },
+    { "key": "medicineId", "value": "", "type": "string" },
+    { "key": "batchId", "value": "", "type": "string" },
+    { "key": "lowStockAlertId", "value": "", "type": "string" },
+    { "key": "testMedicineName", "value": "AUTO-INV-MED", "type": "string" },
+    { "key": "initialQty", "value": "20", "type": "string" },
+    { "key": "replenishedQty", "value": "300", "type": "string" },
+    { "key": "reorderLevel", "value": "120", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "0. Login",
+      "item": [
+        {
+          "name": "POST /auth/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('token', json.token);",
+                  "pm.test('Token exists', function () { pm.expect(json.token).to.not.be.empty; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Prepare Data",
+      "item": [
+        {
+          "name": "GET /warehouses (set warehouseId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Has at least one warehouse', function () { pm.expect(data.length).to.be.above(0); });",
+                  "pm.collectionVariables.set('warehouseId', data[0].warehouseId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/warehouses",
+              "host": ["{{baseUrl}}"],
+              "path": ["warehouses"]
+            }
+          }
+        },
+        {
+          "name": "POST /medicines (create test medicine with high reorderLevel)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('medicineId', json.medicineId);",
+                  "pm.collectionVariables.set('testMedicineName', json.name);",
+                  "pm.test('medicineId saved', function () { pm.expect(json.medicineId).to.be.a('number'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"AUTO-INV-MED\",\n  \"manufacturer\": \"AutoLab\",\n  \"storageCondition\": \"Room Temperature\",\n  \"description\": \"Auto inventory alert test\",\n  \"reorderLevel\": {{reorderLevel}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/medicines",
+              "host": ["{{baseUrl}}"],
+              "path": ["medicines"]
+            }
+          }
+        },
+        {
+          "name": "POST /medicines/{medicineId}/batches (create low stock batch)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('batchId', json.batchId);",
+                  "pm.test('batchId saved', function () { pm.expect(json.batchId).to.be.a('number'); });",
+                  "pm.test('quantity is low', function () { pm.expect(json.quantity).to.eql(Number(pm.collectionVariables.get('initialQty'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lotNumber\": \"LOT-AUTO-001\",\n  \"manufactureDate\": \"2026-01-01\",\n  \"expiryDate\": \"2027-12-31\",\n  \"quantity\": {{initialQty}},\n  \"status\": \"AVAILABLE\",\n  \"warehouse\": {\n    \"warehouseId\": {{warehouseId}}\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/medicines/{{medicineId}}/batches",
+              "host": ["{{baseUrl}}"],
+              "path": ["medicines", "{{medicineId}}", "batches"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Inventory Check",
+      "item": [
+        {
+          "name": "GET /inventory (all)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory"]
+            }
+          }
+        },
+        {
+          "name": "GET /inventory?medicineName=... (should be LOW_STOCK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Has inventory rows', function () { pm.expect(data.length).to.be.above(0); });",
+                  "var target = data.find(function (x) { return String(x.medicineId) === pm.collectionVariables.get('medicineId') && String(x.warehouseId) === pm.collectionVariables.get('warehouseId'); });",
+                  "pm.test('Found target inventory row', function () { pm.expect(target).to.exist; });",
+                  "pm.test('Status is LOW_STOCK', function () { pm.expect(target.status).to.eql('LOW_STOCK'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory?medicineName={{testMedicineName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory"],
+              "query": [
+                { "key": "medicineName", "value": "{{testMedicineName}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /inventory?warehouseId=...&status=LOW_STOCK",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Filtered by LOW_STOCK only', function () {",
+                  "  data.forEach(function (x) { pm.expect(x.status).to.eql('LOW_STOCK'); });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory?warehouseId={{warehouseId}}&status=LOW_STOCK",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory"],
+              "query": [
+                { "key": "warehouseId", "value": "{{warehouseId}}" },
+                { "key": "status", "value": "LOW_STOCK" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /inventory/{medicineId}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Detail response is array', function () { pm.expect(data).to.be.an('array'); });",
+                  "if (data.length > 0) {",
+                  "  pm.test('Each detail has batches', function () { pm.expect(data[0]).to.have.property('batches'); });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/{{medicineId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "{{medicineId}}"]
+            }
+          }
+        },
+        {
+          "name": "GET /inventory/low-stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('All rows are LOW_STOCK', function () {",
+                  "  data.forEach(function (x) { pm.expect(x.status).to.eql('LOW_STOCK'); });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/low-stock",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "low-stock"]
+            }
+          }
+        },
+        {
+          "name": "GET /inventory/expiring",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/expiring",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "expiring"]
+            }
+          }
+        },
+        {
+          "name": "GET /inventory/paged",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Paged shape exists', function () {",
+                  "  pm.expect(json).to.have.property('content');",
+                  "  pm.expect(json).to.have.property('totalElements');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/paged?page=0&size=10&medicineName={{testMedicineName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "paged"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" },
+                { "key": "medicineName", "value": "{{testMedicineName}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /inventory/summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var summary = pm.response.json();",
+                  "pm.test('Has summary fields', function () {",
+                  "  pm.expect(summary).to.have.property('totalMedicines');",
+                  "  pm.expect(summary).to.have.property('totalBatches');",
+                  "  pm.expect(summary).to.have.property('lowStockCount');",
+                  "  pm.expect(summary).to.have.property('expiringSoonCount');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "summary"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Generate LOW_STOCK Alert",
+      "item": [
+        {
+          "name": "POST /alerts/scan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/alerts/scan",
+              "host": ["{{baseUrl}}"],
+              "path": ["alerts", "scan"]
+            }
+          }
+        },
+        {
+          "name": "GET /alerts/active (capture LOW_STOCK alert id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var alerts = pm.response.json();",
+                  "var target = alerts.find(function (a) {",
+                  "  return a.alertType === 'LOW_STOCK'",
+                  "    && String(a.medicineId) === pm.collectionVariables.get('medicineId')",
+                  "    && String(a.warehouseId) === pm.collectionVariables.get('warehouseId')",
+                  "    && (a.status === 'OPEN' || a.status === 'IN_PROGRESS');",
+                  "});",
+                  "pm.test('Found active LOW_STOCK alert', function () { pm.expect(target).to.exist; });",
+                  "if (target) { pm.collectionVariables.set('lowStockAlertId', target.alertId); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/alerts/active",
+              "host": ["{{baseUrl}}"],
+              "path": ["alerts", "active"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Replenish Stock",
+      "item": [
+        {
+          "name": "PUT /medicines/{medicineId}/batches/{batchId} (increase quantity)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var json = pm.response.json();",
+                  "pm.test('Quantity updated', function () { pm.expect(json.quantity).to.eql(Number(pm.collectionVariables.get('replenishedQty'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": {{replenishedQty}},\n  \"status\": \"AVAILABLE\",\n  \"warehouse\": {\n    \"warehouseId\": {{warehouseId}}\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/medicines/{{medicineId}}/batches/{{batchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["medicines", "{{medicineId}}", "batches", "{{batchId}}"]
+            }
+          }
+        },
+        {
+          "name": "GET /inventory?medicineName=... (should be NORMAL)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "var target = data.find(function (x) { return String(x.medicineId) === pm.collectionVariables.get('medicineId') && String(x.warehouseId) === pm.collectionVariables.get('warehouseId'); });",
+                  "pm.test('Found inventory row after replenish', function () { pm.expect(target).to.exist; });",
+                  "pm.test('Status becomes NORMAL', function () { pm.expect(target.status).to.eql('NORMAL'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory?medicineName={{testMedicineName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory"],
+              "query": [
+                { "key": "medicineName", "value": "{{testMedicineName}}" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Verify Auto Resolve",
+      "item": [
+        {
+          "name": "POST /alerts/scan (trigger auto resolve)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/alerts/scan",
+              "host": ["{{baseUrl}}"],
+              "path": ["alerts", "scan"]
+            }
+          }
+        },
+        {
+          "name": "GET /alerts/{lowStockAlertId} (expect RESOLVED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var alert = pm.response.json();",
+                  "pm.test('LOW_STOCK alert id is available', function () {",
+                  "  pm.expect(pm.collectionVariables.get('lowStockAlertId')).to.not.be.empty;",
+                  "});",
+                  "pm.test('Alert is RESOLVED', function () { pm.expect(alert.status).to.eql('RESOLVED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/alerts/{{lowStockAlertId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["alerts", "{{lowStockAlertId}}"]
+            }
+          }
+        },
+        {
+          "name": "GET /alerts/stats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var stats = pm.response.json();",
+                  "pm.test('Stats shape valid', function () {",
+                  "  pm.expect(stats).to.have.property('totalActiveAlerts');",
+                  "  pm.expect(stats).to.have.property('lowStockCount');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/alerts/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["alerts", "stats"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

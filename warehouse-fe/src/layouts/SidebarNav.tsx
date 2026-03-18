@@ -2,12 +2,14 @@ import { Badge, Button, Menu, Image } from "antd";
 import type { MenuProps } from "antd";
 import { Link, useLocation } from "react-router-dom";
 import logo from "../assets/pharmacy_logo.png";
+import { getUserRoles } from "../utils/auth";
 import {
   DashboardOutlined,
   InboxOutlined,
   MedicineBoxOutlined,
   AppstoreOutlined,
   ShoppingCartOutlined,
+  ShoppingOutlined,
   CreditCardOutlined,
   LineChartOutlined,
   AlertOutlined,
@@ -16,7 +18,7 @@ import {
   SettingOutlined,
 } from "@ant-design/icons";
 
-const menuItems: MenuProps["items"] = [
+const baseMenuItems: NonNullable<MenuProps["items"]> = [
   {
     key: "dashboard",
     icon: <DashboardOutlined />,
@@ -41,6 +43,26 @@ const menuItems: MenuProps["items"] = [
     key: "orders",
     icon: <ShoppingCartOutlined />,
     label: <Link to="/orders">Orders</Link>,
+  },
+  {
+    key: "requests",
+    icon: <ShoppingOutlined />,
+    label: <Link to="/requests">Requests</Link>,
+  },
+  {
+    key: "medicine-requests",
+    icon: <ShoppingOutlined />,
+    label: <Link to="/medicine-requests">My Requests</Link>,
+  },
+  {
+    key: "purchase-orders",
+    icon: <ShoppingOutlined />,
+    label: <Link to="/purchase-orders">Purchase Orders</Link>,
+  },
+  {
+    key: "goods-receipts",
+    icon: <InboxOutlined />,
+    label: <Link to="/goods-receipts">Goods Receipts</Link>,
   },
   {
     key: "payments",
@@ -76,8 +98,27 @@ const menuItems: MenuProps["items"] = [
 
 function SidebarNav() {
   const { pathname } = useLocation();
+  const roles = getUserRoles();
 
-  const selectedKey = pathname.split("/")[1] || "dashboard";
+  const isManager = roles.includes("ROLE_ADMIN") || roles.includes("ROLE_WAREHOUSE_MANAGER");
+  const isStaffOnly = roles.includes("ROLE_WAREHOUSE_STAFF") && !isManager;
+
+  const menuItems = baseMenuItems.filter((item) => {
+    if (!item || typeof item !== "object") return true;
+
+    if (item.key === "requests") {
+      return isManager;
+    }
+
+    if (item.key === "medicine-requests") {
+      return isStaffOnly;
+    }
+
+    return true;
+  });
+
+  const firstSegment = pathname.split("/")[1] || "dashboard";
+  const selectedKey = firstSegment;
 
   return (
     <div className="flex h-full flex-col gap-6">
