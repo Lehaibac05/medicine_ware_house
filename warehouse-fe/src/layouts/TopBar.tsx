@@ -1,5 +1,5 @@
-import { Avatar, Input, Layout, Space, Typography, Dropdown } from 'antd'
-import { SearchOutlined, UserOutlined, LogoutOutlined } from '@ant-design/icons'
+import { Avatar, Layout, Space, Typography, Dropdown } from 'antd'
+import { UserOutlined, LogoutOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { clearAuthToken } from '../utils/auth'
 
