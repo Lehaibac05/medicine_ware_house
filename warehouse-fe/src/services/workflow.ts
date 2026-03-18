@@ -56,6 +56,7 @@ export type PurchaseOrder = {
   items: Array<{
     itemId: number
     requestedQuantity: number
+    receivedQuantity?: number
     unitPrice: number
     totalPrice: number
     expectedExpiryDate?: string
@@ -86,6 +87,68 @@ export type GoodsReceipt = {
     fullName: string
   }
   purchaseOrder?: PurchaseOrder
+}
+
+export type SupplierInvoice = {
+  invoiceId: number
+  invoiceCode: string
+  status: string
+  invoiceDate?: string
+  dueDate?: string
+  totalAmount: number
+  paidAmount: number
+  remainingAmount: number
+  notes?: string
+  verificationNotes?: string
+  rejectionReason?: string
+  hasMismatch?: boolean
+  mismatchWarning?: string
+  supplier?: {
+    supplierId: number
+    supplierName: string
+  }
+  goodsReceipt?: {
+    receiptId: number
+    receiptCode: string
+    purchaseOrderCode?: string
+  }
+  payments: Array<{
+    paymentId: number
+    paymentDate?: string
+    amount?: number
+    method?: string
+    transactionReference?: string
+    status?: string
+    notes?: string
+  }>
+}
+
+export type CreateSupplierInvoicePayload = {
+  goodsReceiptId: number
+  invoiceDate?: string
+  dueDate?: string
+  notes?: string
+  items: Array<{
+    medicineId: number
+    quantity: number
+    unitPrice: number
+    notes?: string
+  }>
+}
+
+export type VerifySupplierInvoicePayload = {
+  verificationNotes?: string
+}
+
+export type RejectSupplierInvoicePayload = {
+  reason?: string
+}
+
+export type PaySupplierInvoicePayload = {
+  amount: number
+  method?: string
+  transactionReference?: string
+  notes?: string
 }
 
 export const workflowApi = {
@@ -169,6 +232,36 @@ export const workflowApi = {
       approved,
       notes,
     })
+    return response.data
+  },
+
+  getSupplierInvoices: async () => {
+    const response = await http.get<SupplierInvoice[]>("/supplier-invoices")
+    return response.data
+  },
+
+  getSupplierInvoiceById: async (id: number) => {
+    const response = await http.get<SupplierInvoice>(`/supplier-invoices/${id}`)
+    return response.data
+  },
+
+  createSupplierInvoice: async (payload: CreateSupplierInvoicePayload) => {
+    const response = await http.post<SupplierInvoice>("/supplier-invoices", payload)
+    return response.data
+  },
+
+  verifySupplierInvoice: async (id: number, payload?: VerifySupplierInvoicePayload) => {
+    const response = await http.post<SupplierInvoice>(`/supplier-invoices/${id}/verify`, payload ?? {})
+    return response.data
+  },
+
+  rejectSupplierInvoice: async (id: number, payload?: RejectSupplierInvoicePayload) => {
+    const response = await http.post<SupplierInvoice>(`/supplier-invoices/${id}/reject`, payload ?? {})
+    return response.data
+  },
+
+  paySupplierInvoice: async (id: number, payload: PaySupplierInvoicePayload) => {
+    const response = await http.post<SupplierInvoice>(`/supplier-invoices/${id}/pay`, payload)
     return response.data
   },
 }

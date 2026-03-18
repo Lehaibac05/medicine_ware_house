@@ -1,4 +1,4 @@
-import { Button, Input, Layout, Select, Space, Tag, Typography, message } from "antd"
+import { Button, Input, Layout, Select, Space, Typography, message } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
@@ -6,6 +6,7 @@ import BaseTable from "../../components/base/BaseTable"
 import SidebarNav from "../../layouts/SidebarNav"
 import TopBar from "../../layouts/TopBar"
 import { getPurchaseOrders, type PurchaseOrder } from "../../services/purchaseOrders"
+import StatusTag from "../../components/common/StatusTag"
 
 const { Content, Sider } = Layout
 const { Text } = Typography
@@ -21,12 +22,7 @@ type PurchaseOrderRow = {
 }
 
 const statusTag = (status: string) => {
-  const normalized = status.toUpperCase()
-  if (normalized === "APPROVED" || normalized === "RECEIVED") return <Tag color="green">{normalized}</Tag>
-  if (normalized === "SHIPPING") return <Tag color="blue">SHIPPED</Tag>
-  if (normalized === "CONFIRMED") return <Tag color="geekblue">CONFIRMED</Tag>
-  if (normalized === "PENDING") return <Tag color="gold">PENDING</Tag>
-  return <Tag>{normalized}</Tag>
+  return <StatusTag domain="purchaseOrder" status={status} />
 }
 
 export default function PurchaseOrdersPage() {

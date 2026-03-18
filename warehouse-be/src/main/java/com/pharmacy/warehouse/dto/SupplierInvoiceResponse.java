@@ -91,6 +91,7 @@ public class SupplierInvoiceResponse {
         private LocalDateTime paymentDate;
         private BigDecimal amount;
         private String method;
+        private String transactionReference;
         private String status;
         private String notes;
     }

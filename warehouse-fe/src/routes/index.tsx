@@ -13,7 +13,8 @@ import ForecastPage from "../pages/forecast/ForecastPage"
 import AlertsPage from "../pages/alerts/AlertsPage"
 import SettingsPage from "../pages/settings/SettingsPage"
 import OrdersPage from "../pages/orders/OrdersPage"
-import ReportPage from "../pages/reports/ReportPage"
+import InventoryReportPage from "../pages/reports/InventoryReportPage"
+import FinancialReportPage from "../pages/reports/FinancialReportPage"
 import UserPage from "../pages/users/UserPage"
 import MedicineRequestsListPage from "../pages/procurement/MedicineRequestsListPage"
 import CreateMedicineRequestPage from "../pages/procurement/CreateMedicineRequestPage"
@@ -126,6 +127,14 @@ const AppRouter = () => {
           }
         />
         <Route
+          path="/supplier-invoices"
+          element={
+            <ProtectedRoute>
+              <PaymentPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/forecast"
           element={
             <ProtectedRoute>
@@ -153,7 +162,23 @@ const AppRouter = () => {
           path="/reports"
           element={
             <ProtectedRoute>
-              <ReportPage />
+              <Navigate to="/reports/inventory" replace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/inventory"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT"]}>
+              <InventoryReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/financial"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_ACCOUNTANT", "ROLE_WAREHOUSE_MANAGER"]}>
+              <FinancialReportPage />
             </ProtectedRoute>
           }
         />
