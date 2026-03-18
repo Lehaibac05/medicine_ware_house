@@ -51,3 +51,20 @@ export const hasAnyRole = (roles: AppRole[]): boolean => {
   const userRoles = getUserRoles()
   return roles.some((role) => userRoles.includes(role))
 }
+
+export const getPrimaryRole = (): AppRole | null => {
+  const roles = getUserRoles()
+  return roles[0] ?? null
+}
+
+export const getRoleLabel = (role: AppRole | null): string => {
+  if (!role) return "Guest"
+
+  if (role === "ROLE_ADMIN") return "Admin"
+  if (role === "ROLE_WAREHOUSE_MANAGER") return "Warehouse Manager"
+  if (role === "ROLE_WAREHOUSE_STAFF") return "Warehouse Staff"
+  if (role === "ROLE_ACCOUNTANT") return "Accountant"
+  if (role === "ROLE_SUPPLIER") return "Supplier"
+
+  return role.replace(/^ROLE_/, "").replace(/_/g, " ")
+}

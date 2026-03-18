@@ -36,7 +36,7 @@ type BatchRow = {
   expiry: string;
   quantity: string;
   warehouse: string;
-  status: "In stock" | "Near Expiry" | "Expired";
+  status: "AVAILABLE" | "EXPIRED";
 };
 
 type BatchFilters = {
@@ -56,9 +56,8 @@ const getBatchStatus = (expiryDate: string): BatchRow["status"] => {
   const expiry = dayjs(expiryDate);
   const daysUntilExpiry = expiry.diff(dayjs(), "day");
 
-  if (daysUntilExpiry < 0) return "Expired";
-  if (daysUntilExpiry <= 30) return "Near Expiry";
-  return "In stock";
+  if (daysUntilExpiry < 0) return "EXPIRED";
+  return "AVAILABLE";
 };
 
 function BatchTable({ filters, search, onSearch }: BatchTableProps) {
@@ -270,9 +269,8 @@ function BatchTable({ filters, search, onSearch }: BatchTableProps) {
       dataIndex: "status",
       key: "status",
       render: (value: BatchRow["status"]) => {
-        if (value === "Near Expiry") return <Tag color="gold">Near Expiry</Tag>;
-        if (value === "In stock") return <Tag color="green">In Stock</Tag>;
-        return <Tag color="red">Expired</Tag>;
+        if (value === "AVAILABLE") return <Tag color="green">AVAILABLE</Tag>;
+        return <Tag color="red">EXPIRED</Tag>;
       },
     },
     {

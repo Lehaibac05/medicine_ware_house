@@ -1,7 +1,7 @@
-import { Avatar, Layout, Space, Typography, Dropdown } from 'antd'
+import { Avatar, Layout, Space, Typography, Dropdown, Tag } from 'antd'
 import { UserOutlined, LogoutOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import { clearAuthToken } from '../utils/auth'
+import { clearAuthToken, getPrimaryRole, getRoleLabel } from '../utils/auth'
 
 const { Header } = Layout
 const { Text, Title } = Typography
@@ -13,6 +13,7 @@ type TopBarProps = {
 
 function TopBar({ title = 'Inventory', subtitle = 'Warehouse' }: TopBarProps) {
   const navigate = useNavigate()
+  const roleLabel = getRoleLabel(getPrimaryRole())
 
   const handleLogout = () => {
     clearAuthToken()
@@ -40,6 +41,7 @@ function TopBar({ title = 'Inventory', subtitle = 'Warehouse' }: TopBarProps) {
         /> */}
 
         <div className="flex items-center gap-3 bg-transparent px-3 py-0.5">
+          <Tag color="blue" className="!mr-0">{roleLabel}</Tag>
           <Dropdown menu={{ items: [
             { key: 'profile', label: 'Profile', icon: <UserOutlined /> },
             { key: 'logout', label: 'Logout', onClick: handleLogout, danger: true, icon: <LogoutOutlined /> }

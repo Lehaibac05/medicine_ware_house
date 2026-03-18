@@ -1,0 +1,196 @@
+{
+  "info": {
+    "name": "Warehouse - Supplier Invoice Workflow",
+    "description": "Test Supplier Invoice APIs: login, create, verify/reject, pay, and query",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:9090", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "username", "value": "accountant", "type": "string" },
+    { "key": "password", "value": "123456", "type": "string" },
+    { "key": "goodsReceiptId", "value": "1", "type": "string" },
+    { "key": "invoiceId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "0. Auth",
+      "item": [
+        {
+          "name": "POST /auth/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('Token exists', function () { pm.expect(data.token).to.not.be.empty; });",
+                  "pm.collectionVariables.set('token', data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Supplier Invoice",
+      "item": [
+        {
+          "name": "POST /supplier-invoices (Create)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test('invoiceId returned', function () { pm.expect(data.invoiceId).to.exist; });",
+                  "pm.collectionVariables.set('invoiceId', data.invoiceId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goodsReceiptId\": {{goodsReceiptId}},\n  \"invoiceDate\": \"2026-03-16\",\n  \"dueDate\": \"2026-04-15\",\n  \"notes\": \"Invoice created from postman\",\n  \"items\": [\n    {\n      \"medicineId\": 1,\n      \"quantity\": 10,\n      \"unitPrice\": 25000,\n      \"notes\": \"Item 1\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/supplier-invoices",
+              "host": ["{{baseUrl}}"],
+              "path": ["supplier-invoices"]
+            }
+          }
+        },
+        {
+          "name": "GET /supplier-invoices (All)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/supplier-invoices",
+              "host": ["{{baseUrl}}"],
+              "path": ["supplier-invoices"]
+            }
+          }
+        },
+        {
+          "name": "GET /supplier-invoices/{id}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/supplier-invoices/{{invoiceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["supplier-invoices", "{{invoiceId}}"]
+            }
+          }
+        },
+        {
+          "name": "POST /supplier-invoices/{id}/verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verificationNotes\": \"Verified by accountant\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/supplier-invoices/{{invoiceId}}/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["supplier-invoices", "{{invoiceId}}", "verify"]
+            }
+          }
+        },
+        {
+          "name": "POST /supplier-invoices/{id}/reject",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Reject for test case\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/supplier-invoices/{{invoiceId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["supplier-invoices", "{{invoiceId}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "POST /supplier-invoices/{id}/pay (Partial/Full)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100000,\n  \"method\": \"BANK_TRANSFER\",\n  \"notes\": \"First payment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/supplier-invoices/{{invoiceId}}/pay",
+              "host": ["{{baseUrl}}"],
+              "path": ["supplier-invoices", "{{invoiceId}}", "pay"]
+            }
+          }
+        },
+        {
+          "name": "POST /supplier-invoices/{id}/pay/confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50000,\n  \"method\": \"CASH\",\n  \"notes\": \"Confirm payment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/supplier-invoices/{{invoiceId}}/pay/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["supplier-invoices", "{{invoiceId}}", "pay", "confirm"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
