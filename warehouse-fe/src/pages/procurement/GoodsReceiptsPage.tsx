@@ -1,4 +1,4 @@
-import { Button, Layout, Space, Table, Tag, Typography, message } from "antd"
+import { Button, Layout, Space, Table, Typography, message } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { AxiosError } from "axios"
 import { useNavigate } from "react-router-dom"
@@ -6,6 +6,7 @@ import SidebarNav from "../../layouts/SidebarNav"
 import TopBar from "../../layouts/TopBar"
 import { useApproveGoodsReceiptMutation, useGoodsReceiptsQuery } from "../../hooks/useWorkflow"
 import { clearAuthToken } from "../../utils/auth"
+import StatusTag from "../../components/common/StatusTag"
 
 const { Content, Sider } = Layout
 const { Text } = Typography
@@ -75,10 +76,7 @@ export default function GoodsReceiptsPage() {
       title: "Status",
       dataIndex: "status",
       width: 200,
-      render: (value: string) => {
-        if (normalizeReceiptStatus(value) === "APPROVED") return <Tag color="green">APPROVED</Tag>
-        return <Tag color="gold">PENDING_APPROVAL</Tag>
-      },
+      render: (value: string) => <StatusTag domain="goodsReceipt" status={normalizeReceiptStatus(value)} />,
     },
     {
       title: "Action",

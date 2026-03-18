@@ -67,7 +67,7 @@ const baseMenuItems: NonNullable<MenuProps["items"]> = [
   {
     key: "payments",
     icon: <CreditCardOutlined />,
-    label: <Link to="/payments">Payments</Link>,
+    label: <Link to="/payments">Supplier Invoices</Link>,
   },
   {
     key: "forecast",
@@ -82,7 +82,17 @@ const baseMenuItems: NonNullable<MenuProps["items"]> = [
   {
     key: "reports",
     icon: <FileTextOutlined />,
-    label: <Link to="/reports">Reports</Link>,
+    label: "Reports",
+    children: [
+      {
+        key: "reports-inventory",
+        label: <Link to="/reports/inventory">Inventory Report</Link>,
+      },
+      {
+        key: "reports-financial",
+        label: <Link to="/reports/financial">Financial Report</Link>,
+      },
+    ],
   },
   {
     key: "users",
@@ -102,6 +112,15 @@ function SidebarNav() {
 
   const isManager = roles.includes("ROLE_ADMIN") || roles.includes("ROLE_WAREHOUSE_MANAGER");
   const isStaffOnly = roles.includes("ROLE_WAREHOUSE_STAFF") && !isManager;
+  const canViewInventoryReport =
+    roles.includes("ROLE_ADMIN") ||
+    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
+    roles.includes("ROLE_WAREHOUSE_STAFF") ||
+    roles.includes("ROLE_ACCOUNTANT");
+  const canViewFinancialReport =
+    roles.includes("ROLE_ADMIN") ||
+    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
+    roles.includes("ROLE_ACCOUNTANT");
 
   const menuItems = baseMenuItems.filter((item) => {
     if (!item || typeof item !== "object") return true;
@@ -114,11 +133,32 @@ function SidebarNav() {
       return isStaffOnly;
     }
 
+    if (item.key === "reports") {
+      if (!canViewInventoryReport && !canViewFinancialReport) {
+        return false;
+      }
+
+      const reportItem = item as Exclude<NonNullable<MenuProps["items"]>[number], null>
+      if ("children" in reportItem && Array.isArray(reportItem.children)) {
+        reportItem.children = reportItem.children.filter((child) => {
+          if (!child || typeof child !== "object") return false
+          if (child.key === "reports-inventory") return canViewInventoryReport
+          if (child.key === "reports-financial") return canViewFinancialReport
+          return true
+        })
+      }
+    }
+
     return true;
   });
 
-  const firstSegment = pathname.split("/")[1] || "dashboard";
-  const selectedKey = firstSegment;
+  const selectedKey =
+    pathname.startsWith("/reports/financial")
+      ? "reports-financial"
+      : pathname.startsWith("/reports/inventory")
+      ? "reports-inventory"
+      : pathname.split("/")[1] || "dashboard";
+  const openKeys = pathname.startsWith("/reports/") ? ["reports"] : []
 
   return (
     <div className="flex h-full flex-col gap-6">
@@ -145,6 +185,7 @@ function SidebarNav() {
       <Menu
         mode="inline"
         selectedKeys={[selectedKey]}
+        defaultOpenKeys={openKeys}
         items={menuItems}
         className="!border-0"
         inlineCollapsed={false}
