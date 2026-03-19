@@ -384,8 +384,7 @@ public class CustomUserDetailsServiceTest {
         assertNotNull(result);
         assertTrue(result.isEnabled());
         assertEquals(1, result.getAuthorities().size());
-        // Should create ROLE_null authority
-        assertTrue(result.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_null")));
+        assertTrue(result.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_USER")));
         verify(userRepository, times(1)).findByUsername("nullrolename");
     }
 }

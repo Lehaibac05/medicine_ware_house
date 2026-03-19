@@ -2,12 +2,14 @@ import { Badge, Button, Menu, Image } from "antd";
 import type { MenuProps } from "antd";
 import { Link, useLocation } from "react-router-dom";
 import logo from "../assets/pharmacy_logo.png";
+import { getUserRoles } from "../utils/auth";
 import {
   DashboardOutlined,
   InboxOutlined,
   MedicineBoxOutlined,
   AppstoreOutlined,
   ShoppingCartOutlined,
+  ShoppingOutlined,
   CreditCardOutlined,
   LineChartOutlined,
   AlertOutlined,
@@ -16,7 +18,7 @@ import {
   SettingOutlined,
 } from "@ant-design/icons";
 
-const menuItems: MenuProps["items"] = [
+const baseMenuItems: NonNullable<MenuProps["items"]> = [
   {
     key: "dashboard",
     icon: <DashboardOutlined />,
@@ -43,9 +45,29 @@ const menuItems: MenuProps["items"] = [
     label: <Link to="/orders">Orders</Link>,
   },
   {
+    key: "requests",
+    icon: <ShoppingOutlined />,
+    label: <Link to="/requests">Requests</Link>,
+  },
+  {
+    key: "medicine-requests",
+    icon: <ShoppingOutlined />,
+    label: <Link to="/medicine-requests">My Requests</Link>,
+  },
+  {
+    key: "purchase-orders",
+    icon: <ShoppingOutlined />,
+    label: <Link to="/purchase-orders">Purchase Orders</Link>,
+  },
+  {
+    key: "goods-receipts",
+    icon: <InboxOutlined />,
+    label: <Link to="/goods-receipts">Goods Receipts</Link>,
+  },
+  {
     key: "payments",
     icon: <CreditCardOutlined />,
-    label: <Link to="/payments">Payments</Link>,
+    label: <Link to="/payments">Supplier Invoices</Link>,
   },
   {
     key: "forecast",
@@ -60,7 +82,17 @@ const menuItems: MenuProps["items"] = [
   {
     key: "reports",
     icon: <FileTextOutlined />,
-    label: <Link to="/reports">Reports</Link>,
+    label: "Reports",
+    children: [
+      {
+        key: "reports-inventory",
+        label: <Link to="/reports/inventory">Inventory Report</Link>,
+      },
+      {
+        key: "reports-financial",
+        label: <Link to="/reports/financial">Financial Report</Link>,
+      },
+    ],
   },
   {
     key: "users",
@@ -76,8 +108,57 @@ const menuItems: MenuProps["items"] = [
 
 function SidebarNav() {
   const { pathname } = useLocation();
+  const roles = getUserRoles();
 
-  const selectedKey = pathname.split("/")[1] || "dashboard";
+  const isManager = roles.includes("ROLE_ADMIN") || roles.includes("ROLE_WAREHOUSE_MANAGER");
+  const isStaffOnly = roles.includes("ROLE_WAREHOUSE_STAFF") && !isManager;
+  const canViewInventoryReport =
+    roles.includes("ROLE_ADMIN") ||
+    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
+    roles.includes("ROLE_WAREHOUSE_STAFF") ||
+    roles.includes("ROLE_ACCOUNTANT");
+  const canViewFinancialReport =
+    roles.includes("ROLE_ADMIN") ||
+    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
+    roles.includes("ROLE_ACCOUNTANT");
+
+  const menuItems = baseMenuItems.filter((item) => {
+    if (!item || typeof item !== "object") return true;
+
+    if (item.key === "requests") {
+      return isManager;
+    }
+
+    if (item.key === "medicine-requests") {
+      return isStaffOnly;
+    }
+
+    if (item.key === "reports") {
+      if (!canViewInventoryReport && !canViewFinancialReport) {
+        return false;
+      }
+
+      const reportItem = item as Exclude<NonNullable<MenuProps["items"]>[number], null>
+      if ("children" in reportItem && Array.isArray(reportItem.children)) {
+        reportItem.children = reportItem.children.filter((child) => {
+          if (!child || typeof child !== "object") return false
+          if (child.key === "reports-inventory") return canViewInventoryReport
+          if (child.key === "reports-financial") return canViewFinancialReport
+          return true
+        })
+      }
+    }
+
+    return true;
+  });
+
+  const selectedKey =
+    pathname.startsWith("/reports/financial")
+      ? "reports-financial"
+      : pathname.startsWith("/reports/inventory")
+      ? "reports-inventory"
+      : pathname.split("/")[1] || "dashboard";
+  const openKeys = pathname.startsWith("/reports/") ? ["reports"] : []
 
   return (
     <div className="flex h-full flex-col gap-6">
@@ -104,6 +185,7 @@ function SidebarNav() {
       <Menu
         mode="inline"
         selectedKeys={[selectedKey]}
+        defaultOpenKeys={openKeys}
         items={menuItems}
         className="!border-0"
         inlineCollapsed={false}

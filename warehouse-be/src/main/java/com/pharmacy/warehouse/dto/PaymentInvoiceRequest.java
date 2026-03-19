@@ -12,5 +12,6 @@ import lombok.NoArgsConstructor;
 public class PaymentInvoiceRequest {
     private BigDecimal amount;
     private String method;
+    private String transactionReference;
     private String notes;
 }

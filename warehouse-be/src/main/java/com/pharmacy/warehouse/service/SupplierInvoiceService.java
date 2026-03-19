@@ -2,6 +2,7 @@ package com.pharmacy.warehouse.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,6 +22,7 @@ import com.pharmacy.warehouse.model.GoodsReceipt;
 import com.pharmacy.warehouse.model.GoodsReceipt.ReceiptStatus;
 import com.pharmacy.warehouse.model.Medicine;
 import com.pharmacy.warehouse.model.Payment;
+import com.pharmacy.warehouse.model.Payment.PaymentStatus;
 import com.pharmacy.warehouse.model.PurchaseOrderItem;
 import com.pharmacy.warehouse.model.Supplier;
 import com.pharmacy.warehouse.model.SupplierInvoice;
@@ -211,15 +213,26 @@ public class SupplierInvoiceService {
             throw new IllegalArgumentException("Payment exceeds remaining amount");
         }
 
+        String txRef = normalizeTransactionReference(request.getTransactionReference());
+        if (txRef != null
+                && paymentRepository.existsBySupplierInvoice_InvoiceIdAndTransactionReference(invoiceId, txRef)) {
+            throw new IllegalArgumentException("Transaction reference already exists for this invoice");
+        }
+
+        if (txRef == null) {
+            txRef = generateTransactionReference();
+        }
+
         User paidBy = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Payment payment = new Payment();
         payment.setSupplierInvoice(invoice);
         payment.setPaymentDate(LocalDateTime.now());
-        payment.setAmount(request.getAmount().doubleValue());
+        payment.setAmount(request.getAmount());
         payment.setMethod(request.getMethod());
-        payment.setStatus("COMPLETED");
+        payment.setStatus(PaymentStatus.COMPLETED);
+        payment.setTransactionReference(txRef);
         payment.setNotes(request.getNotes());
         paymentRepository.save(payment);
 
@@ -353,11 +366,24 @@ public class SupplierInvoiceService {
         return SupplierInvoiceResponse.PaymentInfo.builder()
                 .paymentId(payment.getPaymentId())
                 .paymentDate(payment.getPaymentDate())
-                .amount(payment.getAmount() != null ? BigDecimal.valueOf(payment.getAmount()) : null)
+                .amount(payment.getAmount())
                 .method(payment.getMethod())
-                .status(payment.getStatus())
+                .transactionReference(payment.getTransactionReference())
+                .status(payment.getStatus() != null ? payment.getStatus().name() : null)
                 .notes(payment.getNotes())
                 .build();
+    }
+
+    private String normalizeTransactionReference(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String generateTransactionReference() {
+        return "PAY-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
     }
 
     private SupplierInvoiceResponse.UserInfo convertUserInfo(User user) {
