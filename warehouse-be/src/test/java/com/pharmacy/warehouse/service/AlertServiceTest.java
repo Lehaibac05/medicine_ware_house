@@ -3,6 +3,7 @@ package com.pharmacy.warehouse.service;
 import com.pharmacy.warehouse.dto.AlertHistoryResponse;
 import com.pharmacy.warehouse.dto.AlertResponse;
 import com.pharmacy.warehouse.dto.AlertStatsResponse;
+import com.pharmacy.warehouse.dto.InventoryResponse;
 import com.pharmacy.warehouse.model.*;
 import com.pharmacy.warehouse.repository.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,15 @@ public class AlertServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private MedicineRepository medicineRepository;
+
+    @Mock
+    private WarehouseRepository warehouseRepository;
+
+    @Mock
+    private InventoryService inventoryService;
 
     @InjectMocks
     private AlertService alertService;
@@ -386,21 +396,30 @@ public class AlertServiceTest {
     @Test
     @DisplayName("Alert Generation | Test checkAndGenerateAlerts() - Complete workflow")
     public void testCheckAndGenerateAlerts_CompleteWorkflow() {
+        when(inventoryService.getLowStockInventory()).thenReturn(new ArrayList<>());
+        when(alertRepository.findByAlertType("LOW_STOCK")).thenReturn(new ArrayList<>());
         when(batchRepository.findAll()).thenReturn(new ArrayList<>());
 
         alertService.checkAndGenerateAlerts();
 
-        verify(batchRepository, times(3)).findAll(); // Called by each check method
+        verify(inventoryService, times(1)).getLowStockInventory();
+        verify(batchRepository, times(2)).findAll();
     }
 
     @Test
     @DisplayName("Alert Generation | Test checkLowStockAlerts() - Create new alert")
     public void testCheckLowStockAlerts_CreateNewAlert() {
-        testBatch.setQuantity(5); // Below threshold
+        InventoryResponse lowStock = new InventoryResponse();
+        lowStock.setMedicineId(1L);
+        lowStock.setWarehouseId(1L);
+        lowStock.setTotalStock(3L);
 
-        when(batchRepository.findAll()).thenReturn(List.of(testBatch));
-        when(alertRepository.findActiveAlertByBatchAndType(1L, "LOW_STOCK"))
+        when(inventoryService.getLowStockInventory()).thenReturn(List.of(lowStock));
+        when(alertRepository.findActiveAlertByMedicineWarehouseAndType(1L, 1L, "LOW_STOCK"))
             .thenReturn(new ArrayList<>());
+        when(alertRepository.findByAlertType("LOW_STOCK")).thenReturn(new ArrayList<>());
+        when(medicineRepository.findById(1L)).thenReturn(Optional.of(testMedicine));
+        when(warehouseRepository.findById(1L)).thenReturn(Optional.of(testWarehouse));
         when(alertRepository.save(any(Alert.class))).thenAnswer(invocation -> {
             Alert saved = invocation.getArgument(0);
             saved.setAlertId(1L);
@@ -410,8 +429,8 @@ public class AlertServiceTest {
 
         alertService.checkLowStockAlerts();
 
-        verify(batchRepository, times(1)).findAll();
-        verify(alertRepository, times(1)).findActiveAlertByBatchAndType(1L, "LOW_STOCK");
+        verify(inventoryService, times(1)).getLowStockInventory();
+        verify(alertRepository, times(1)).findActiveAlertByMedicineWarehouseAndType(1L, 1L, "LOW_STOCK");
         verify(alertRepository, times(1)).save(any(Alert.class));
         verify(alertHistoryRepository, times(1)).save(any(AlertHistory.class));
     }
@@ -419,20 +438,24 @@ public class AlertServiceTest {
     @Test
     @DisplayName("Alert Generation | Test checkLowStockAlerts() - Alert already exists")
     public void testCheckLowStockAlerts_AlertExists() {
-        testBatch.setQuantity(5); // Below threshold
+        InventoryResponse lowStock = new InventoryResponse();
+        lowStock.setMedicineId(1L);
+        lowStock.setWarehouseId(1L);
+        lowStock.setTotalStock(8L);
 
         Alert existingAlert = new Alert();
         existingAlert.setAlertId(1L);
         existingAlert.setAlertType("LOW_STOCK");
 
-        when(batchRepository.findAll()).thenReturn(List.of(testBatch));
-        when(alertRepository.findActiveAlertByBatchAndType(1L, "LOW_STOCK"))
+        when(inventoryService.getLowStockInventory()).thenReturn(List.of(lowStock));
+        when(alertRepository.findActiveAlertByMedicineWarehouseAndType(1L, 1L, "LOW_STOCK"))
             .thenReturn(List.of(existingAlert));
+        when(alertRepository.findByAlertType("LOW_STOCK")).thenReturn(new ArrayList<>());
 
         alertService.checkLowStockAlerts();
 
-        verify(batchRepository, times(1)).findAll();
-        verify(alertRepository, times(1)).findActiveAlertByBatchAndType(1L, "LOW_STOCK");
+        verify(inventoryService, times(1)).getLowStockInventory();
+        verify(alertRepository, times(1)).findActiveAlertByMedicineWarehouseAndType(1L, 1L, "LOW_STOCK");
         verify(alertRepository, never()).save(any(Alert.class));
         verify(alertHistoryRepository, never()).save(any(AlertHistory.class));
     }
@@ -440,14 +463,13 @@ public class AlertServiceTest {
     @Test
     @DisplayName("Alert Generation | Test checkLowStockAlerts() - No alert needed")
     public void testCheckLowStockAlerts_NoAlertNeeded() {
-        testBatch.setQuantity(15); // Above threshold
-
-        when(batchRepository.findAll()).thenReturn(List.of(testBatch));
+        when(inventoryService.getLowStockInventory()).thenReturn(new ArrayList<>());
+        when(alertRepository.findByAlertType("LOW_STOCK")).thenReturn(new ArrayList<>());
 
         alertService.checkLowStockAlerts();
 
-        verify(batchRepository, times(1)).findAll();
-        verify(alertRepository, never()).findActiveAlertByBatchAndType(anyLong(), anyString());
+        verify(inventoryService, times(1)).getLowStockInventory();
+        verify(alertRepository, never()).findActiveAlertByMedicineWarehouseAndType(anyLong(), anyLong(), anyString());
         verify(alertRepository, never()).save(any(Alert.class));
         verify(alertHistoryRepository, never()).save(any(AlertHistory.class));
     }
@@ -598,7 +620,13 @@ public class AlertServiceTest {
     @Test
     @DisplayName("Private Method | Test createLowStockAlert() - CRITICAL severity")
     public void testCreateLowStockAlert_CriticalSeverity() throws Exception {
-        testBatch.setQuantity(3); // <= 5 = CRITICAL
+        InventoryResponse lowStock = new InventoryResponse();
+        lowStock.setMedicineId(1L);
+        lowStock.setWarehouseId(1L);
+        lowStock.setTotalStock(3L);
+
+        when(medicineRepository.findById(1L)).thenReturn(Optional.of(testMedicine));
+        when(warehouseRepository.findById(1L)).thenReturn(Optional.of(testWarehouse));
 
         when(alertRepository.save(any(Alert.class))).thenAnswer(invocation -> {
             Alert saved = invocation.getArgument(0);
@@ -607,7 +635,7 @@ public class AlertServiceTest {
         });
         when(alertHistoryRepository.save(any(AlertHistory.class))).thenReturn(testAlertHistory);
 
-        invokePrivateCreateLowStockAlert(testBatch);
+        invokePrivateCreateLowStockAlert(lowStock);
 
         verify(alertRepository).save(argThat(alert -> 
             "LOW_STOCK".equals(alert.getAlertType()) &&
@@ -620,7 +648,13 @@ public class AlertServiceTest {
     @Test
     @DisplayName("Private Method | Test createLowStockAlert() - HIGH severity")
     public void testCreateLowStockAlert_HighSeverity() throws Exception {
-        testBatch.setQuantity(8); // > 5 = HIGH
+        InventoryResponse lowStock = new InventoryResponse();
+        lowStock.setMedicineId(1L);
+        lowStock.setWarehouseId(1L);
+        lowStock.setTotalStock(8L);
+
+        when(medicineRepository.findById(1L)).thenReturn(Optional.of(testMedicine));
+        when(warehouseRepository.findById(1L)).thenReturn(Optional.of(testWarehouse));
 
         when(alertRepository.save(any(Alert.class))).thenAnswer(invocation -> {
             Alert saved = invocation.getArgument(0);
@@ -629,7 +663,7 @@ public class AlertServiceTest {
         });
         when(alertHistoryRepository.save(any(AlertHistory.class))).thenReturn(testAlertHistory);
 
-        invokePrivateCreateLowStockAlert(testBatch);
+        invokePrivateCreateLowStockAlert(lowStock);
 
         verify(alertRepository).save(argThat(alert -> 
             "LOW_STOCK".equals(alert.getAlertType()) &&
@@ -682,16 +716,15 @@ public class AlertServiceTest {
     @Test
     @DisplayName("Supplementary: Test alert generation with null values")
     public void testAlertGeneration_NullValues() {
-        // Test batch with null quantity
-        testBatch.setQuantity(null);
-        when(batchRepository.findAll()).thenReturn(List.of(testBatch));
+        when(inventoryService.getLowStockInventory()).thenReturn(new ArrayList<>());
+        when(alertRepository.findByAlertType("LOW_STOCK")).thenReturn(new ArrayList<>());
 
         alertService.checkLowStockAlerts();
+        verify(inventoryService, times(1)).getLowStockInventory();
 
-        verify(alertRepository, never()).findActiveAlertByBatchAndType(anyLong(), anyString());
+        verify(alertRepository, never()).findActiveAlertByMedicineWarehouseAndType(anyLong(), anyLong(), anyString());
 
         // Test batch with null expiry date
-        testBatch.setQuantity(15); // Valid quantity
         testBatch.setExpiryDate(null);
         when(batchRepository.findAll()).thenReturn(List.of(testBatch));
 
@@ -726,11 +759,11 @@ public class AlertServiceTest {
         }
     }
 
-    private void invokePrivateCreateLowStockAlert(Batch batch) {
+    private void invokePrivateCreateLowStockAlert(InventoryResponse inventory) {
         try {
-            java.lang.reflect.Method method = AlertService.class.getDeclaredMethod("createLowStockAlert", Batch.class);
+            java.lang.reflect.Method method = AlertService.class.getDeclaredMethod("createLowStockAlert", InventoryResponse.class);
             method.setAccessible(true);
-            method.invoke(alertService, batch);
+            method.invoke(alertService, inventory);
         } catch (Exception e) {
             throw new RuntimeException("Failed to invoke private method", e);
         }
