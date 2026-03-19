@@ -1,128 +1,163 @@
-import { Button, Flex, Input, Space, Tag, Typography } from "antd";
+import { Button, Flex, Input, Space, Tooltip, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import BaseTable from "../../../components/base/BaseTable";
+import StatusTag from "../../../components/common/StatusTag";
+import type { SupplierInvoice } from "../../../services/workflow";
 
 const { Text } = Typography;
 
-type PaymentRow = {
-  key: string;
-  payment_id: string;
-  order_id: string;
-  payment_date: string;
-  amount: string;
-  method: string;
-  status: "Pending" | "Completed" | "Cancelled";
+type PaymentTableProps = {
+  data: SupplierInvoice[];
+  loading?: boolean;
+  search: string;
+  onSearchChange: (value: string) => void;
+  onVerify: (invoice: SupplierInvoice) => void;
+  onReject: (invoice: SupplierInvoice) => void;
+  onPay: (invoice: SupplierInvoice) => void;
 };
 
-const data: PaymentRow[] = [
-  {
-    key: "PAY-0001",
-    payment_id: "PAY-0001",
-    order_id: "ORD-0001",
-    payment_date: "12/01/2026",
-    amount: "$12,400",
-    method: "Bank Transfer",
-    status: "Completed",
-  },
-  {
-    key: "PAY-0002",
-    payment_id: "PAY-0002",
-    order_id: "ORD-0002",
-    payment_date: "18/01/2026",
-    amount: "$3,280",
-    method: "Cash",
-    status: "Pending",
-  },
-  {
-    key: "PAY-0003",
-    payment_id: "PAY-0003",
-    order_id: "ORD-0003",
-    payment_date: "21/01/2026",
-    amount: "$8,950",
-    method: "Credit Card",
-    status: "Cancelled",
-  },
-  {
-    key: "PAY-0004",
-    payment_id: "PAY-0004",
-    order_id: "ORD-0004",
-    payment_date: "25/01/2026",
-    amount: "$15,600",
-    method: "Bank Transfer",
-    status: "Completed",
-  },
-];
+const formatMoney = (value?: number) =>
+  Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const columns: ColumnsType<PaymentRow> = [
-  {
-    title: "Payment ID",
-    dataIndex: "payment_id",
-    key: "payment_id",
-  },
-  {
-    title: "Order ID",
-    dataIndex: "order_id",
-    key: "order_id",
-  },
-  {
-    title: "Payment Date",
-    dataIndex: "payment_date",
-    key: "payment_date",
-  },
-  {
-    title: "Amount",
-    dataIndex: "amount",
-    key: "amount",
-  },
-  {
-    title: "Method",
-    dataIndex: "method",
-    key: "method",
-  },
-  {
-    title: "Status",
-    dataIndex: "status",
-    key: "status",
-    render: (value: PaymentRow["status"]) => {
-      if (value === "Pending") return <Tag color="gold">Pending</Tag>;
-      if (value === "Completed") return <Tag color="green">Completed</Tag>;
-      return <Tag color="red">Cancelled</Tag>;
+function PaymentTable({
+  data,
+  loading,
+  search,
+  onSearchChange,
+  onVerify,
+  onReject,
+  onPay,
+}: PaymentTableProps) {
+  const columns: ColumnsType<SupplierInvoice> = [
+    {
+      title: "Invoice",
+      dataIndex: "invoiceCode",
+      key: "invoiceCode",
+      width: 160,
+      render: (value: string) => <Text strong>{value}</Text>,
     },
-  },
-  {
-    title: "Action",
-    key: "action",
-    render: () => (
-      <Space>
-        <Button size="small">View</Button>
-        <Button size="small" type="primary">
-          Refund
-        </Button>
-      </Space>
-    ),
-  },
-];
+    {
+      title: "Supplier",
+      key: "supplier",
+      render: (_, record) => record.supplier?.supplierName || "-",
+      ellipsis: true,
+    },
+    {
+      title: "Goods Receipt",
+      key: "goodsReceipt",
+      render: (_, record) => record.goodsReceipt?.receiptCode || "-",
+      width: 160,
+    },
+    {
+      title: "Total",
+      key: "totalAmount",
+      width: 140,
+      render: (_, record) => formatMoney(record.totalAmount),
+    },
+    {
+      title: "Paid",
+      key: "paidAmount",
+      width: 140,
+      render: (_, record) => formatMoney(record.paidAmount),
+    },
+    {
+      title: "Remaining",
+      key: "remainingAmount",
+      width: 140,
+      render: (_, record) => formatMoney(record.remainingAmount),
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      width: 170,
+      render: (value: string) => <StatusTag domain="invoice" status={value} />,
+    },
+    {
+      title: "Mismatch",
+      key: "mismatch",
+      width: 130,
+      render: (_, record) => {
+        if (record.hasMismatch) {
+          return (
+            <Tooltip title={record.mismatchWarning || "Mismatch with goods receipt"}>
+              <Text className="text-red-600">Yes</Text>
+            </Tooltip>
+          );
+        }
+        return <Text className="text-emerald-700">No</Text>;
+      },
+    },
+    {
+      title: "Action",
+      key: "action",
+      width: 240,
+      render: (_, record) => {
+        const status = (record.status || "").toUpperCase();
+        const canVerify = status === "PENDING_VERIFICATION";
+        const canReject = status === "PENDING_VERIFICATION";
+        const canPay = status === "VERIFIED" || status === "PARTIALLY_PAID";
 
-function PaymentTable() {
+        return (
+          <Space>
+            <Button
+              size="small"
+              onClick={() => onVerify(record)}
+              disabled={!canVerify || !!record.hasMismatch}
+            >
+              Verify
+            </Button>
+            <Button
+              size="small"
+              danger
+              onClick={() => onReject(record)}
+              disabled={!canReject}
+            >
+              Reject
+            </Button>
+            <Button
+              size="small"
+              type="primary"
+              onClick={() => onPay(record)}
+              disabled={!canPay}
+            >
+              Pay
+            </Button>
+          </Space>
+        );
+      },
+    },
+  ];
+
   const tableHeader = (
     <Flex justify="space-between" align="center">
       <div className="flex flex-col">
         <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-          Payments list
+          Supplier invoice list
         </Text>
       </div>
       <div className="w-[200px]">
         <Input.Search
-          placeholder="Search by payment ID..."
+          placeholder="Search by invoice code or supplier..."
           className="w-[320px]"
           allowClear
-          // onSearch={onSearch}
-          // onChange={(e) => !e.target.value && onSearch("")}
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          onSearch={onSearchChange}
         />
       </div>
     </Flex>
   );
-  return <BaseTable title={() => tableHeader}columns={columns} dataSource={data} />;
+  return (
+    <BaseTable
+      rowKey="invoiceId"
+      title={() => tableHeader}
+      columns={columns}
+      dataSource={data}
+      loading={loading}
+      cardClassName="!rounded-2xl shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
+    />
+  );
 }
 
 export default PaymentTable;

@@ -27,6 +27,7 @@ public interface BatchRepository extends JpaRepository<Batch, Long> {
         JOIN b.warehouse w
         WHERE b.quantity > 0
           AND (:medicineName IS NULL OR LOWER(m.name) LIKE LOWER(CONCAT('%', :medicineName, '%')))
+                    AND (:medicineGroup IS NULL OR LOWER(m.manufacturer) LIKE LOWER(CONCAT('%', :medicineGroup, '%')))
           AND (:warehouseId IS NULL OR w.warehouseId = :warehouseId)
           AND (:expiryFrom IS NULL OR b.expiryDate >= :expiryFrom)
           AND (:expiryTo IS NULL OR b.expiryDate <= :expiryTo)
@@ -35,6 +36,7 @@ public interface BatchRepository extends JpaRepository<Batch, Long> {
         """)
     List<InventoryAggregateProjection> aggregateInventory(
         @Param("medicineName") String medicineName,
+        @Param("medicineGroup") String medicineGroup,
         @Param("warehouseId") Long warehouseId,
         @Param("expiryFrom") LocalDate expiryFrom,
         @Param("expiryTo") LocalDate expiryTo);
