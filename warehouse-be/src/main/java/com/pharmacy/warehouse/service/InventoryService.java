@@ -54,7 +54,7 @@ public class InventoryService {
         }
 
         List<InventoryResponse> items = batchRepository
-                .aggregateInventory(medicineName, warehouseId, expiryFrom, expiryTo)
+                .aggregateInventory(medicineName, null, warehouseId, expiryFrom, expiryTo)
                 .stream()
                 .map(this::toInventoryResponse)
                 .collect(Collectors.toList());
