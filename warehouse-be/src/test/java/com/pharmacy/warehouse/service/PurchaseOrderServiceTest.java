@@ -486,13 +486,14 @@ public class PurchaseOrderServiceTest {
     @Test
     @DisplayName("White-Box | CFG: Phủ nhánh updateOrderStatus() - Success path")
     public void testUpdateOrderStatus_Success_BranchCoverage() {
+        testPurchaseOrder.setStatus(PurchaseOrderStatus.CONFIRMED);
         when(purchaseOrderRepository.findById(1L)).thenReturn(Optional.of(testPurchaseOrder));
         when(purchaseOrderRepository.save(any(PurchaseOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        PurchaseOrderResponse result = purchaseOrderService.updateOrderStatus(1L, "CONFIRMED");
+        PurchaseOrderResponse result = purchaseOrderService.updateOrderStatus(1L, "SHIPPING");
 
         assertNotNull(result);
-        assertEquals("CONFIRMED", result.getStatus());
+        assertEquals("SHIPPING", result.getStatus());
 
         verify(purchaseOrderRepository, times(1)).findById(1L);
         verify(purchaseOrderRepository, times(1)).save(testPurchaseOrder);
@@ -698,27 +699,15 @@ public class PurchaseOrderServiceTest {
         when(supplierRepository.findById(1L)).thenReturn(Optional.of(testSupplier));
         when(warehouseRepository.findById(1L)).thenReturn(Optional.of(testWarehouse));
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(purchaseOrderRepository.save(any(PurchaseOrder.class))).thenAnswer(invocation -> {
-            PurchaseOrder saved = invocation.getArgument(0);
-            if (saved.getPurchaseOrderId() == null) {
-                saved.setPurchaseOrderId(1L);
-                saved.setOrderCode("PO-2023-0001");
-                saved.setCreatedAt(LocalDateTime.now());
-                saved.setUpdatedAt(LocalDateTime.now());
-            }
-            return saved;
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            purchaseOrderService.createPurchaseOrder(request, 1L);
         });
-
-        PurchaseOrderResponse result = purchaseOrderService.createPurchaseOrder(request, 1L);
-
-        assertNotNull(result);
-        assertEquals(BigDecimal.ZERO, result.getTotalAmount());
-        assertNull(result.getItems()); // Empty items list becomes null in response
+        assertEquals("Purchase order must include at least one item", exception.getMessage());
 
         verify(supplierRepository, times(1)).findById(1L);
         verify(warehouseRepository, times(1)).findById(1L);
         verify(userRepository, times(1)).findById(1L);
-        verify(purchaseOrderRepository, times(1)).save(any(PurchaseOrder.class));
+        verify(purchaseOrderRepository, never()).save(any(PurchaseOrder.class));
     }
 
     @Test
@@ -867,11 +856,12 @@ public class PurchaseOrderServiceTest {
     @Test
     @DisplayName("Supplementary: Test updateOrderStatus() save exception")
     public void testUpdateOrderStatus_SaveException() {
+        testPurchaseOrder.setStatus(PurchaseOrderStatus.CONFIRMED);
         when(purchaseOrderRepository.findById(1L)).thenReturn(Optional.of(testPurchaseOrder));
         when(purchaseOrderRepository.save(any(PurchaseOrder.class))).thenThrow(new RuntimeException("Save failed"));
 
         assertThrows(RuntimeException.class, () -> {
-            purchaseOrderService.updateOrderStatus(1L, "CONFIRMED");
+            purchaseOrderService.updateOrderStatus(1L, "SHIPPING");
         });
 
         verify(purchaseOrderRepository, times(1)).findById(1L);
@@ -901,11 +891,12 @@ public class PurchaseOrderServiceTest {
         request.setWarehouseId(1L);
         request.setExpectedDeliveryDate(null); // Null date
         request.setNotes(null); // Null notes
-        request.setItems(new ArrayList<>());
+        request.setItems(testCreatePurchaseOrderRequest.getItems());
 
         when(supplierRepository.findById(1L)).thenReturn(Optional.of(testSupplier));
         when(warehouseRepository.findById(1L)).thenReturn(Optional.of(testWarehouse));
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(medicineRepository.findById(1L)).thenReturn(Optional.of(testMedicine));
         when(purchaseOrderRepository.save(any(PurchaseOrder.class))).thenAnswer(invocation -> {
             PurchaseOrder saved = invocation.getArgument(0);
             if (saved.getPurchaseOrderId() == null) {
@@ -926,6 +917,7 @@ public class PurchaseOrderServiceTest {
         verify(supplierRepository, times(1)).findById(1L);
         verify(warehouseRepository, times(1)).findById(1L);
         verify(userRepository, times(1)).findById(1L);
+        verify(medicineRepository, times(1)).findById(1L);
         verify(purchaseOrderRepository, times(1)).save(any(PurchaseOrder.class));
     }
 }
