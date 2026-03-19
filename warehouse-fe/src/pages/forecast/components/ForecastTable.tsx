@@ -1,6 +1,6 @@
 import type { ColumnsType } from "antd/es/table";
 import BaseTable from "../../../components/base/BaseTable";
-import { Flex, Input, Typography } from "antd";
+import { Flex, Typography } from "antd";
 
 const { Text } = Typography;
 

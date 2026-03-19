@@ -17,9 +17,9 @@ export type PageResponse<T> = {
 
 export type Warehouse = {
   warehouseId: number
-  name: string
-  location: string
-  description: string
+  name?: string
+  location?: string
+  description?: string
 }
 
 export type Batch = {

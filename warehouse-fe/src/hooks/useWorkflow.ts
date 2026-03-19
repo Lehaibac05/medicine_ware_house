@@ -1,0 +1,158 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { workflowApi } from "../services/workflow"
+
+export const workflowQueryKeys = {
+  inventory: ["workflow", "inventory"] as const,
+  requests: ["workflow", "requests"] as const,
+  purchaseOrders: ["workflow", "purchaseOrders"] as const,
+  purchaseOrderDetail: (id: number) => ["workflow", "purchaseOrder", id] as const,
+  goodsReceipts: ["workflow", "goodsReceipts"] as const,
+  supplierInvoices: ["workflow", "supplierInvoices"] as const,
+  supplierInvoiceDetail: (id: number) => ["workflow", "supplierInvoice", id] as const,
+}
+
+export const useInventoryQuery = (params?: {
+  medicineName?: string
+  warehouseId?: number
+  status?: string
+}) => {
+  return useQuery({
+    queryKey: [...workflowQueryKeys.inventory, params],
+    queryFn: () => workflowApi.getInventory(params),
+  })
+}
+
+export const useRequestsQuery = () => {
+  return useQuery({
+    queryKey: workflowQueryKeys.requests,
+    queryFn: workflowApi.getRequests,
+  })
+}
+
+export const useApproveRequestMutation = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => workflowApi.approveRequest(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workflowQueryKeys.requests })
+    },
+  })
+}
+
+export const useRejectRequestMutation = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => workflowApi.rejectRequest(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workflowQueryKeys.requests })
+    },
+  })
+}
+
+export const usePurchaseOrderQuery = (id: number) => {
+  return useQuery({
+    queryKey: workflowQueryKeys.purchaseOrderDetail(id),
+    queryFn: () => workflowApi.getPurchaseOrderById(id),
+    enabled: Number.isFinite(id) && id > 0,
+  })
+}
+
+export const useGoodsReceiptsQuery = () => {
+  return useQuery({
+    queryKey: workflowQueryKeys.goodsReceipts,
+    queryFn: workflowApi.getGoodsReceipts,
+  })
+}
+
+export const useCreateGoodsReceiptMutation = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: workflowApi.createGoodsReceipt,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workflowQueryKeys.goodsReceipts })
+      queryClient.invalidateQueries({ queryKey: workflowQueryKeys.purchaseOrders })
+    },
+  })
+}
+
+export const useApproveGoodsReceiptMutation = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: number; notes?: string }) =>
+      workflowApi.approveGoodsReceipt(id, true, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workflowQueryKeys.goodsReceipts })
+      queryClient.invalidateQueries({ queryKey: workflowQueryKeys.inventory })
+    },
+  })
+}
+
+export const useSupplierInvoicesQuery = () => {
+  return useQuery({
+    queryKey: workflowQueryKeys.supplierInvoices,
+    queryFn: workflowApi.getSupplierInvoices,
+  })
+}
+
+export const useSupplierInvoiceDetailQuery = (id: number) => {
+  return useQuery({
+    queryKey: workflowQueryKeys.supplierInvoiceDetail(id),
+    queryFn: () => workflowApi.getSupplierInvoiceById(id),
+    enabled: Number.isFinite(id) && id > 0,
+  })
+}
+
+export const useCreateSupplierInvoiceMutation = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: workflowApi.createSupplierInvoice,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workflowQueryKeys.supplierInvoices })
+      queryClient.invalidateQueries({ queryKey: workflowQueryKeys.goodsReceipts })
+    },
+  })
+}
+
+export const useVerifySupplierInvoiceMutation = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, verificationNotes }: { id: number; verificationNotes?: string }) =>
+      workflowApi.verifySupplierInvoice(id, { verificationNotes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workflowQueryKeys.supplierInvoices })
+    },
+  })
+}
+
+export const useRejectSupplierInvoiceMutation = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) =>
+      workflowApi.rejectSupplierInvoice(id, { reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workflowQueryKeys.supplierInvoices })
+    },
+  })
+}
+
+export const usePaySupplierInvoiceMutation = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      amount,
+      method,
+      transactionReference,
+      notes,
+    }: {
+      id: number
+      amount: number
+      method?: string
+      transactionReference?: string
+      notes?: string
+    }) => workflowApi.paySupplierInvoice(id, { amount, method, transactionReference, notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workflowQueryKeys.supplierInvoices })
+    },
+  })
+}
