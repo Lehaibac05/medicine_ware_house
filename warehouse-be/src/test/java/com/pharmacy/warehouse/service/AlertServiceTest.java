@@ -350,8 +350,8 @@ public class AlertServiceTest {
         assertEquals("Alert not found with id: 999", exception.getMessage());
         verify(alertRepository, times(1)).findById(999L);
         verify(userRepository, never()).findByUsername(anyString());
-        verify(alertRepository, never()).save(any());
-        verify(alertHistoryRepository, never()).save(any());
+        verify(alertRepository, never()).save(any(Alert.class));
+        verify(alertHistoryRepository, never()).save(any(AlertHistory.class));
     }
 
     /**
@@ -407,8 +407,8 @@ public class AlertServiceTest {
         assertEquals("Alert not found with id: 999", exception.getMessage());
         verify(alertRepository, times(1)).findById(999L);
         verify(userRepository, never()).findByUsername(anyString());
-        verify(alertRepository, never()).save(any());
-        verify(alertHistoryRepository, never()).save(any());
+        verify(alertRepository, never()).save(any(Alert.class));
+        verify(alertHistoryRepository, never()).save(any(AlertHistory.class));
     }
 
     // ==========================================

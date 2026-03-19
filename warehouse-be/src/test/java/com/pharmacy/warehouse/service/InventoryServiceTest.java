@@ -143,7 +143,7 @@ public class InventoryServiceTest {
     public void testGetInventory_EquivalencePartition_BoundaryValue() {
         // Case 1: Valid inputs - Phân vùng hợp lệ
         when(warehouseRepository.existsById(1L)).thenReturn(true);
-        when(batchRepository.aggregateInventory(eq("Paracetamol"), eq(1L), any(), any()))
+        when(batchRepository.aggregateInventory(eq("Paracetamol"), isNull(), eq(1L), any(), any()))
             .thenReturn(List.of(testProjection1, testProjection2));
 
         List<InventoryResponse> result = inventoryService.getInventory("Paracetamol", 1L, 
@@ -151,7 +151,7 @@ public class InventoryServiceTest {
 
         assertNotNull(result);
         assertEquals(2, result.size());
-        verify(batchRepository).aggregateInventory("Paracetamol", 1L, 
+        verify(batchRepository).aggregateInventory("Paracetamol", null, 1L, 
             LocalDate.now(), LocalDate.now().plusMonths(6));
     }
 
@@ -164,7 +164,7 @@ public class InventoryServiceTest {
     public void testGetInventory_DecisionTable() {
         // Row 1: Valid warehouseId - Success
         when(warehouseRepository.existsById(1L)).thenReturn(true);
-        when(batchRepository.aggregateInventory(isNull(), eq(1L), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), eq(1L), isNull(), isNull()))
             .thenReturn(List.of(testProjection1));
 
         List<InventoryResponse> result1 = inventoryService.getInventory(null, 1L, null, null, null);
@@ -179,7 +179,7 @@ public class InventoryServiceTest {
         assertTrue(exception.getMessage().contains("Warehouse not found with id: 999"));
 
         // Row 3: Null status - Return all items
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(testProjection1, testProjection2));
 
         List<InventoryResponse> result2 = inventoryService.getInventory(null, null, null, null, null);
@@ -218,7 +218,7 @@ public class InventoryServiceTest {
     @DisplayName("White-Box | CFG: Phủ nhánh getInventory() - Null status")
     public void testGetInventory_NullStatus_BranchCoverage() {
         when(warehouseRepository.existsById(1L)).thenReturn(true);
-        when(batchRepository.aggregateInventory(isNull(), eq(1L), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), eq(1L), isNull(), isNull()))
             .thenReturn(List.of(testProjection1));
 
         List<InventoryResponse> result = inventoryService.getInventory(null, 1L, null, null, null);
@@ -226,33 +226,33 @@ public class InventoryServiceTest {
         assertNotNull(result);
         assertEquals(1, result.size());
         verify(warehouseRepository).existsById(1L);
-        verify(batchRepository).aggregateInventory(null, 1L, null, null);
+        verify(batchRepository).aggregateInventory(null, null, 1L, null, null);
     }
 
     @Test
     @DisplayName("White-Box | CFG: Phủ nhánh getInventory() - Blank status")
     public void testGetInventory_BlankStatus_BranchCoverage() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(testProjection1));
 
         List<InventoryResponse> result = inventoryService.getInventory(null, null, null, null, "   ");
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        verify(batchRepository).aggregateInventory(null, null, null, null);
+        verify(batchRepository).aggregateInventory(null, null, null, null, null);
     }
 
     @Test
     @DisplayName("White-Box | CFG: Phủ nhánh getInventory() - Valid status filter")
     public void testGetInventory_ValidStatusFilter_BranchCoverage() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(testProjection1, testProjection2));
 
         List<InventoryResponse> result = inventoryService.getInventory(null, null, null, null, "LOW_STOCK");
 
         assertNotNull(result);
         // Filter based on status determined by determineStatus method
-        verify(batchRepository).aggregateInventory(null, null, null, null);
+        verify(batchRepository).aggregateInventory(null, null, null, null, null);
     }
 
     /**
@@ -266,7 +266,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("White-Box | CFG: Phủ nhánh getInventoryPaged() - Negative page")
     public void testGetInventoryPaged_NegativePage_BranchCoverage() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(testProjection1));
 
         Page<InventoryResponse> result = inventoryService.getInventoryPaged(-1, 10, null, null, null, null, null);
@@ -280,7 +280,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("White-Box | CFG: Phủ nhánh getInventoryPaged() - Zero size")
     public void testGetInventoryPaged_ZeroSize_BranchCoverage() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(testProjection1));
 
         Page<InventoryResponse> result = inventoryService.getInventoryPaged(0, 0, null, null, null, null, null);
@@ -293,7 +293,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("White-Box | CFG: Phủ nhánh getInventoryPaged() - Size over limit")
     public void testGetInventoryPaged_SizeOverLimit_BranchCoverage() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(testProjection1));
 
         Page<InventoryResponse> result = inventoryService.getInventoryPaged(0, 150, null, null, null, null, null);
@@ -306,7 +306,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("White-Box | CFG: Phủ nhánh getInventoryPaged() - Page beyond data")
     public void testGetInventoryPaged_PageBeyondData_BranchCoverage() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(testProjection1));
 
         Page<InventoryResponse> result = inventoryService.getInventoryPaged(10, 10, null, null, null, null, null);
@@ -381,7 +381,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("White-Box | CFG: Phủ nhánh determineStatus() - Low stock")
     public void testDetermineStatus_LowStock_BranchCoverage() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(createMockProjection(1L, "Test", 1L, "Warehouse", 5L, 1L, 
                 LocalDate.now().plusMonths(6), 10)));
 
@@ -395,7 +395,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("White-Box | CFG: Phủ nhánh determineStatus() - Expiring soon")
     public void testDetermineStatus_ExpiringSoon_BranchCoverage() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(createMockProjection(1L, "Test", 1L, "Warehouse", 20L, 1L, 
                 LocalDate.now().plusDays(15), 10)));
 
@@ -409,7 +409,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("White-Box | CFG: Phủ nhánh determineStatus() - Normal status")
     public void testDetermineStatus_Normal_BranchCoverage() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(createMockProjection(1L, "Test", 1L, "Warehouse", 20L, 1L, 
                 LocalDate.now().plusMonths(6), 10)));
 
@@ -434,7 +434,7 @@ public class InventoryServiceTest {
     @DisplayName("White-Box | DFG: Phân tích luồng dữ liệu getInventory() - Complete flow")
     public void testGetInventory_CompleteDataFlow() {
         when(warehouseRepository.existsById(1L)).thenReturn(true);
-        when(batchRepository.aggregateInventory(eq("Test"), eq(1L), any(), any()))
+        when(batchRepository.aggregateInventory(eq("Test"), isNull(), eq(1L), any(), any()))
             .thenReturn(List.of(testProjection1, testProjection2));
 
         List<InventoryResponse> result = inventoryService.getInventory("Test", 1L, 
@@ -443,7 +443,7 @@ public class InventoryServiceTest {
         // Verify complete data flow
         assertNotNull(result);
         verify(warehouseRepository).existsById(1L);
-        verify(batchRepository).aggregateInventory("Test", 1L, 
+        verify(batchRepository).aggregateInventory("Test", null, 1L, 
             LocalDate.now(), LocalDate.now().plusMonths(1));
     }
 
@@ -454,7 +454,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("Supplementary: Test getLowStockInventory()")
     public void testGetLowStockInventory() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(createMockProjection(1L, "Test", 1L, "Warehouse", 5L, 1L, 
                 LocalDate.now().plusMonths(6), 10)));
 
@@ -463,7 +463,7 @@ public class InventoryServiceTest {
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals("LOW_STOCK", result.get(0).getStatus());
-        verify(batchRepository).aggregateInventory(null, null, null, null);
+        verify(batchRepository).aggregateInventory(null, null, null, null, null);
     }
 
     @Test
@@ -486,7 +486,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("Supplementary: Test getInventorySummary()")
     public void testGetInventorySummary() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(
                 createMockProjection(1L, "Med1", 1L, "WH1", 5L, 1L, LocalDate.now().plusDays(15), 10),  // LOW_STOCK (priority over EXPIRING_SOON)
                 createMockProjection(2L, "Med2", 1L, "WH1", 20L, 1L, LocalDate.now().plusMonths(6), 10), // NORMAL
@@ -501,7 +501,7 @@ public class InventoryServiceTest {
         assertEquals(3L, result.getTotalBatches());
         assertEquals(1, result.getLowStockCount()); // Only first item has low stock
         assertEquals(1, result.getExpiringSoonCount()); // Only third item is expiring soon (first is LOW_STOCK)
-        verify(batchRepository).aggregateInventory(null, null, null, null);
+        verify(batchRepository).aggregateInventory(null, null, null, null, null);
         verify(batchRepository).count();
     }
 
@@ -529,7 +529,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("Supplementary: Test determineStatus() with null totalStock")
     public void testDetermineStatus_NullTotalStock() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(createMockProjection(1L, "Test", 1L, "Warehouse", null, 1L, 
                 LocalDate.now().plusMonths(6), 10)));
 
@@ -543,7 +543,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("Supplementary: Test determineStatus() with null reorderLevel")
     public void testDetermineStatus_NullReorderLevel() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(createMockProjection(1L, "Test", 1L, "Warehouse", 5L, 1L, 
                 LocalDate.now().plusMonths(6), null)));
 
@@ -557,7 +557,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("Supplementary: Test determineStatus() with negative reorderLevel")
     public void testDetermineStatus_NegativeReorderLevel() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(createMockProjection(1L, "Test", 1L, "Warehouse", 5L, 1L, 
                 LocalDate.now().plusMonths(6), -5)));
 
@@ -571,7 +571,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("Supplementary: Test determineStatus() with null nearestExpiryDate")
     public void testDetermineStatus_NullNearestExpiryDate() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(createMockProjection(1L, "Test", 1L, "Warehouse", 20L, 1L, 
                 null, 10)));
 
@@ -585,7 +585,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("Supplementary: Test determineStatus() with past expiry date")
     public void testDetermineStatus_PastExpiryDate() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(createMockProjection(1L, "Test", 1L, "Warehouse", 20L, 1L, 
                 LocalDate.now().minusDays(5), 10)));
 
@@ -599,7 +599,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("Supplementary: Test determineStatus() with expiry date beyond threshold")
     public void testDetermineStatus_ExpiryBeyondThreshold() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(createMockProjection(1L, "Test", 1L, "Warehouse", 20L, 1L, 
                 LocalDate.now().plusDays(45), 10)));
 
@@ -613,7 +613,7 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("Supplementary: Test getInventoryPaged() with empty result")
     public void testGetInventoryPaged_EmptyResult() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(new ArrayList<>());
 
         Page<InventoryResponse> result = inventoryService.getInventoryPaged(0, 10, null, null, null, null, null);
@@ -630,7 +630,7 @@ public class InventoryServiceTest {
         InventoryAggregateProjection lowStockProjection = createMockProjection(1L, "Test", 1L, "Warehouse", 5L, 1L, 
             LocalDate.now().plusMonths(6), 10);
         
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(lowStockProjection));
 
         Page<InventoryResponse> result = inventoryService.getInventoryPaged(0, 10, null, null, null, null, "low_stock");
@@ -642,14 +642,14 @@ public class InventoryServiceTest {
     @Test
     @DisplayName("Supplementary: Test getInventory() with all null parameters")
     public void testGetInventory_AllNullParameters() {
-        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull()))
+        when(batchRepository.aggregateInventory(isNull(), isNull(), isNull(), isNull(), isNull()))
             .thenReturn(List.of(testProjection1));
 
         List<InventoryResponse> result = inventoryService.getInventory(null, null, null, null, null);
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        verify(batchRepository).aggregateInventory(null, null, null, null);
+        verify(batchRepository).aggregateInventory(null, null, null, null, null);
     }
 
     @Test
