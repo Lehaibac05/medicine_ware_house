@@ -865,9 +865,9 @@ public class SupplierInvoiceServiceTest {
     public void testGetInvoiceById_WithPayments() {
         Payment payment = new Payment();
         payment.setPaymentId(1L);
-        payment.setAmount(50.00);
+        payment.setAmount(new BigDecimal("50.00"));
         payment.setMethod("CASH");
-        payment.setStatus("COMPLETED");
+        payment.setStatus(Payment.PaymentStatus.COMPLETED);
 
         when(supplierInvoiceRepository.findByIdWithItems(1L)).thenReturn(testInvoice);
         when(paymentRepository.findBySupplierInvoice_InvoiceId(1L)).thenReturn(List.of(payment));
