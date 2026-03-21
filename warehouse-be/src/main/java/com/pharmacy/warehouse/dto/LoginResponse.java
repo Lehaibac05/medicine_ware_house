@@ -9,17 +9,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class LoginResponse {
 
-    /**
-     * Access token (JWT) cho các request bảo vệ.
-     */
+
     private String token;
 
-    /**
-     * Refresh token để xin access token mới.
-     */
     private String refreshToken;
 
     private UserResponse user;
+
+    private boolean forceChangePassword;
 }
 
 
