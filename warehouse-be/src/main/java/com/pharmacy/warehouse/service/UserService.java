@@ -1,6 +1,8 @@
 package com.pharmacy.warehouse.service;
 
+import com.pharmacy.warehouse.dto.ChangePasswordRequest;
 import com.pharmacy.warehouse.dto.CreateUserRequest;
+import com.pharmacy.warehouse.dto.ForceChangePasswordRequest;
 import com.pharmacy.warehouse.dto.UpdateUserRequest;
 import com.pharmacy.warehouse.dto.UserResponse;
 import com.pharmacy.warehouse.exception.ResourceNotFoundException;
@@ -38,6 +40,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     public Page<UserResponse> getUsers(int page,
                                        int size,
@@ -93,6 +96,9 @@ public class UserService {
 
         // Luôn luôn dùng mật khẩu mặc định khi tạo user mới
         user.setPasswordHash(passwordEncoder.encode(DEFAULT_PASSWORD));
+        
+        // Yêu cầu đổi mật khẩu trong lần đăng nhập đầu tiên
+        user.setForceChangePassword(true);
 
         if (request.getRoleId() != null) {
             Role role = roleRepository.findById(request.getRoleId())
@@ -101,6 +107,20 @@ public class UserService {
         }
 
         User saved = userRepository.save(user);
+        
+        // Gửi email thông báo tài khoản mới
+        try {
+            emailService.sendAccountCreationEmail(
+                saved.getEmail(),
+                saved.getFullName(),
+                saved.getUsername(),
+                DEFAULT_PASSWORD
+            );
+        } catch (Exception e) {
+            // Log lỗi nhưng không rollback việc tạo user
+            System.err.println("Lỗi khi gửi email thông báo tạo tài khoản: " + e.getMessage());
+        }
+        
         return toResponse(saved);
     }
 
@@ -260,6 +280,47 @@ public class UserService {
                 roleId,
                 roleName
         );
+    }
+
+    public void changePassword(String username, ChangePasswordRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + username));
+
+        // Kiểm tra mật khẩu cũ
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new RuntimeException("Mật khẩu cũ không chính xác");
+        }
+
+        // Kiểm tra xác nhận mật khẩu mới
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("Mật khẩu mới và xác nhận mật khẩu không khớp");
+        }
+
+        // Cập nhật mật khẩu mới
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
+    public void forceChangePassword(String username, ForceChangePasswordRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + username));
+
+        // Kiểm tra xác nhận mật khẩu mới
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("Mật khẩu mới và xác nhận mật khẩu không khớp");
+        }
+
+        // Cập nhật mật khẩu mới và tắt yêu cầu đổi mật khẩu
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setForceChangePassword(false);
+        userRepository.save(user);
+    }
+
+    public boolean shouldForceChangePassword(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + username));
+        
+        return Boolean.TRUE.equals(user.getForceChangePassword());
     }
 }
 
