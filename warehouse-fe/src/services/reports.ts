@@ -103,6 +103,44 @@ export type FinancialReportParams = {
   size?: number
 }
 
+export type IssueReportItem = {
+  orderItemId: number
+  requestId: number
+  medicineId: number
+  medicineName?: string
+  batchId?: number
+  lotNumber?: string
+  expiryDate?: string
+  quantity: number
+  warehouseId?: number
+  warehouseName?: string
+  issuedById?: number
+  issuedByName?: string
+  department?: string
+  issuedAt?: string
+}
+
+export type IssueReportResponse = {
+  items: IssueReportItem[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+  generatedAt: string
+  exportColumns: string[]
+}
+
+export type IssueReportParams = {
+  medicineId?: number
+  department?: string
+  warehouseId?: number
+  issuedById?: number
+  fromDate?: string
+  toDate?: string
+  page?: number
+  size?: number
+}
+
 export const reportApi = {
   getDashboardSummary: async () => {
     const response = await http.get<DashboardSummaryResponse>("/reports/dashboard")
@@ -126,6 +164,16 @@ export const reportApi = {
 
   exportFinancialReport: async (params: Omit<FinancialReportParams, "page" | "size">) => {
     const response = await http.get<FinancialReportResponse>("/reports/financial/export", { params })
+    return response.data
+  },
+
+  getIssueReport: async (params: IssueReportParams) => {
+    const response = await http.get<IssueReportResponse>("/reports/issues", { params })
+    return response.data
+  },
+
+  exportIssueReport: async (params: Omit<IssueReportParams, "page" | "size">) => {
+    const response = await http.get<IssueReportResponse>("/reports/issues/export", { params })
     return response.data
   },
 }

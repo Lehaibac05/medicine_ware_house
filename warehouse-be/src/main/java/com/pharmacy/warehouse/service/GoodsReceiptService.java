@@ -2,6 +2,7 @@ package com.pharmacy.warehouse.service;
 
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -196,6 +197,7 @@ public class GoodsReceiptService {
                 batch.setMedicine(item.getMedicine());
                 batch.setWarehouse(purchaseOrder.getWarehouse());
                 batch.setQuantity(item.getReceivedQuantity());
+                batch.setUnitPrice(resolveBatchUnitPrice(item));
                 LocalDate expiryDate = item.getActualExpiryDate() != null
                         ? item.getActualExpiryDate()
                         : item.getExpectedExpiryDate();
@@ -216,6 +218,19 @@ public class GoodsReceiptService {
                         batch.getLotNumber(), item.getMedicine().getName(), batch.getQuantity());
             }
         }
+    }
+
+    private BigDecimal resolveBatchUnitPrice(PurchaseOrderItem item) {
+        if (item.getUnitPrice() != null) {
+            return item.getUnitPrice();
+        }
+
+        if (item.getTotalPrice() != null && item.getRequestedQuantity() != null && item.getRequestedQuantity() > 0) {
+            return item.getTotalPrice().divide(BigDecimal.valueOf(item.getRequestedQuantity()), 4, java.math.RoundingMode.HALF_UP);
+        }
+
+        log.warn("Missing unit price on purchase order item {}. Defaulting batch unit price to 0", item.getItemId());
+        return BigDecimal.ZERO;
     }
 
     private GoodsReceiptResponse convertToResponse(GoodsReceipt receipt) {

@@ -63,6 +63,17 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/purchase-orders/*").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                 .requestMatchers("/purchase-orders").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF")
 
+                // Medicine issue (outbound/dispense) management
+                .requestMatchers(HttpMethod.POST, "/issue-requests").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT")
+                .requestMatchers(HttpMethod.GET, "/issue-requests/my").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT")
+                .requestMatchers(HttpMethod.GET, "/issue-requests").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT")
+                .requestMatchers(HttpMethod.GET, "/issue-requests/*").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT")
+                .requestMatchers(HttpMethod.POST, "/issue-requests/*/approve").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                .requestMatchers(HttpMethod.POST, "/issue-requests/*/reject").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                .requestMatchers(HttpMethod.POST, "/issues/execute/*").hasAnyRole("ADMIN", "WAREHOUSE_STAFF")
+                .requestMatchers(HttpMethod.GET, "/issues/history").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT")
+                .requestMatchers(HttpMethod.GET, "/issues/stock-insight").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT")
+
                 // Medicine Request Management
                 .requestMatchers("/medicine-requests/*/approve").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                 .requestMatchers("/medicine-requests/*/reject").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")

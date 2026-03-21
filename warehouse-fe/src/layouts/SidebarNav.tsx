@@ -40,9 +40,31 @@ const baseMenuItems: NonNullable<MenuProps["items"]> = [
     label: <Link to="/batches">Batches</Link>,
   },
   {
-    key: "orders",
+    key: "issue",
     icon: <ShoppingCartOutlined />,
-    label: <Link to="/orders">Orders</Link>,
+    label: "Issue",
+    children: [
+      {
+        key: "issue-request",
+        label: <Link to="/issue-request">My Issue Requests</Link>,
+      },
+      {
+        key: "issue-create",
+        label: <Link to="/issue-request/create">Create Issue Request</Link>,
+      },
+      {
+        key: "issue-approval",
+        label: <Link to="/issue-request/approval">Issue Approval</Link>,
+      },
+      {
+        key: "issue-execute",
+        label: <Link to="/issue/execute">Issue Execution</Link>,
+      },
+      {
+        key: "issue-history",
+        label: <Link to="/issue/history">Issue History</Link>,
+      },
+    ],
   },
   {
     key: "requests",
@@ -92,6 +114,10 @@ const baseMenuItems: NonNullable<MenuProps["items"]> = [
         key: "reports-financial",
         label: <Link to="/reports/financial">Financial Report</Link>,
       },
+      {
+        key: "reports-issues",
+        label: <Link to="/reports/issues">Issue Report</Link>,
+      },
     ],
   },
   {
@@ -121,6 +147,23 @@ function SidebarNav() {
     roles.includes("ROLE_ADMIN") ||
     roles.includes("ROLE_WAREHOUSE_MANAGER") ||
     roles.includes("ROLE_ACCOUNTANT");
+  const canViewIssueReport =
+    roles.includes("ROLE_ADMIN") ||
+    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
+    roles.includes("ROLE_WAREHOUSE_STAFF") ||
+    roles.includes("ROLE_ACCOUNTANT");
+  const canCreateIssueRequest =
+    roles.includes("ROLE_ADMIN") ||
+    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
+    roles.includes("ROLE_WAREHOUSE_STAFF") ||
+    roles.includes("ROLE_ACCOUNTANT")
+  const canApproveIssue = roles.includes("ROLE_ADMIN") || roles.includes("ROLE_WAREHOUSE_MANAGER")
+  const canExecuteIssue = roles.includes("ROLE_ADMIN") || roles.includes("ROLE_WAREHOUSE_STAFF")
+  const canViewIssueHistory =
+    roles.includes("ROLE_ADMIN") ||
+    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
+    roles.includes("ROLE_WAREHOUSE_STAFF") ||
+    roles.includes("ROLE_ACCOUNTANT")
 
   const menuItems = baseMenuItems.filter((item) => {
     if (!item || typeof item !== "object") return true;
@@ -134,7 +177,7 @@ function SidebarNav() {
     }
 
     if (item.key === "reports") {
-      if (!canViewInventoryReport && !canViewFinancialReport) {
+      if (!canViewInventoryReport && !canViewFinancialReport && !canViewIssueReport) {
         return false;
       }
 
@@ -144,6 +187,25 @@ function SidebarNav() {
           if (!child || typeof child !== "object") return false
           if (child.key === "reports-inventory") return canViewInventoryReport
           if (child.key === "reports-financial") return canViewFinancialReport
+          if (child.key === "reports-issues") return canViewIssueReport
+          return true
+        })
+      }
+    }
+
+    if (item.key === "issue") {
+      if (!canCreateIssueRequest && !canApproveIssue && !canExecuteIssue && !canViewIssueHistory) {
+        return false
+      }
+      const issueItem = item as Exclude<NonNullable<MenuProps["items"]>[number], null>
+      if ("children" in issueItem && Array.isArray(issueItem.children)) {
+        issueItem.children = issueItem.children.filter((child) => {
+          if (!child || typeof child !== "object") return false
+          if (child.key === "issue-request") return canCreateIssueRequest
+          if (child.key === "issue-create") return canCreateIssueRequest
+          if (child.key === "issue-approval") return canApproveIssue
+          if (child.key === "issue-execute") return canExecuteIssue
+          if (child.key === "issue-history") return canViewIssueHistory
           return true
         })
       }
@@ -157,8 +219,24 @@ function SidebarNav() {
       ? "reports-financial"
       : pathname.startsWith("/reports/inventory")
       ? "reports-inventory"
+    : pathname.startsWith("/reports/issues")
+      ? "reports-issues"
+    : pathname.startsWith("/issue-request/approval")
+      ? "issue-approval"
+    : pathname.startsWith("/issue-request/create")
+      ? "issue-create"
+    : pathname.startsWith("/issue-request")
+      ? "issue-request"
+    : pathname.startsWith("/issue/execute")
+      ? "issue-execute"
+    : pathname.startsWith("/issue/history")
+      ? "issue-history"
       : pathname.split("/")[1] || "dashboard";
-  const openKeys = pathname.startsWith("/reports/") ? ["reports"] : []
+  const openKeys = pathname.startsWith("/reports/")
+    ? ["reports"]
+    : pathname.startsWith("/issue/") || pathname.startsWith("/issue-request")
+      ? ["issue"]
+      : []
 
   return (
     <div className="flex h-full flex-col gap-6">
