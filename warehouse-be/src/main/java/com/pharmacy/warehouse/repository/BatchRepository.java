@@ -14,6 +14,20 @@ public interface BatchRepository extends JpaRepository<Batch, Long> {
     List<Batch> findByMedicine_MedicineId(Long medicineId);
 
     @Query("""
+        SELECT b
+        FROM Batch b
+        JOIN FETCH b.medicine m
+        JOIN FETCH b.warehouse w
+        WHERE b.medicine.medicineId = :medicineId
+          AND b.warehouse.warehouseId = :warehouseId
+          AND b.quantity > 0
+        ORDER BY b.expiryDate ASC, b.batchId ASC
+        """)
+    List<Batch> findAvailableByMedicineAndWarehouseOrderByExpiry(
+        @Param("medicineId") Long medicineId,
+        @Param("warehouseId") Long warehouseId);
+
+    @Query("""
         SELECT m.medicineId AS medicineId,
            m.name AS medicineName,
                m.reorderLevel AS reorderLevel,

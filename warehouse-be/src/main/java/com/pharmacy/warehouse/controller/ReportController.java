@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pharmacy.warehouse.dto.DashboardSummaryResponse;
 import com.pharmacy.warehouse.dto.FinancialReportResponse;
+import com.pharmacy.warehouse.dto.IssueReportResponse;
 import com.pharmacy.warehouse.dto.InventoryReportResponse;
+import com.pharmacy.warehouse.service.OrderService;
 import com.pharmacy.warehouse.service.ReportService;
 
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class ReportController {
 
     private final ReportService reportService;
+    private final OrderService orderService;
 
     @GetMapping("/inventory")
     @PreAuthorize("hasAnyRole('ADMIN','WAREHOUSE_MANAGER','WAREHOUSE_STAFF','ACCOUNTANT')")
@@ -100,5 +103,45 @@ public class ReportController {
     @PreAuthorize("hasAnyRole('ADMIN','WAREHOUSE_MANAGER','ACCOUNTANT')")
     public ResponseEntity<DashboardSummaryResponse> getDashboardSummary() {
         return ResponseEntity.ok(reportService.getDashboardSummary());
+    }
+
+    @GetMapping("/issues")
+    @PreAuthorize("hasAnyRole('ADMIN','WAREHOUSE_MANAGER','WAREHOUSE_STAFF','ACCOUNTANT')")
+    public ResponseEntity<IssueReportResponse> getIssueReport(
+            @RequestParam(required = false) Long medicineId,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) Long issuedById,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(orderService.getIssueReport(
+                medicineId,
+                department,
+                warehouseId,
+                issuedById,
+                fromDate,
+                toDate,
+                page,
+                size));
+    }
+
+    @GetMapping("/issues/export")
+    @PreAuthorize("hasAnyRole('ADMIN','WAREHOUSE_MANAGER','WAREHOUSE_STAFF','ACCOUNTANT')")
+    public ResponseEntity<IssueReportResponse> exportIssueReport(
+            @RequestParam(required = false) Long medicineId,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) Long issuedById,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
+        return ResponseEntity.ok(orderService.exportIssueReport(
+                medicineId,
+                department,
+                warehouseId,
+                issuedById,
+                fromDate,
+                toDate));
     }
 }
