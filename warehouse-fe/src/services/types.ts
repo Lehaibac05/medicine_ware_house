@@ -22,6 +22,19 @@ export type Warehouse = {
   description?: string
 }
 
+export type Supplier = {
+  supplierId: number
+  supplierName: string
+  contactPerson?: string
+  phoneNumber?: string
+  email?: string
+  address?: string
+  taxCode?: string
+  status?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export type Batch = {
   batchId: number
   lotNumber: string
@@ -31,4 +44,15 @@ export type Batch = {
   status: string
   medicine?: Medicine
   warehouse?: Warehouse
+}
+
+export type User = {
+  userId: number
+  username: string
+  fullName: string
+  email: string
+  status: string
+  lastLogin: string | null
+  roleId: number | null
+  roleName: string | null
 }

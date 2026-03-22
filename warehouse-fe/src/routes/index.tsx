@@ -2,7 +2,6 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import type { ReactNode } from "react"
 import DashboardPage from "../pages/dashboard/DashboardPage"
 import InventoryPage from "../pages/inventory/InventoryPage"
-import InventoryDetailPage from "../pages/inventory/InventoryDetailPage"
 import InventoryAdjustmentPage from "../pages/inventory/InventoryAdjustmentPage"
 import MedicinePage from "../pages/medicine/MedicinePage"
 import BatchPage from "../pages/batches/BatchPage"
@@ -16,6 +15,8 @@ import OrdersPage from "../pages/orders/OrdersPage"
 import InventoryReportPage from "../pages/reports/InventoryReportPage"
 import FinancialReportPage from "../pages/reports/FinancialReportPage"
 import UserPage from "../pages/users/UserPage"
+import WarehousePage from "../pages/warehouses/WarehousePage"
+import SupplierPage from "../pages/suppliers/SupplierPage"
 import MedicineRequestsListPage from "../pages/procurement/MedicineRequestsListPage"
 import CreateMedicineRequestPage from "../pages/procurement/CreateMedicineRequestPage"
 import MedicineRequestApprovalPage from "../pages/procurement/MedicineRequestApprovalPage"
@@ -25,6 +26,7 @@ import CreatePurchaseOrderPage from "../pages/procurement/CreatePurchaseOrderPag
 import RequestsManagementPage from "../pages/procurement/RequestsManagementPage"
 import GoodsReceiptsPage from "../pages/procurement/GoodsReceiptsPage"
 import GoodsReceiptCreatePage from "../pages/procurement/GoodsReceiptCreatePage"
+import LandingPage from "../pages/landing/LandingPage"
 
 const ProtectedRoute = ({
   children,
@@ -57,9 +59,7 @@ const AppRouter = () => {
       <Routes>
         <Route
           path="/"
-          element={
-            <Navigate to={getAuthToken() ? "/dashboard" : "/login"} replace />
-          }
+          element={<LandingPage />}
         />
         <Route path="/login" element={<LoginPage />} />
         <Route
@@ -75,14 +75,6 @@ const AppRouter = () => {
           element={
             <ProtectedRoute>
               <InventoryPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/inventory/:medicineId"
-          element={
-            <ProtectedRoute>
-              <InventoryDetailPage />
             </ProtectedRoute>
           }
         />
@@ -187,6 +179,26 @@ const AppRouter = () => {
           element={
             <ProtectedRoute>
               <UserPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/warehouses"
+          element={
+            <ProtectedRoute
+              allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"]}
+            >
+              <WarehousePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/suppliers"
+          element={
+            <ProtectedRoute
+              allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"]}
+            >
+              <SupplierPage />
             </ProtectedRoute>
           }
         />

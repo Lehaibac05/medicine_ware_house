@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,25 +34,25 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class PurchaseOrderService {
 
-    private final PurchaseOrderRepository purchaseOrderRepository;
+        private final PurchaseOrderRepository purchaseOrderRepository;
         private final PurchaseOrderItemRepository purchaseOrderItemRepository;
-    private final SupplierRepository supplierRepository;
-    private final WarehouseRepository warehouseRepository;
-    private final MedicineRepository medicineRepository;
-    private final UserRepository userRepository;
+        private final SupplierRepository supplierRepository;
+        private final WarehouseRepository warehouseRepository;
+        private final MedicineRepository medicineRepository;
+        private final UserRepository userRepository;
 
-    @Transactional(readOnly = true)
-    public List<PurchaseOrderResponse> getAllPurchaseOrders() {
-        return purchaseOrderRepository.findAll().stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-    }
+        @Transactional(readOnly = true)
+        public List<PurchaseOrderResponse> getAllPurchaseOrders() {
+                return purchaseOrderRepository.findAll().stream()
+                                .map(this::convertToResponse)
+                                .collect(Collectors.toList());
+        }
 
-    @Transactional(readOnly = true)
-    public PurchaseOrderResponse getPurchaseOrderById(Long id) {
+        @Transactional(readOnly = true)
+        public PurchaseOrderResponse getPurchaseOrderById(Long id) {
                 PurchaseOrder order = getPurchaseOrderEntityById(id);
-        return convertToResponse(order);
-    }
+                return convertToResponse(order);
+        }
 
         @Transactional(readOnly = true)
         public PurchaseOrder getPurchaseOrderEntityById(Long id) {
@@ -61,54 +63,54 @@ public class PurchaseOrderService {
                 return order;
         }
 
-    @Transactional(readOnly = true)
-    public List<PurchaseOrderResponse> getPurchaseOrdersByStatus(String status) {
-        PurchaseOrderStatus orderStatus = PurchaseOrderStatus.valueOf(status);
-        return purchaseOrderRepository.findByStatus(orderStatus).stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-    }
+        @Transactional(readOnly = true)
+        public List<PurchaseOrderResponse> getPurchaseOrdersByStatus(String status) {
+                PurchaseOrderStatus orderStatus = PurchaseOrderStatus.valueOf(status);
+                return purchaseOrderRepository.findByStatus(orderStatus).stream()
+                                .map(this::convertToResponse)
+                                .collect(Collectors.toList());
+        }
 
-    @Transactional(readOnly = true)
-    public List<PurchaseOrderResponse> getPurchaseOrdersByWarehouse(Long warehouseId) {
-        return purchaseOrderRepository.findByWarehouse_WarehouseId(warehouseId).stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-    }
+        @Transactional(readOnly = true)
+        public List<PurchaseOrderResponse> getPurchaseOrdersByWarehouse(Long warehouseId) {
+                return purchaseOrderRepository.findByWarehouse_WarehouseId(warehouseId).stream()
+                                .map(this::convertToResponse)
+                                .collect(Collectors.toList());
+        }
 
-    // Bước 1: Quản lý kho tạo yêu cầu nhập hàng
-    @Transactional
-    public PurchaseOrderResponse createPurchaseOrder(CreatePurchaseOrderRequest request, Long userId) {
-        log.info("Creating purchase order for supplier: {}", request.getSupplierId());
-        
-        // Validate supplier
-        Supplier supplier = supplierRepository.findById(request.getSupplierId())
-                .orElseThrow(() -> new RuntimeException("Supplier not found"));
-        
-        // Validate warehouse
-        Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
-                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
-        
-        // Get user (WAREHOUSE_MANAGER)
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        // Create purchase order
-        PurchaseOrder purchaseOrder = new PurchaseOrder();
-        purchaseOrder.setSupplier(supplier);
-        purchaseOrder.setWarehouse(warehouse);
-        purchaseOrder.setCreatedBy(user);
-        purchaseOrder.setExpectedDeliveryDate(request.getExpectedDeliveryDate());
-        purchaseOrder.setNotes(request.getNotes());
-        purchaseOrder.setStatus(PurchaseOrderStatus.PENDING);
+        // Bước 1: Quản lý kho tạo yêu cầu nhập hàng
+        @Transactional
+        public PurchaseOrderResponse createPurchaseOrder(CreatePurchaseOrderRequest request, Long userId) {
+                log.info("Creating purchase order for supplier: {}", request.getSupplierId());
+
+                // Validate supplier
+                Supplier supplier = supplierRepository.findById(request.getSupplierId())
+                                .orElseThrow(() -> new RuntimeException("Supplier not found"));
+
+                // Validate warehouse
+                Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
+                                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+
+                // Get user (WAREHOUSE_MANAGER)
+                User user = userRepository.findById(userId)
+                                .orElseThrow(() -> new RuntimeException("User not found"));
+
+                // Create purchase order
+                PurchaseOrder purchaseOrder = new PurchaseOrder();
+                purchaseOrder.setSupplier(supplier);
+                purchaseOrder.setWarehouse(warehouse);
+                purchaseOrder.setCreatedBy(user);
+                purchaseOrder.setExpectedDeliveryDate(request.getExpectedDeliveryDate());
+                purchaseOrder.setNotes(request.getNotes());
+                purchaseOrder.setStatus(PurchaseOrderStatus.PENDING);
 
                 rebuildItemsAndTotal(purchaseOrder, request);
-        
-        PurchaseOrder savedOrder = purchaseOrderRepository.save(purchaseOrder);
-        log.info("Purchase order created successfully with code: {}", savedOrder.getOrderCode());
-        
-        return convertToResponse(savedOrder);
-    }
+
+                PurchaseOrder savedOrder = purchaseOrderRepository.save(purchaseOrder);
+                log.info("Purchase order created successfully with code: {}", savedOrder.getOrderCode());
+
+                return convertToResponse(savedOrder);
+        }
 
         @Transactional
         public PurchaseOrderResponse updatePurchaseOrder(Long orderId, CreatePurchaseOrderRequest request) {
@@ -142,32 +144,32 @@ public class PurchaseOrderService {
                 return convertToResponse(updatedOrder);
         }
 
-    // Bước 2: Nhà cung cấp xác nhận và chuẩn bị
-    @Transactional
-    public PurchaseOrderResponse confirmPurchaseOrder(Long orderId) {
-        log.info("Confirming purchase order: {}", orderId);
-        
-        PurchaseOrder order = purchaseOrderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Purchase order not found"));
-        
-        if (order.getStatus() != PurchaseOrderStatus.PENDING) {
-            throw new RuntimeException("Order must be in PENDING status to confirm");
-        }
-        
-        order.setStatus(PurchaseOrderStatus.CONFIRMED);
-        PurchaseOrder updatedOrder = purchaseOrderRepository.save(order);
-        
-        log.info("Purchase order confirmed successfully");
-        return convertToResponse(updatedOrder);
-    }
+        // Bước 2: Nhà cung cấp xác nhận và chuẩn bị
+        @Transactional
+        public PurchaseOrderResponse confirmPurchaseOrder(Long orderId) {
+                log.info("Confirming purchase order: {}", orderId);
 
-    @Transactional
-    public PurchaseOrderResponse updateOrderStatus(Long orderId, String status) {
-        log.info("Updating purchase order {} status to: {}", orderId, status);
-        
-        PurchaseOrder order = purchaseOrderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Purchase order not found"));
-        
+                PurchaseOrder order = purchaseOrderRepository.findById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Purchase order not found"));
+
+                if (order.getStatus() != PurchaseOrderStatus.PENDING) {
+                        throw new RuntimeException("Order must be in PENDING status to confirm");
+                }
+
+                order.setStatus(PurchaseOrderStatus.CONFIRMED);
+                PurchaseOrder updatedOrder = purchaseOrderRepository.save(order);
+
+                log.info("Purchase order confirmed successfully");
+                return convertToResponse(updatedOrder);
+        }
+
+        @Transactional
+        public PurchaseOrderResponse updateOrderStatus(Long orderId, String status) {
+                log.info("Updating purchase order {} status to: {}", orderId, status);
+
+                PurchaseOrder order = purchaseOrderRepository.findById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Purchase order not found"));
+
                 PurchaseOrderStatus newStatus = PurchaseOrderStatus.valueOf(status);
 
                 if (newStatus == PurchaseOrderStatus.RECEIVED || newStatus == PurchaseOrderStatus.APPROVED) {
@@ -183,95 +185,97 @@ public class PurchaseOrderService {
                         return convertToResponse(order);
                 }
 
-                if (!(order.getStatus() == PurchaseOrderStatus.CONFIRMED && newStatus == PurchaseOrderStatus.SHIPPING)) {
+                if (!(order.getStatus() == PurchaseOrderStatus.CONFIRMED
+                                && newStatus == PurchaseOrderStatus.SHIPPING)) {
                         throw new IllegalStateException(
-                                        String.format("Invalid status transition: %s -> %s", order.getStatus(), newStatus));
+                                        String.format("Invalid status transition: %s -> %s", order.getStatus(),
+                                                        newStatus));
                 }
 
-        order.setStatus(newStatus);
-        
-        PurchaseOrder updatedOrder = purchaseOrderRepository.save(order);
-        log.info("Purchase order status updated successfully");
-        
-        return convertToResponse(updatedOrder);
-    }
+                order.setStatus(newStatus);
 
-    @Transactional
-    public void cancelPurchaseOrder(Long orderId) {
-        log.info("Cancelling purchase order: {}", orderId);
-        
-        PurchaseOrder order = purchaseOrderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Purchase order not found"));
-        
-        if (order.getStatus() == PurchaseOrderStatus.RECEIVED || 
-            order.getStatus() == PurchaseOrderStatus.APPROVED) {
-            throw new RuntimeException("Cannot cancel order that has been received or approved");
+                PurchaseOrder updatedOrder = purchaseOrderRepository.save(order);
+                log.info("Purchase order status updated successfully");
+
+                return convertToResponse(updatedOrder);
         }
-        
-        order.setStatus(PurchaseOrderStatus.CANCELLED);
-        purchaseOrderRepository.save(order);
-        
-        log.info("Purchase order cancelled successfully");
-    }
 
-    private PurchaseOrderResponse convertToResponse(PurchaseOrder order) {
-        return PurchaseOrderResponse.builder()
-                .purchaseOrderId(order.getPurchaseOrderId())
-                .orderCode(order.getOrderCode())
-                .supplier(convertSupplierToResponse(order.getSupplier()))
-                .warehouse(PurchaseOrderResponse.WarehouseInfo.builder()
-                        .warehouseId(order.getWarehouse().getWarehouseId())
-                        .warehouseName(order.getWarehouse().getName())
-                        .build())
-                .createdBy(PurchaseOrderResponse.UserInfo.builder()
-                        .userId(order.getCreatedBy().getUserId())
-                        .username(order.getCreatedBy().getUsername())
-                        .fullName(order.getCreatedBy().getFullName())
-                        .build())
-                .status(order.getStatus().name())
-                .expectedDeliveryDate(order.getExpectedDeliveryDate())
-                .totalAmount(order.getTotalAmount())
-                .notes(order.getNotes())
-                .createdAt(order.getCreatedAt())
-                .updatedAt(order.getUpdatedAt())
-                .items(order.getItems() != null ? order.getItems().stream()
-                        .map(this::convertItemToResponse)
-                        .collect(Collectors.toList()) : null)
-                .build();
-    }
+        @Transactional
+        public void cancelPurchaseOrder(Long orderId) {
+                log.info("Cancelling purchase order: {}", orderId);
 
-    private PurchaseOrderResponse.PurchaseOrderItemResponse convertItemToResponse(PurchaseOrderItem item) {
-        return PurchaseOrderResponse.PurchaseOrderItemResponse.builder()
-                .itemId(item.getItemId())
-                .medicine(PurchaseOrderResponse.MedicineInfo.builder()
-                        .medicineId(item.getMedicine().getMedicineId())
-                        .medicineName(item.getMedicine().getName())
-                        .sku(item.getMedicine().getManufacturer())
-                        .build())
-                .requestedQuantity(item.getRequestedQuantity())
-                .receivedQuantity(item.getReceivedQuantity())
-                .unitPrice(item.getUnitPrice())
-                .totalPrice(item.getTotalPrice())
-                .expectedExpiryDate(item.getExpectedExpiryDate())
-                .actualExpiryDate(item.getActualExpiryDate())
-                .notes(item.getNotes())
-                .build();
-    }
+                PurchaseOrder order = purchaseOrderRepository.findById(orderId)
+                                .orElseThrow(() -> new RuntimeException("Purchase order not found"));
 
-    private SupplierResponse convertSupplierToResponse(Supplier supplier) {
-        return SupplierResponse.builder()
-                .supplierId(supplier.getSupplierId())
-                .supplierName(supplier.getSupplierName())
-                .contactPerson(supplier.getContactPerson())
-                .phoneNumber(supplier.getPhoneNumber())
-                .email(supplier.getEmail())
-                .address(supplier.getAddress())
-                .taxCode(supplier.getTaxCode())
-                .status(supplier.getStatus().name())
-                .createdAt(supplier.getCreatedAt())
-                .updatedAt(supplier.getUpdatedAt())
-                .build();
-    }
+                if (order.getStatus() == PurchaseOrderStatus.RECEIVED ||
+                                order.getStatus() == PurchaseOrderStatus.APPROVED) {
+                        throw new RuntimeException("Cannot cancel order that has been received or approved");
+                }
+
+                order.setStatus(PurchaseOrderStatus.CANCELLED);
+                purchaseOrderRepository.save(order);
+
+                log.info("Purchase order cancelled successfully");
+        }
+
+        private PurchaseOrderResponse convertToResponse(PurchaseOrder order) {
+                return PurchaseOrderResponse.builder()
+                                .purchaseOrderId(order.getPurchaseOrderId())
+                                .orderCode(order.getOrderCode())
+                                .supplier(convertSupplierToResponse(order.getSupplier()))
+                                .warehouse(PurchaseOrderResponse.WarehouseInfo.builder()
+                                                .warehouseId(order.getWarehouse().getWarehouseId())
+                                                .warehouseName(order.getWarehouse().getName())
+                                                .build())
+                                .createdBy(PurchaseOrderResponse.UserInfo.builder()
+                                                .userId(order.getCreatedBy().getUserId())
+                                                .username(order.getCreatedBy().getUsername())
+                                                .fullName(order.getCreatedBy().getFullName())
+                                                .build())
+                                .status(order.getStatus().name())
+                                .expectedDeliveryDate(order.getExpectedDeliveryDate())
+                                .totalAmount(order.getTotalAmount())
+                                .notes(order.getNotes())
+                                .createdAt(order.getCreatedAt())
+                                .updatedAt(order.getUpdatedAt())
+                                .items(order.getItems() != null ? order.getItems().stream()
+                                                .map(this::convertItemToResponse)
+                                                .collect(Collectors.toList()) : null)
+                                .build();
+        }
+
+        private PurchaseOrderResponse.PurchaseOrderItemResponse convertItemToResponse(PurchaseOrderItem item) {
+                return PurchaseOrderResponse.PurchaseOrderItemResponse.builder()
+                                .itemId(item.getItemId())
+                                .medicine(PurchaseOrderResponse.MedicineInfo.builder()
+                                                .medicineId(item.getMedicine().getMedicineId())
+                                                .medicineName(item.getMedicine().getName())
+                                                .sku(item.getMedicine().getManufacturer())
+                                                .build())
+                                .requestedQuantity(item.getRequestedQuantity())
+                                .receivedQuantity(item.getReceivedQuantity())
+                                .unitPrice(item.getUnitPrice())
+                                .totalPrice(item.getTotalPrice())
+                                .expectedExpiryDate(item.getExpectedExpiryDate())
+                                .actualExpiryDate(item.getActualExpiryDate())
+                                .notes(item.getNotes())
+                                .build();
+        }
+
+        private SupplierResponse convertSupplierToResponse(Supplier supplier) {
+                return SupplierResponse.builder()
+                                .supplierId(supplier.getSupplierId())
+                                .supplierName(supplier.getSupplierName())
+                                .contactPerson(supplier.getContactPerson())
+                                .phoneNumber(supplier.getPhoneNumber())
+                                .email(supplier.getEmail())
+                                .address(supplier.getAddress())
+                                .taxCode(supplier.getTaxCode())
+                                .status(supplier.getStatus().name())
+                                .createdAt(supplier.getCreatedAt())
+                                .updatedAt(supplier.getUpdatedAt())
+                                .build();
+        }
 
         private void rebuildItemsAndTotal(PurchaseOrder order, CreatePurchaseOrderRequest request) {
                 if (request.getItems() == null || request.getItems().isEmpty()) {
@@ -283,7 +287,8 @@ public class PurchaseOrderService {
 
                 for (CreatePurchaseOrderRequest.PurchaseOrderItemRequest itemRequest : request.getItems()) {
                         Medicine medicine = medicineRepository.findById(itemRequest.getMedicineId())
-                                        .orElseThrow(() -> new RuntimeException("Medicine not found with id: " + itemRequest.getMedicineId()));
+                                        .orElseThrow(() -> new RuntimeException(
+                                                        "Medicine not found with id: " + itemRequest.getMedicineId()));
 
                         PurchaseOrderItem item = new PurchaseOrderItem();
                         item.setPurchaseOrder(order);
@@ -302,5 +307,25 @@ public class PurchaseOrderService {
                 }
 
                 order.setTotalAmount(totalAmount);
+        }
+
+        @Transactional(readOnly = true)
+        public Page<PurchaseOrderResponse> filterPurchaseOrders(
+                        Long supplierId,
+                        Long warehouseId,
+                        String status,
+                        int page) {
+
+                PurchaseOrderStatus orderStatus = null;
+
+                if (status != null && !status.isEmpty()) {
+                        orderStatus = PurchaseOrderStatus.valueOf(status);
+                }
+
+                PageRequest pageable = PageRequest.of(page, 5);
+
+                return purchaseOrderRepository
+                                .filterPurchaseOrders(supplierId, warehouseId, orderStatus, pageable)
+                                .map(this::convertToResponse);
         }
 }

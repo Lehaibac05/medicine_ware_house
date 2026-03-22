@@ -1,0 +1,22 @@
+sale_date,medicine_name,manufacturer,storage_condition,quantity_sold,temperature,flu_season,rain
+2024-01-01,Paracetamol 500mg,DHG Pharma,Room temperature,45,28,0,0
+2024-01-02,Paracetamol 500mg,DHG Pharma,Room temperature,52,29,0,1
+2024-01-03,Paracetamol 500mg,DHG Pharma,Room temperature,48,27,0,0
+2024-01-04,Paracetamol 500mg,DHG Pharma,Room temperature,55,30,0,0
+2024-01-05,Paracetamol 500mg,DHG Pharma,Room temperature,60,31,1,1
+2024-01-06,Paracetamol 500mg,DHG Pharma,Room temperature,65,32,1,0
+2024-01-07,Paracetamol 500mg,DHG Pharma,Room temperature,58,29,1,1
+2024-01-01,Amoxicillin 250mg,US Pharma,Cool place,25,28,0,0
+2024-01-02,Amoxicillin 250mg,US Pharma,Cool place,28,29,0,1
+2024-01-03,Amoxicillin 250mg,US Pharma,Cool place,22,27,0,0
+2024-01-04,Amoxicillin 250mg,US Pharma,Cool place,30,30,0,0
+2024-01-05,Amoxicillin 250mg,US Pharma,Cool place,35,31,1,1
+2024-01-06,Amoxicillin 250mg,US Pharma,Cool place,40,32,1,0
+2024-01-07,Amoxicillin 250mg,US Pharma,Cool place,32,29,1,1
+2024-01-01,Vitamin C 500mg,Natural Pharma,Room temperature,38,28,0,0
+2024-01-02,Vitamin C 500mg,Natural Pharma,Room temperature,42,29,0,1
+2024-01-03,Vitamin C 500mg,Natural Pharma,Room temperature,35,27,0,0
+2024-01-04,Vitamin C 500mg,Natural Pharma,Room temperature,45,30,0,0
+2024-01-05,Vitamin C 500mg,Natural Pharma,Room temperature,50,31,1,1
+2024-01-06,Vitamin C 500mg,Natural Pharma,Room temperature,55,32,1,0
+2024-01-07,Vitamin C 500mg,Natural Pharma,Room temperature,48,29,1,1

@@ -17,7 +17,10 @@ type PaymentTableProps = {
 };
 
 const formatMoney = (value?: number) =>
-  Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  Number(value || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 function PaymentTable({
   data,
@@ -30,66 +33,68 @@ function PaymentTable({
 }: PaymentTableProps) {
   const columns: ColumnsType<SupplierInvoice> = [
     {
-      title: "Invoice",
+      title: "Hóa đơn",
       dataIndex: "invoiceCode",
       key: "invoiceCode",
       width: 160,
       render: (value: string) => <Text strong>{value}</Text>,
     },
     {
-      title: "Supplier",
+      title: "Nhà cung cấp",
       key: "supplier",
       render: (_, record) => record.supplier?.supplierName || "-",
       ellipsis: true,
     },
     {
-      title: "Goods Receipt",
+      title: "Phiếu nhập hàng",
       key: "goodsReceipt",
       render: (_, record) => record.goodsReceipt?.receiptCode || "-",
       width: 160,
     },
     {
-      title: "Total",
+      title: "Tổng tiền",
       key: "totalAmount",
       width: 140,
       render: (_, record) => formatMoney(record.totalAmount),
     },
     {
-      title: "Paid",
+      title: "Đã thanh toán",
       key: "paidAmount",
       width: 140,
       render: (_, record) => formatMoney(record.paidAmount),
     },
     {
-      title: "Remaining",
+      title: "Còn lại",
       key: "remainingAmount",
       width: 140,
       render: (_, record) => formatMoney(record.remainingAmount),
     },
     {
-      title: "Status",
+      title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       width: 170,
       render: (value: string) => <StatusTag domain="invoice" status={value} />,
     },
     {
-      title: "Mismatch",
+      title: "Sai lệch",
       key: "mismatch",
       width: 130,
       render: (_, record) => {
         if (record.hasMismatch) {
           return (
-            <Tooltip title={record.mismatchWarning || "Mismatch with goods receipt"}>
-              <Text className="text-red-600">Yes</Text>
+            <Tooltip
+              title={record.mismatchWarning || "Sai lệch so với phiếu nhập"}
+            >
+              <Text className="text-red-600">Có</Text>
             </Tooltip>
           );
         }
-        return <Text className="text-emerald-700">No</Text>;
+        return <Text className="text-emerald-700">Không</Text>;
       },
     },
     {
-      title: "Action",
+      title: "Hành động",
       key: "action",
       width: 240,
       render: (_, record) => {
@@ -105,7 +110,7 @@ function PaymentTable({
               onClick={() => onVerify(record)}
               disabled={!canVerify || !!record.hasMismatch}
             >
-              Verify
+              Xác minh
             </Button>
             <Button
               size="small"
@@ -113,7 +118,7 @@ function PaymentTable({
               onClick={() => onReject(record)}
               disabled={!canReject}
             >
-              Reject
+              Từ chối
             </Button>
             <Button
               size="small"
@@ -121,7 +126,7 @@ function PaymentTable({
               onClick={() => onPay(record)}
               disabled={!canPay}
             >
-              Pay
+              Thanh toán
             </Button>
           </Space>
         );
@@ -133,12 +138,12 @@ function PaymentTable({
     <Flex justify="space-between" align="center">
       <div className="flex flex-col">
         <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-          Supplier invoice list
+          Danh sách hóa đơn nhà cung cấp
         </Text>
       </div>
-      <div className="w-[200px]">
+      <div className="w-[350px]">
         <Input.Search
-          placeholder="Search by invoice code or supplier..."
+          placeholder="Tìm kiếm mã hóa đơn hoặc nhà cung cấp..."
           className="w-[320px]"
           allowClear
           value={search}

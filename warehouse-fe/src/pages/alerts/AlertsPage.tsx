@@ -1,132 +1,126 @@
-import { Button, DatePicker, Layout, Select, Typography } from 'antd'
-import { useState } from 'react'
-import type { Dayjs } from 'dayjs'
-import SidebarNav from "../../layouts/SidebarNav";
-import TopBar from "../../layouts/TopBar";
-import BaseFilterCard from '../../components/base/BaseFilterCard'
-import AlertsStatsGrid from './components/AlertsStatsGrid'
-import AlertsTable from './components/AlertsTable'
+import { Button, DatePicker, Select, Typography } from "antd";
+import { useState } from "react";
+import type { Dayjs } from "dayjs";
+import BaseFilterCard from "../../components/base/BaseFilterCard";
+import AlertsStatsGrid from "./components/AlertsStatsGrid";
+import AlertsTable from "./components/AlertsTable";
+import MainLayout from "../../layouts/MainLayout";
 
-const { Content, Sider } = Layout
-const { Text } = Typography
+const { Text } = Typography;
 
 const alertTypeOptions = [
-  { value: 'all', label: 'All types' },
-  { value: 'LOW_STOCK', label: 'Low stock' },
-  { value: 'EXPIRING_SOON', label: 'Expiring soon' },
-  { value: 'EXPIRED', label: 'Expired' },
-  { value: 'SYSTEM', label: 'System warning' },
-]
+  { value: "all", label: "Tất cả loại cảnh báo" },
+  { value: "LOW_STOCK", label: "Tồn kho thấp" },
+  { value: "EXPIRING_SOON", label: "Sắp hết hạn" },
+  { value: "EXPIRED", label: "Đã hết hạn" },
+  { value: "SYSTEM", label: "Cảnh báo hệ thống" },
+];
 
 const severityOptions = [
-  { value: 'all', label: 'All severity' },
-  { value: 'LOW', label: 'Low' },
-  { value: 'MEDIUM', label: 'Medium' },
-  { value: 'HIGH', label: 'High' },
-  { value: 'CRITICAL', label: 'Critical' },
-]
+  { value: "all", label: "Tất cả mức độ" },
+  { value: "LOW", label: "Thấp" },
+  { value: "MEDIUM", label: "Trung bình" },
+  { value: "HIGH", label: "Cao" },
+  { value: "CRITICAL", label: "Nghiêm trọng" },
+];
 
 const sortOptions = [
-  { value: 'date-desc', label: 'Date (newest)' },
-  { value: 'date-asc', label: 'Date (oldest)' },
-  { value: 'severity-desc', label: 'Severity (high → low)' },
-]
+  { value: "date-desc", label: "Ngày (mới nhất)" },
+  { value: "date-asc", label: "Ngày (cũ nhất)" },
+  { value: "severity-desc", label: "Mức độ (cao → thấp)" },
+];
 
 export type AlertFilters = {
-  alertType: string
-  severity: string
-  sortBy: string
-  dateRange: [Dayjs | null, Dayjs | null] | null
-  searchText: string
-}
+  alertType: string;
+  severity: string;
+  sortBy: string;
+  dateRange: [Dayjs | null, Dayjs | null] | null;
+  searchText: string;
+};
 
 const AlertsPage = () => {
   const [filters, setFilters] = useState<AlertFilters>({
-    alertType: 'all',
-    severity: 'all',
-    sortBy: 'date-desc',
+    alertType: "all",
+    severity: "all",
+    sortBy: "date-desc",
     dateRange: null,
-    searchText: '',
-  })
-  
-  const [tempFilters, setTempFilters] = useState<AlertFilters>(filters)
+    searchText: "",
+  });
+
+  const [tempFilters, setTempFilters] = useState<AlertFilters>(filters);
 
   const handleApplyFilters = () => {
-    setFilters(tempFilters)
-  }
-  
+    setFilters(tempFilters);
+  };
+
   const handleSearch = (value: string) => {
-    setFilters(prev => ({ ...prev, searchText: value }))
-  }
+    setFilters((prev) => ({ ...prev, searchText: value }));
+  };
 
   return (
-    <Layout className="min-h-screen bg-slate-100">
-      <Sider
-        width={260}
-        className="hidden lg:block !bg-white border-r border-slate-200 px-4 py-6 !fixed left-0 top-0 h-screen"
-      >
-        <SidebarNav />
-      </Sider>
+    <MainLayout>
+      <AlertsStatsGrid />
 
-      <Layout className="lg:ml-[260px]">
-        <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Alerts" subtitle="Monitoring" />
+      <BaseFilterCard
+        actions={
+          <Button
+            type="primary"
+            className="h-[40px]"
+            onClick={handleApplyFilters}
+          >
+            Áp dụng
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Loại cảnh báo</Text>
+          <Select
+            options={alertTypeOptions}
+            value={tempFilters.alertType}
+            onChange={(value) =>
+              setTempFilters((prev) => ({ ...prev, alertType: value }))
+            }
+          />
         </div>
 
-        <Content className="flex flex-col gap-6 p-6 pt-[114px]">
-          <AlertsStatsGrid />
-
-          <BaseFilterCard
-            actions={
-              <Button type="primary" className="h-[40px]" onClick={handleApplyFilters}>
-                Apply filters
-              </Button>
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Mức độ cảnh báo</Text>
+          <Select
+            options={severityOptions}
+            value={tempFilters.severity}
+            onChange={(value) =>
+              setTempFilters((prev) => ({ ...prev, severity: value }))
             }
-          >
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Alert type</Text>
-              <Select 
-                options={alertTypeOptions} 
-                value={tempFilters.alertType}
-                onChange={(value) => setTempFilters(prev => ({ ...prev, alertType: value }))}
-              />
-            </div>
+          />
+        </div>
 
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Severity</Text>
-              <Select 
-                options={severityOptions} 
-                value={tempFilters.severity}
-                onChange={(value) => setTempFilters(prev => ({ ...prev, severity: value }))}
-              />
-            </div>
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Sắp xếp theo</Text>
+          <Select
+            options={sortOptions}
+            value={tempFilters.sortBy}
+            onChange={(value) =>
+              setTempFilters((prev) => ({ ...prev, sortBy: value }))
+            }
+          />
+        </div>
 
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Sort by</Text>
-              <Select 
-                options={sortOptions} 
-                value={tempFilters.sortBy}
-                onChange={(value) => setTempFilters(prev => ({ ...prev, sortBy: value }))}
-              />
-            </div>
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Khoảng thời gian</Text>
+          <DatePicker.RangePicker
+            format="DD/MM/YYYY"
+            className="w-full"
+            value={tempFilters.dateRange}
+            onChange={(dates) =>
+              setTempFilters((prev) => ({ ...prev, dateRange: dates }))
+            }
+          />
+        </div>
+      </BaseFilterCard>
 
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Date range</Text>
-              <DatePicker.RangePicker 
-                format="DD/MM/YYYY" 
-                className="w-full"
-                value={tempFilters.dateRange}
-                onChange={(dates) => setTempFilters(prev => ({ ...prev, dateRange: dates }))}
-              />
-            </div>
-          </BaseFilterCard>
+      <AlertsTable filters={filters} onSearch={handleSearch} />
+    </MainLayout>
+  );
+};
 
-          <AlertsTable filters={filters} onSearch={handleSearch}/>
-        </Content>
-      </Layout>
-    </Layout>
-  )
-}
-
-export default AlertsPage
-
+export default AlertsPage;

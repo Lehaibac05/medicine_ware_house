@@ -1,71 +1,95 @@
-import { Avatar, Layout, Space, Typography, Dropdown, Tag } from 'antd'
-import { UserOutlined, LogoutOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
-import { clearAuthToken, getPrimaryRole, getRoleLabel } from '../utils/auth'
+import { Avatar, Layout, Typography, Dropdown, Tag } from "antd";
+import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+import { clearAuthToken, getPrimaryRole, getRoleLabel } from "../utils/auth";
 
-const { Header } = Layout
-const { Text, Title } = Typography
+const { Header } = Layout;
+const { Text} = Typography;
 
-type TopBarProps = {
-  title?: string
-  subtitle?: string
-}
-
-function TopBar({ title = 'Inventory', subtitle = 'Warehouse' }: TopBarProps) {
-  const navigate = useNavigate()
-  const roleLabel = getRoleLabel(getPrimaryRole())
+function TopBar() {
+  const navigate = useNavigate();
+  const roleLabel = getRoleLabel(getPrimaryRole());
 
   const handleLogout = () => {
-    clearAuthToken()
-    navigate('/login', { replace: true })
-  }
+    clearAuthToken();
+    navigate("/login", { replace: true });
+  };
 
   return (
-    <Header className="!h-[90px] !bg-white px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-      <div className="flex flex-col mb-4 md:mb-0">
-        <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+    <Header
+      className="!h-[80px] px-6 flex items-center justify-end shadow-sm"
+      style={{ background: "#ecfdf5" }} // pastel green
+    >
+      {/* LEFT */}
+      {/* <div className="flex flex-col">
+        <Text className="text-[10px] uppercase tracking-widest text-green-700/60">
           {subtitle}
         </Text>
 
-        <Title level={3} className="!m-0">
+        <Title
+          level={4}
+          className="!m-0 !font-semibold tracking-tight text-green-900"
+        >
           {title}
         </Title>
-      </div>
+      </div> */}
 
-      <div className="flex flex-1 w-full md:w-auto flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-end">
-        {/* <Input
-          placeholder="Search medicines, batches, orders..."
-          prefix={<SearchOutlined />}
-          className="w-full md:max-w-sm rounded-full"
-          allowClear
-        /> */}
+      {/* RIGHT */}
+      <div className="flex items-center gap-4">
+        {/* ROLE */}
+        <Tag
+          className="!m-0 px-3 py-[2px] rounded-full text-xs font-medium border-0"
+          style={{
+            background: "#bbf7d0",
+            color: "#14532d",
+          }}
+        >
+          {roleLabel}
+        </Tag>
 
-        <div className="flex items-center gap-3 bg-transparent px-3 py-0.5">
-          <Tag color="blue" className="!mr-0">{roleLabel}</Tag>
-          <Dropdown menu={{ items: [
-            { key: 'profile', label: 'Profile', icon: <UserOutlined /> },
-            { key: 'logout', label: 'Logout', onClick: handleLogout, danger: true, icon: <LogoutOutlined /> }
-          ] }} placement="bottomRight" arrow trigger={['click']}>
-            <Space className="cursor-pointer">
-              <Avatar size={36} className="!bg-slate-900">
-                SD
-              </Avatar>
+        {/* PROFILE */}
+        <Dropdown
+          placement="bottomRight"
+          arrow
+          trigger={["click"]}
+          menu={{
+            items: [
+              { key: "profile", label: "Profile", icon: <UserOutlined /> },
+              {
+                key: "logout",
+                label: "Logout",
+                onClick: handleLogout,
+                danger: true,
+                icon: <LogoutOutlined />,
+              },
+            ],
+          }}
+        >
+          <div className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-green-100 transition cursor-pointer">
+            <Avatar
+              size={36}
+              style={{
+                background: "linear-gradient(135deg, #4ade80, #16a34a)",
+              }}
+              className="shadow-sm"
+            >
+              SD
+            </Avatar>
 
-              <div>
-                <Text className="block text-[11px] text-slate-400">
-                  Profile
-                </Text>
+            <div className="leading-tight">
+              <Text className="block text-[11px] text-green-800/60">
+                Xin chào, 
+              </Text>
 
-                <div className="text-sm font-semibold text-slate-900">
-                  Sam Duong
-                </div>
+              <div className="text-sm font-semibold text-green-900">
+                Sam
               </div>
-            </Space>
-          </Dropdown>
-        </div>
+            </div>
+          </div>
+        </Dropdown>
       </div>
     </Header>
-  )
+  );
 }
 
-export default TopBar
+export default TopBar;

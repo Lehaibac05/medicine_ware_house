@@ -79,21 +79,21 @@ function BatchFormModal({
   return (
     <BaseModal
       open={open}
-      title={mode === "create" ? "Create Batch" : "Edit Batch"}
+      title={mode === "create" ? "Tạo lô thuốc" : "Sửa lô thuốc"}
       onCancel={onCancel}
       onOk={handleOk}
-      okText={mode === "create" ? "Create" : "Update"}
+      okText={mode === "create" ? "Tạo" : "Cập nhật"}
       confirmLoading={loading}
       width={720}
     >
       <Form form={form} layout="vertical">
         <Form.Item
           name="medicineId"
-          label="Medicine"
-          rules={[{ required: true, message: "Please select medicine" }]}
+          label="Thuốc"
+          rules={[{ required: true, message: "Vui lòng chọn thuốc." }]}
         >
           <Select
-            placeholder="Select medicine"
+            placeholder="Chọn thuốc"
             options={medicineOptions}
             disabled={mode === "edit"}
           />
@@ -101,10 +101,10 @@ function BatchFormModal({
 
         <Form.Item
           name="lotNumber"
-          label="Batch Number"
+          label="Số lô thuốc"
           rules={[
-            { required: true, message: "Please enter batch number" },
-            { max: 255, message: "Batch number is too long" },
+            { required: true, message: "Vui lòng nhập số lô thuốc." },
+            { max: 255, message: "Số lô thuốc quá dài." },
           ]}
         >
           <Input placeholder="e.g. PCM-0423" />
@@ -112,39 +112,40 @@ function BatchFormModal({
 
         <Form.Item
           name="manufactureDate"
-          label="Manufacture Date"
-          rules={[{ required: true, message: "Please select manufacture date" }]}
+          label="Ngày sản xuất"
+          rules={[{ required: true, message: "Vui lòng chọn ngày sản xuất" }]}
         >
           <DatePicker className="w-full" format="DD/MM/YYYY" />
         </Form.Item>
 
         <Form.Item
           name="expiryDate"
-          label="Expiry Date"
-          rules={[{ required: true, message: "Please select expiry date" }]}
+          label="Hạn sử dụng"
+          rules={[{ required: true, message: "Vui lòng chọn ngày hết hạn" }]}
         >
           <DatePicker className="w-full" format="DD/MM/YYYY" />
         </Form.Item>
 
         <Form.Item
           name="quantity"
-          label="Quantity"
-          rules={[{ required: true, message: "Please enter quantity" }]}
+          label="Số lượng"
+          rules={[{ required: true, message: "Vui lòng nhập số lượng" }]}
         >
           <InputNumber
-            className="w-full"
+            className="!w-full"
             min={0}
             precision={0}
-            placeholder="Enter quantity"
+            placeholder="Nhập số lượng..."
+            disabled={mode === "edit"}
           />
         </Form.Item>
 
         <Form.Item
           name="warehouseId"
-          label="Warehouse"
-          rules={[{ required: true, message: "Please select warehouse" }]}
+          label="Kho"
+          rules={[{ required: true, message: "Vui lòng chọn kho." }]}
         >
-          <Select placeholder="Select warehouse" options={warehouseOptions} />
+          <Select placeholder="Chọn kho thuốc" options={warehouseOptions} />
         </Form.Item>
       </Form>
     </BaseModal>

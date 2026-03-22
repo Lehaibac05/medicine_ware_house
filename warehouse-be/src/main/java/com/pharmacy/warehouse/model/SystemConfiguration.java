@@ -25,7 +25,7 @@ public class SystemConfiguration {
     private Long configId;
 
     private String parameterName;
-    private String value;
+    private String configValue;
     private LocalDateTime updatedDate;
 
     @ManyToOne

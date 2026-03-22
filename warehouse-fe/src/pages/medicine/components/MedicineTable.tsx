@@ -90,7 +90,7 @@ function MedicineTable({
         setCurrentPage(maxPage);
       }
     } catch {
-      messageApi.error("Failed to load medicines");
+      messageApi.error("Lỗi khi tải danh sách thuốc");
     } finally {
       setLoading(false);
     }
@@ -136,16 +136,16 @@ function MedicineTable({
     try {
       if (editingMedicine) {
         await updateMedicine(editingMedicine.medicineId, values);
-        messageApi.success("Medicine updated successfully");
+        messageApi.success("Cập nhật thuốc thành công");
       } else {
         await createMedicine(values);
-        messageApi.success("Medicine created successfully");
+        messageApi.success("Thêm thuốc thành công");
       }
 
       closeModal();
       await loadMedicines();
     } catch {
-      messageApi.error("Failed to save medicine");
+      messageApi.error("Lỗi khi cập nhật thuốc");
     } finally {
       setSubmitting(false);
     }
@@ -154,34 +154,34 @@ function MedicineTable({
   const handleDelete = async (medicineId: number) => {
     try {
       await deleteMedicine(medicineId);
-      messageApi.success("Medicine deleted successfully");
+      messageApi.success("Xóa thuốc thành công");
       await loadMedicines();
     } catch {
-      messageApi.error("Failed to delete medicine");
+      messageApi.error("Lỗi khi xóa thuốc");
     }
   };
 
   const columns: ColumnsType<MedicineRow> = [
     {
-      title: "Medicine name",
+      title: "Tên thuốc",
       dataIndex: "name",
       key: "name",
       render: (value: string) => <Text strong>{value}</Text>,
     },
     {
-      title: "Manufacturer",
+      title: "Nhà sản xuất",
       dataIndex: "manufacturer",
     },
     {
-      title: "Storage Condition",
+      title: "Điều kiện bảo quản",
       dataIndex: "storage",
     },
     {
-      title: "Description",
+      title: "Mô tả",
       dataIndex: "description",
     },
     {
-      title: "Action",
+      title: "Hành động",
       render: (_, record) => (
         <Space>
           <Button
@@ -189,7 +189,7 @@ function MedicineTable({
             type="primary"
             onClick={() => openEditModal(record.medicineId)}
           >
-            Edit
+            Sửa
           </Button>
 
           <Popconfirm
@@ -198,7 +198,7 @@ function MedicineTable({
             onConfirm={() => handleDelete(record.medicineId)}
           >
             <Button size="small" danger>
-              Delete
+              Xóa
             </Button>
           </Popconfirm>
         </Space>
@@ -214,20 +214,20 @@ function MedicineTable({
         title={() => (
           <div className="flex justify-between items-center p-0">
             <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-              Medicines list
+              Danh sách thuốc
             </Text>
 
             <div className="flex items-center gap-3">
               <Input.Search
                 className="w-[300px]"
-                placeholder="Search medicine..."
+                placeholder="Tìm kiếm thuốc..."
                 value={search}
                 onChange={(e) => onSearch?.(e.target.value)}
                 allowClear
               />
 
               <Button type="primary" onClick={openCreateModal}>
-                Add medicine
+                Thêm thuốc
               </Button>
             </div>
           </div>

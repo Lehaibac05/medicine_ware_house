@@ -22,10 +22,17 @@ export const useInventoryQuery = (params?: {
   })
 }
 
-export const useRequestsQuery = () => {
+export const useRequestsQuery = (params?: {
+  page?: number
+  size?: number
+  status?: string
+  medicineName?: string
+  startDate?: string
+  endDate?: string
+}) => {
   return useQuery({
-    queryKey: workflowQueryKeys.requests,
-    queryFn: workflowApi.getRequests,
+    queryKey: [...workflowQueryKeys.requests, params],
+    queryFn: () => workflowApi.getRequests(params),
   })
 }
 
@@ -57,10 +64,10 @@ export const usePurchaseOrderQuery = (id: number) => {
   })
 }
 
-export const useGoodsReceiptsQuery = () => {
+export const useGoodsReceiptsQuery = (params?: { page?: number; size?: number }) => {
   return useQuery({
-    queryKey: workflowQueryKeys.goodsReceipts,
-    queryFn: workflowApi.getGoodsReceipts,
+    queryKey: [...workflowQueryKeys.goodsReceipts, params],
+    queryFn: () => workflowApi.getGoodsReceipts(params),
   })
 }
 
@@ -78,11 +85,19 @@ export const useCreateGoodsReceiptMutation = () => {
 export const useApproveGoodsReceiptMutation = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, notes }: { id: number; notes?: string }) =>
-      workflowApi.approveGoodsReceipt(id, true, notes),
+    mutationFn: ({
+      id,
+      approved = true,
+      notes,
+    }: {
+      id: number
+      approved?: boolean
+      notes?: string
+    }) => workflowApi.approveGoodsReceipt(id, approved, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: workflowQueryKeys.goodsReceipts })
       queryClient.invalidateQueries({ queryKey: workflowQueryKeys.inventory })
+      queryClient.invalidateQueries({ queryKey: workflowQueryKeys.purchaseOrders })
     },
   })
 }

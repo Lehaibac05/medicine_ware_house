@@ -1,4 +1,4 @@
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons"
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   Button,
   DatePicker,
@@ -10,63 +10,68 @@ import {
   Space,
   Typography,
   message,
-} from "antd"
-import dayjs from "dayjs"
-import { useEffect, useMemo, useState } from "react"
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
-import SidebarNav from "../../layouts/SidebarNav"
-import TopBar from "../../layouts/TopBar"
-import { getAllMedicines } from "../../services/medicines"
+} from "antd";
+import dayjs from "dayjs";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
+import SidebarNav from "../../layouts/SidebarNav";
+import TopBar from "../../layouts/TopBar";
+import { getAllMedicines } from "../../services/medicines";
 import {
   createPurchaseOrder,
   getPurchaseOrderById,
   type CreatePurchaseOrderPayload,
   updatePurchaseOrder,
-} from "../../services/purchaseOrders"
-import { getMedicineRequests } from "../../services/medicineRequests"
-import { getActiveSuppliers, type Supplier } from "../../services/suppliers"
-import type { Medicine, Warehouse } from "../../services/types"
-import { getWarehouses } from "../../services/warehouses"
+} from "../../services/purchaseOrders";
+import { getMedicineRequests } from "../../services/medicineRequests";
+import { getActiveSuppliers, type Supplier } from "../../services/suppliers";
+import type { Medicine, Warehouse } from "../../services/types";
+import { getWarehouses } from "../../services/warehouses";
 
-const { Content, Sider } = Layout
-const { Text } = Typography
+const { Content, Sider } = Layout;
+const { Text } = Typography;
 
 type FormValues = {
-  supplierId: number
-  warehouseId: number
-  expectedDeliveryDate?: dayjs.Dayjs
-  notes?: string
+  supplierId: number;
+  warehouseId: number;
+  expectedDeliveryDate?: dayjs.Dayjs;
+  notes?: string;
   items: Array<{
-    medicineId: number
-    requestedQuantity: number
-    unitPrice: number
-    expectedExpiryDate?: dayjs.Dayjs
-    notes?: string
-  }>
-}
+    medicineId: number;
+    requestedQuantity: number;
+    unitPrice: number;
+    expectedExpiryDate?: dayjs.Dayjs;
+    notes?: string;
+  }>;
+};
 
 export default function CreatePurchaseOrderPage() {
-  const [form] = Form.useForm<FormValues>()
-  const navigate = useNavigate()
-  const { id } = useParams()
-  const [searchParams] = useSearchParams()
-  const requestIdParam = Number(searchParams.get("requestId"))
-  const editOrderId = Number(id)
-  const isEditMode = !Number.isNaN(editOrderId)
+  const [form] = Form.useForm<FormValues>();
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const requestIdParam = Number(searchParams.get("requestId"));
+  const editOrderId = Number(id);
+  const isEditMode = !Number.isNaN(editOrderId);
 
-  const [messageApi, contextHolder] = message.useMessage()
-  const [submitting, setSubmitting] = useState(false)
-  const [loadingPrefill, setLoadingPrefill] = useState(false)
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [medicines, setMedicines] = useState<Medicine[]>([])
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
+  const [messageApi, contextHolder] = message.useMessage();
+  const [submitting, setSubmitting] = useState(false);
+  const [loadingPrefill, setLoadingPrefill] = useState(false);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
 
   const medicineNameById = useMemo(() => {
     return medicines.reduce<Record<number, string>>((acc, medicine) => {
-      acc[medicine.medicineId] = medicine.name
-      return acc
-    }, {})
-  }, [medicines])
+      acc[medicine.medicineId] = medicine.name;
+      return acc;
+    }, {});
+  }, [medicines]);
 
   useEffect(() => {
     const init = async () => {
@@ -75,20 +80,22 @@ export default function CreatePurchaseOrderPage() {
           getActiveSuppliers(),
           getAllMedicines(),
           getWarehouses(),
-        ])
+        ]);
 
-        setSuppliers(supplierData)
-        setMedicines(medicineData)
-        setWarehouses(warehouseData)
+        setSuppliers(supplierData);
+        setMedicines(medicineData);
+        setWarehouses(warehouseData);
 
         if (isEditMode) {
-          setLoadingPrefill(true)
-          const order = await getPurchaseOrderById(editOrderId)
+          setLoadingPrefill(true);
+          const order = await getPurchaseOrderById(editOrderId);
 
           if (order.status !== "PENDING") {
-            messageApi.warning("Only PENDING purchase orders can be edited")
-            navigate(`/purchase-orders/${editOrderId}`)
-            return
+            messageApi.warning(
+              "Chỉ có thể chỉnh sửa các đơn mua hàng đang chờ xử lý",
+            );
+            navigate(`/purchase-orders/${editOrderId}`);
+            return;
           }
 
           form.setFieldsValue({
@@ -102,11 +109,13 @@ export default function CreatePurchaseOrderPage() {
               medicineId: item.medicine?.medicineId || 0,
               requestedQuantity: item.requestedQuantity || 1,
               unitPrice: item.unitPrice || 0,
-              expectedExpiryDate: item.expectedExpiryDate ? dayjs(item.expectedExpiryDate) : undefined,
+              expectedExpiryDate: item.expectedExpiryDate
+                ? dayjs(item.expectedExpiryDate)
+                : undefined,
               notes: item.notes,
             })),
-          })
-          return
+          });
+          return;
         }
 
         if (!requestIdParam || Number.isNaN(requestIdParam)) {
@@ -119,43 +128,49 @@ export default function CreatePurchaseOrderPage() {
                 unitPrice: 0,
               },
             ],
-          })
-          return
+          });
+          return;
         }
 
-        setLoadingPrefill(true)
-        const requests = await getMedicineRequests()
-        const sourceRequest = requests.find((request) => request.requestId === requestIdParam)
+        setLoadingPrefill(true);
+        const requests = await getMedicineRequests();
+        const sourceRequest = requests.find(
+          (request) => request.requestId === requestIdParam,
+        );
 
         if (!sourceRequest) {
-          messageApi.warning("Request not found. Please create PO manually")
-          return
+          messageApi.warning(
+            "Không tìm thấy yêu cầu. Vui lòng tạo đơn mua hàng thủ công",
+          );
+          return;
         }
 
         form.setFieldsValue({
           warehouseId: sourceRequest.warehouseId,
           notes: sourceRequest.notes,
-          expectedDeliveryDate: sourceRequest.requiredDate ? dayjs(sourceRequest.requiredDate) : undefined,
+          expectedDeliveryDate: sourceRequest.requiredDate
+            ? dayjs(sourceRequest.requiredDate)
+            : undefined,
           items: sourceRequest.items.map((item) => ({
             medicineId: item.medicineId,
             requestedQuantity: item.quantity,
             unitPrice: 0,
             notes: item.notes,
           })),
-        })
+        });
       } catch {
-        messageApi.error("Failed to load form data")
+        messageApi.error("Lỗi khi tải dữ liệu");
       } finally {
-        setLoadingPrefill(false)
+        setLoadingPrefill(false);
       }
-    }
+    };
 
-    void init()
-  }, [editOrderId, form, isEditMode, messageApi, navigate, requestIdParam])
+    void init();
+  }, [editOrderId, form, isEditMode, messageApi, navigate, requestIdParam]);
 
   const onFinish = async (values: FormValues) => {
     try {
-      setSubmitting(true)
+      setSubmitting(true);
 
       const payload: CreatePurchaseOrderPayload = {
         supplierId: values.supplierId,
@@ -173,23 +188,26 @@ export default function CreatePurchaseOrderPage() {
             : undefined,
           notes: item.notes,
         })),
-      }
-
+      };
       if (isEditMode) {
-        const updated = await updatePurchaseOrder(editOrderId, payload)
-        messageApi.success("Purchase order updated")
-        navigate(`/purchase-orders/${updated.purchaseOrderId}`)
+        const updated = await updatePurchaseOrder(editOrderId, payload);
+        messageApi.success("Cập nhật đơn mua hàng thành công");
+        navigate(`/purchase-orders/${updated.purchaseOrderId}`);
       } else {
-        const created = await createPurchaseOrder(payload)
-        messageApi.success("Purchase order created")
-        navigate(`/purchase-orders/${created.purchaseOrderId}`)
+        const created = await createPurchaseOrder(payload);
+        messageApi.success("Tạo đơn mua hàng thành công");
+        navigate(`/purchase-orders/${created.purchaseOrderId}`);
       }
     } catch {
-      messageApi.error(isEditMode ? "Failed to update purchase order" : "Failed to create purchase order")
+      messageApi.error(
+        isEditMode
+          ? "Cập nhật đơn mua hàng thất bại"
+          : "Tạo đơn mua hàng thất bại",
+      );
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <Layout className="min-h-screen bg-slate-100">
@@ -203,14 +221,18 @@ export default function CreatePurchaseOrderPage() {
 
       <Layout className="lg:ml-[260px]">
         <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title={isEditMode ? "Edit Purchase Order" : "Create Purchase Order"} subtitle="Procurement" />
+          <TopBar />
         </div>
 
         <Content className="p-6 pt-[114px]">
           <div className="rounded-2xl bg-white p-6 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
             <Form<FormValues> form={form} layout="vertical" onFinish={onFinish}>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <Form.Item label="Supplier" name="supplierId" rules={[{ required: true }]}>
+                <Form.Item
+                  label="Nhà cung cấp"
+                  name="supplierId"
+                  rules={[{ required: true }]}
+                >
                   <Select
                     showSearch
                     optionFilterProp="label"
@@ -221,29 +243,39 @@ export default function CreatePurchaseOrderPage() {
                   />
                 </Form.Item>
 
-                <Form.Item label="Warehouse" name="warehouseId" rules={[{ required: true }]}>
+                <Form.Item
+                  label="Kho"
+                  name="warehouseId"
+                  rules={[{ required: true }]}
+                >
                   <Select
                     options={warehouses.map((warehouse) => ({
                       value: warehouse.warehouseId,
-                      label: warehouse.name || `Warehouse ${warehouse.warehouseId}`,
+                      label:
+                        warehouse.name || `Warehouse ${warehouse.warehouseId}`,
                     }))}
                   />
                 </Form.Item>
 
-                <Form.Item label="Expected Delivery Date" name="expectedDeliveryDate">
+                <Form.Item
+                  label="Ngày giao dự kiến"
+                  name="expectedDeliveryDate"
+                >
                   <DatePicker className="w-full" />
                 </Form.Item>
               </div>
 
-              <Form.Item label="Notes" name="notes">
+              <Form.Item label="Ghi chú" name="notes">
                 <Input.TextArea rows={3} placeholder="PO notes" />
               </Form.Item>
 
               <Space className="mb-2 w-full justify-between">
-                <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">PO items</Text>
+                <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                  Danh sách sản phẩm trong đơn mua hàng
+                </Text>
                 {requestIdParam ? (
                   <Link to="/medicine-requests">
-                    <Button size="small">Back to requests</Button>
+                    <Button size="small">Quay lại yêu cầu</Button>
                   </Link>
                 ) : null}
               </Space>
@@ -254,7 +286,7 @@ export default function CreatePurchaseOrderPage() {
                   {
                     validator: async (_, value) => {
                       if (!value || value.length < 1) {
-                        throw new Error("At least one item is required")
+                        throw new Error("Phải có ít nhất 1 sản phẩm");
                       }
                     },
                   },
@@ -268,7 +300,7 @@ export default function CreatePurchaseOrderPage() {
                         className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-[2fr_1fr_1fr_1fr_2fr_auto]"
                       >
                         <Form.Item
-                          label="Medicine"
+                          label="Thuốc"
                           name={[field.name, "medicineId"]}
                           rules={[{ required: true }]}
                           className="!mb-0"
@@ -284,7 +316,7 @@ export default function CreatePurchaseOrderPage() {
                         </Form.Item>
 
                         <Form.Item
-                          label="Quantity"
+                          label="Số lượng"
                           name={[field.name, "requestedQuantity"]}
                           rules={[{ required: true }]}
                           className="!mb-0"
@@ -293,7 +325,7 @@ export default function CreatePurchaseOrderPage() {
                         </Form.Item>
 
                         <Form.Item
-                          label="Unit Price"
+                          label="Đơn giá"
                           name={[field.name, "unitPrice"]}
                           rules={[{ required: true }]}
                           className="!mb-0"
@@ -302,19 +334,31 @@ export default function CreatePurchaseOrderPage() {
                         </Form.Item>
 
                         <Form.Item
-                          label="Expected Expiry"
+                          label="Hạn sử dụng dự kiến"
                           name={[field.name, "expectedExpiryDate"]}
                           className="!mb-0"
                         >
                           <DatePicker className="w-full" />
                         </Form.Item>
 
-                        <Form.Item label="Item Notes" name={[field.name, "notes"]} className="!mb-0">
+                        <Form.Item
+                          label="Ghi chú"
+                          name={[field.name, "notes"]}
+                          className="!mb-0"
+                        >
                           <Input
                             placeholder={
-                              form.getFieldValue(["items", field.name, "medicineId"])
+                              form.getFieldValue([
+                                "items",
+                                field.name,
+                                "medicineId",
+                              ])
                                 ? medicineNameById[
-                                    form.getFieldValue(["items", field.name, "medicineId"])
+                                    form.getFieldValue([
+                                      "items",
+                                      field.name,
+                                      "medicineId",
+                                    ])
                                   ]
                                 : "Optional"
                             }
@@ -322,7 +366,11 @@ export default function CreatePurchaseOrderPage() {
                         </Form.Item>
 
                         <div className="flex items-end">
-                          <Button danger icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
+                          <Button
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => remove(field.name)}
+                          />
                         </div>
                       </div>
                     ))}
@@ -338,7 +386,7 @@ export default function CreatePurchaseOrderPage() {
                         })
                       }
                     >
-                      Add item
+                      Thêm sản phẩm
                     </Button>
                   </div>
                 )}
@@ -346,8 +394,12 @@ export default function CreatePurchaseOrderPage() {
 
               <div className="mt-6 flex items-center justify-end gap-2">
                 <Button onClick={() => navigate(-1)}>Cancel</Button>
-                <Button type="primary" htmlType="submit" loading={submitting || loadingPrefill}>
-                  {isEditMode ? "Save Changes" : "Create Purchase Order"}
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={submitting || loadingPrefill}
+                >
+                  {isEditMode ? "Lưu thay đổi" : "Tạo đơn mua hàng"}
                 </Button>
               </div>
             </Form>
@@ -355,5 +407,5 @@ export default function CreatePurchaseOrderPage() {
         </Content>
       </Layout>
     </Layout>
-  )
+  );
 }
