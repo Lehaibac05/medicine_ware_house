@@ -1,6 +1,8 @@
 package com.pharmacy.warehouse.controller;
 
+import com.pharmacy.warehouse.dto.ChangePasswordRequest;
 import com.pharmacy.warehouse.dto.CreateUserRequest;
+import com.pharmacy.warehouse.dto.ForceChangePasswordRequest;
 import com.pharmacy.warehouse.dto.UpdateUserRequest;
 import com.pharmacy.warehouse.dto.UserResponse;
 import com.pharmacy.warehouse.service.UserService;
@@ -12,8 +14,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/users")
@@ -75,5 +79,27 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public void deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
+    }
+
+    @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, String>> changePassword(@RequestBody ChangePasswordRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        
+        userService.changePassword(username, request);
+        
+        return ResponseEntity.ok(Map.of("message", "Đổi mật khẩu thành công"));
+    }
+
+    @PostMapping("/force-change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, String>> forceChangePassword(@RequestBody ForceChangePasswordRequest request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        
+        userService.forceChangePassword(username, request);
+        
+        return ResponseEntity.ok(Map.of("message", "Đổi mật khẩu thành công"));
     }
 }
