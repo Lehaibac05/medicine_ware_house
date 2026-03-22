@@ -60,8 +60,16 @@ public class AuthController {
 
             // Cập nhật lastLogin, lưu refresh token và trả về thông tin user
             UserResponse user = userService.recordLoginSuccess(request.getUsername(), refreshToken, refreshExpiry);
+            
+            // Kiểm tra xem có cần đổi mật khẩu không
+            boolean forceChangePassword = userService.shouldForceChangePassword(request.getUsername());
 
-            return ResponseEntity.ok(new LoginResponse(accessToken, refreshToken, user));
+            LoginResponse loginResponse = new LoginResponse();
+loginResponse.setToken(accessToken);
+loginResponse.setRefreshToken(refreshToken);
+loginResponse.setUser(user);
+loginResponse.setForceChangePassword(forceChangePassword);
+return ResponseEntity.ok(loginResponse);
 
         } catch (BadCredentialsException e) {
             log.error("Bad credentials for user: {}", request.getUsername());

@@ -1,6 +1,7 @@
 package com.pharmacy.warehouse.model;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -28,6 +29,7 @@ public class Batch {
     private LocalDate manufactureDate;
     private LocalDate expiryDate;
     private Integer quantity;
+    private BigDecimal unitPrice;
     private String status;
 
     @ManyToOne

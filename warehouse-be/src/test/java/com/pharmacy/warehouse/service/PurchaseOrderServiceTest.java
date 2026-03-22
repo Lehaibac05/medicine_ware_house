@@ -1,19 +1,5 @@
 package com.pharmacy.warehouse.service;
 
-import com.pharmacy.warehouse.dto.CreatePurchaseOrderRequest;
-import com.pharmacy.warehouse.dto.PurchaseOrderResponse;
-import com.pharmacy.warehouse.dto.SupplierResponse;
-import com.pharmacy.warehouse.model.*;
-import com.pharmacy.warehouse.model.PurchaseOrder.PurchaseOrderStatus;
-import com.pharmacy.warehouse.repository.*;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,9 +7,39 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.pharmacy.warehouse.dto.CreatePurchaseOrderRequest;
+import com.pharmacy.warehouse.dto.PurchaseOrderResponse;
+import com.pharmacy.warehouse.dto.SupplierResponse;
+import com.pharmacy.warehouse.model.Medicine;
+import com.pharmacy.warehouse.model.PurchaseOrder;
+import com.pharmacy.warehouse.model.PurchaseOrder.PurchaseOrderStatus;
+import com.pharmacy.warehouse.model.PurchaseOrderItem;
+import com.pharmacy.warehouse.model.Supplier;
+import com.pharmacy.warehouse.model.User;
+import com.pharmacy.warehouse.model.Warehouse;
+import com.pharmacy.warehouse.repository.MedicineRepository;
+import com.pharmacy.warehouse.repository.PurchaseOrderRepository;
+import com.pharmacy.warehouse.repository.SupplierRepository;
+import com.pharmacy.warehouse.repository.UserRepository;
+import com.pharmacy.warehouse.repository.WarehouseRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class PurchaseOrderServiceTest {

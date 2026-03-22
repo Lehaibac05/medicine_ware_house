@@ -8,5 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateOrderStatusRequest {
-    private String status;
+    private Boolean allowPartial;
+    private String reason;
 }

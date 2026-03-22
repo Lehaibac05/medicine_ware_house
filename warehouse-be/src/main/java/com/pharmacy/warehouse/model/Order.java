@@ -6,12 +6,16 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -28,35 +32,69 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long orderId;
 
-    private LocalDateTime orderDate;
-    private String status;
-    private Double subTotal;
-    private Double discountAmount;
-    private Double taxAmount;
-    private Double totalAmount;
+    @ManyToOne
+    @JoinColumn(name = "medicine_id")
+    private Medicine medicine;
+
+    private Integer requestedQuantity;
+    private Integer approvedQuantity;
+
+    private String department;
+    private String purpose;
+
+    private LocalDateTime requestDate;
+    private LocalDateTime neededDate;
+
+    @Enumerated(EnumType.STRING)
+    private IssueRequestStatus status;
+
+    private String rejectionReason;
 
     @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user;
+    @JoinColumn(name = "created_by")
+    private User createdBy;
+
+    @ManyToOne
+    @JoinColumn(name = "approved_by")
+    private User approvedBy;
+
+    @ManyToOne
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
+
+    private LocalDateTime approvedAt;
+    private LocalDateTime completedAt;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "order")
     @JsonIgnore
     private List<OrderItem> items;
 
-    @OneToMany(mappedBy = "order")
-    @JsonIgnore
-    private List<Delivery> deliveries;
-
-    @OneToMany(mappedBy = "order")
-    @JsonIgnore
-    private List<Payment> payments;
-
-    public void updateStock() {
-        // TODO: cập nhật tồn kho
+    public enum IssueRequestStatus {
+        PENDING,
+        APPROVED,
+        REJECTED,
+        COMPLETED
     }
 
-    public void checkThreshold() {
-        // TODO: kiểm tra tồn kho thấp
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+        if (requestDate == null) {
+            requestDate = now;
+        }
+        if (status == null) {
+            status = IssueRequestStatus.PENDING;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 
 }
