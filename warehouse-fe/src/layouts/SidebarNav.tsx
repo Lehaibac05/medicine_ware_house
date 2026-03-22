@@ -4,6 +4,7 @@ import type { MenuProps } from "antd";
 import {
   CreditCardOutlined,
   DashboardOutlined,
+  ExclamationCircleOutlined,
   FileTextOutlined,
   InboxOutlined,
   LineChartOutlined,
@@ -84,6 +85,33 @@ const baseMenuItems: NonNullable<MenuProps["items"]> = [
     ],
   },
   {
+    key: "issue",
+    icon: <ExclamationCircleOutlined />,
+    label: "Vấn đề",
+    children: [
+      {
+        key: "issue-request",
+        label: <Link to="/issue-request">Danh sách yêu cầu vấn đề</Link>,
+      },
+      {
+        key: "issue-create",
+        label: <Link to="/issue-request/create">Tạo yêu cầu vấn đề</Link>,
+      },
+      {
+        key: "issue-approval",
+        label: <Link to="/issue-request/approval">Phê duyệt vấn đề</Link>,
+      },
+      {
+        key: "issue-execute",
+        label: <Link to="/issue/execute">Thực hiện vấn đề</Link>,
+      },
+      {
+        key: "issue-history",
+        label: <Link to="/issue/history">Lịch sử vấn đề</Link>,
+      },
+    ],
+  },
+  {
     key: "finance",
     icon: <CreditCardOutlined />,
     label: "Tài chính",
@@ -106,6 +134,10 @@ const baseMenuItems: NonNullable<MenuProps["items"]> = [
       {
         key: "reports-financial",
         label: <Link to="/reports/financial">Báo cáo tài chính</Link>,
+      },
+      {
+        key: "reports-issues",
+        label: <Link to="/reports/issues">Báo cáo vấn đề</Link>,
       },
     ],
   },
@@ -148,6 +180,11 @@ const filterMenuItems = (
     isStaffOnly: boolean;
     canViewInventoryReport: boolean;
     canViewFinancialReport: boolean;
+    canViewIssueReport: boolean;
+    canCreateIssueRequest: boolean;
+    canApproveIssue: boolean;
+    canExecuteIssue: boolean;
+    canViewIssueHistory: boolean;
   },
 ): NonNullable<MenuProps["items"]> =>
   items
@@ -183,6 +220,33 @@ const filterMenuItems = (
         nextItem.key === "reports-financial" &&
         !flags.canViewFinancialReport
       ) {
+        return null;
+      }
+
+      if (
+        nextItem.key === "reports-issues" &&
+        !flags.canViewIssueReport
+      ) {
+        return null;
+      }
+
+      if (nextItem.key === "issue-request" && !flags.canCreateIssueRequest) {
+        return null;
+      }
+
+      if (nextItem.key === "issue-create" && !flags.canCreateIssueRequest) {
+        return null;
+      }
+
+      if (nextItem.key === "issue-approval" && !flags.canApproveIssue) {
+        return null;
+      }
+
+      if (nextItem.key === "issue-execute" && !flags.canExecuteIssue) {
+        return null;
+      }
+
+      if (nextItem.key === "issue-history" && !flags.canViewIssueHistory) {
         return null;
       }
 
@@ -246,18 +310,52 @@ function SidebarNav({
     roles.includes("ROLE_ADMIN") ||
     roles.includes("ROLE_WAREHOUSE_MANAGER") ||
     roles.includes("ROLE_ACCOUNTANT");
+  const canViewIssueReport =
+    roles.includes("ROLE_ADMIN") ||
+    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
+    roles.includes("ROLE_WAREHOUSE_STAFF") ||
+    roles.includes("ROLE_ACCOUNTANT");
+  const canCreateIssueRequest =
+    roles.includes("ROLE_ADMIN") ||
+    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
+    roles.includes("ROLE_WAREHOUSE_STAFF") ||
+    roles.includes("ROLE_ACCOUNTANT");
+  const canApproveIssue = roles.includes("ROLE_ADMIN") || roles.includes("ROLE_WAREHOUSE_MANAGER");
+  const canExecuteIssue = roles.includes("ROLE_ADMIN") || roles.includes("ROLE_WAREHOUSE_STAFF");
+  const canViewIssueHistory =
+    roles.includes("ROLE_ADMIN") ||
+    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
+    roles.includes("ROLE_WAREHOUSE_STAFF") ||
+    roles.includes("ROLE_ACCOUNTANT");
 
   const menuItems = filterMenuItems(baseMenuItems, {
     isManager,
     isStaffOnly,
     canViewInventoryReport,
     canViewFinancialReport,
+    canViewIssueReport,
+    canCreateIssueRequest,
+    canApproveIssue,
+    canExecuteIssue,
+    canViewIssueHistory,
   });
 
   const selectedKey = pathname.startsWith("/reports/financial")
     ? "reports-financial"
     : pathname.startsWith("/reports/inventory")
       ? "reports-inventory"
+    : pathname.startsWith("/reports/issues")
+      ? "reports-issues"
+    : pathname.startsWith("/issue-request/approval")
+      ? "issue-approval"
+    : pathname.startsWith("/issue-request/create")
+      ? "issue-create"
+    : pathname.startsWith("/issue-request")
+      ? "issue-request"
+    : pathname.startsWith("/issue/execute")
+      ? "issue-execute"
+    : pathname.startsWith("/issue/history")
+      ? "issue-history"
       : pathname.split("/")[1] || "dashboard";
 
   const defaultOpenKeys = findOpenKeys(menuItems, selectedKey);

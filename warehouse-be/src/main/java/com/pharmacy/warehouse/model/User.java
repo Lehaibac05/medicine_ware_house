@@ -42,6 +42,9 @@ public class User {
     private String resetToken;
     private LocalDateTime resetTokenExpiry;
 
+    // Force password change on first login
+    private Boolean forceChangePassword = false;
+
     @ManyToOne
     @JoinColumn(name = "role_id")
     private Role role;

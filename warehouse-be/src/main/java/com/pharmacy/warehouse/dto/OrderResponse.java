@@ -12,14 +12,39 @@ import java.util.List;
 @AllArgsConstructor
 public class OrderResponse {
     private Long orderId;
-    private LocalDateTime orderDate;
+    private Long medicineId;
+    private String medicineName;
+    private Integer requestedQuantity;
+    private Integer approvedQuantity;
+    private Integer issuedQuantity;
+    private Integer remainingQuantity;
+    private String department;
+    private String purpose;
+    private Long warehouseId;
+    private String warehouseName;
+    private LocalDateTime requestDate;
+    private LocalDateTime neededDate;
     private String status;
-    private Double subTotal;
-    private Double discountAmount;
-    private Double taxAmount;
-    private Double totalAmount;
-    private Long userId;
-    private String userName;
-    private String userEmail;
+    private String rejectionReason;
+    private Long createdById;
+    private String createdByName;
+    private Long approvedById;
+    private String approvedByName;
+    private LocalDateTime approvedAt;
+    private LocalDateTime completedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private Integer availableStockInWarehouse;
+    private Integer suggestedAvailableQuantity;
+    private List<StockOption> alternativeWarehouses;
     private List<OrderItemDTO> items;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StockOption {
+        private Long warehouseId;
+        private String warehouseName;
+        private Integer availableQuantity;
+    }
 }
