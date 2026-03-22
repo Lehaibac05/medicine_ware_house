@@ -1,14 +1,24 @@
-import { Button, Input, Layout, Select, Space, Typography, message } from "antd"
+import {
+  Button,
+  Input,
+  Select,
+  Space,
+  Typography,
+  message,
+} from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import BaseTable from "../../components/base/BaseTable"
-import SidebarNav from "../../layouts/SidebarNav"
-import TopBar from "../../layouts/TopBar"
-import { getPurchaseOrders, type PurchaseOrder } from "../../services/purchaseOrders"
+import {
+  getPurchaseOrders,
+  type PurchaseOrder,
+} from "../../services/purchaseOrders"
 import StatusTag from "../../components/common/StatusTag"
+import MainLayout from "../../layouts/MainLayout"
+import { apiFetch } from "../../services/api"
+import BaseFilterCard from "../../components/base/BaseFilterCard"
 
-const { Content, Sider } = Layout
 const { Text } = Typography
 
 type PurchaseOrderRow = {
@@ -21,33 +31,97 @@ type PurchaseOrderRow = {
   status: string
 }
 
-const statusTag = (status: string) => {
-  return <StatusTag domain="purchaseOrder" status={status} />
+type Supplier = {
+  supplierId: number
+  supplierName: string
+}
+
+type Warehouse = {
+  warehouseId: number
+  name: string
 }
 
 export default function PurchaseOrdersPage() {
   const [messageApi, contextHolder] = message.useMessage()
+
   const [loading, setLoading] = useState(false)
   const [orders, setOrders] = useState<PurchaseOrder[]>([])
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
 
+  const [search, setSearch] = useState("")
+
+  const [filters, setFilters] = useState({
+    status: "all",
+    supplierId: undefined as number | undefined,
+    warehouseId: undefined as number | undefined,
+  })
+  const [appliedFilters, setAppliedFilters] = useState(filters)
+
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  })
+
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
+
+  // ================= LOAD FILTER DATA =================
+  useEffect(() => {
+    const loadFilterData = async () => {
+      try {
+        const [supRes, wh] = await Promise.all([
+          apiFetch<any>("/suppliers"),
+          apiFetch<Warehouse[]>("/warehouses"),
+        ])
+
+        setSuppliers(supRes.content)
+        setWarehouses(wh)
+      } catch {
+        messageApi.error("Lỗi tải dữ liệu filter")
+      }
+    }
+
+    void loadFilterData()
+  }, [messageApi])
+
+  // ================= LOAD PURCHASE ORDERS =================
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true)
-        const data = await getPurchaseOrders()
-        setOrders(data)
+
+        const data = await getPurchaseOrders({
+          status: appliedFilters.status,
+          supplierId: appliedFilters.supplierId,
+          warehouseId: appliedFilters.warehouseId,
+          page: pagination.current - 1,
+          size: pagination.pageSize,
+        })
+
+        setOrders(data.content)
+        setPagination((prev) => ({
+          ...prev,
+          total: data.totalElements,
+        }))
       } catch {
-        messageApi.error("Failed to load purchase orders")
+        messageApi.error("Lỗi khi tải dữ liệu đơn mua hàng")
       } finally {
         setLoading(false)
       }
     }
 
     void load()
-  }, [messageApi])
+  }, [appliedFilters, pagination.current, pagination.pageSize, messageApi])
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPagination((prev) => ({
+      ...prev,
+      current: 1,
+    }))
+  }, [appliedFilters])
+
+  // ================= TABLE DATA =================
   const rows = useMemo<PurchaseOrderRow[]>(() => {
     return orders
       .filter((order) => {
@@ -58,10 +132,6 @@ export default function PurchaseOrdersPage() {
           order.supplier?.supplierName?.toLowerCase().includes(keyword)
         )
       })
-      .filter((order) => {
-        if (statusFilter === "all") return true
-        return order.status.toUpperCase() === statusFilter
-      })
       .map((order) => ({
         key: String(order.purchaseOrderId),
         purchaseOrderId: order.purchaseOrderId,
@@ -71,98 +141,172 @@ export default function PurchaseOrdersPage() {
         totalAmount: Number(order.totalAmount || 0),
         status: order.status,
       }))
-  }, [orders, search, statusFilter])
+  }, [orders, search])
 
   const columns: ColumnsType<PurchaseOrderRow> = [
     {
-      title: "PO Code",
+      title: "Mã đơn hàng",
       dataIndex: "poCode",
-      key: "poCode",
       render: (value: string) => <Text strong>{value}</Text>,
       width: 140,
     },
-    { title: "Supplier", dataIndex: "supplier", key: "supplier" },
-    { title: "Warehouse", dataIndex: "warehouse", key: "warehouse" },
+    { title: "Nhà cung cấp", dataIndex: "supplier" },
+    { title: "Kho", dataIndex: "warehouse" },
     {
-      title: "Total Amount",
+      title: "Tổng tiền",
       dataIndex: "totalAmount",
-      key: "totalAmount",
       render: (value: number) => value.toLocaleString(),
       width: 150,
     },
     {
-      title: "Status",
+      title: "Trạng thái",
       dataIndex: "status",
-      key: "status",
-      render: (value: string) => statusTag(value),
+      render: (value: string) => (
+        <StatusTag domain="purchaseOrder" status={value} />
+      ),
       width: 130,
     },
     {
-      title: "Action",
-      key: "action",
+      title: "Hành động",
       width: 120,
       render: (_, record) => (
         <Link to={`/purchase-orders/${record.purchaseOrderId}`}>
-          <Button size="small">View</Button>
+          <Button size="small">Xem</Button>
         </Link>
       ),
     },
   ]
 
   return (
-    <Layout className="min-h-screen bg-slate-100">
+    <MainLayout>
       {contextHolder}
-      <Sider
-        width={260}
-        className="hidden lg:block !bg-white border-r border-slate-200 px-4 py-6 !fixed left-0 top-0 h-screen"
-      >
-        <SidebarNav />
-      </Sider>
 
-      <Layout className="lg:ml-[260px]">
-        <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Purchase Orders" subtitle="Procurement" />
+      <BaseFilterCard
+        actions={
+          <div className="flex gap-2">
+            <Button
+              className="h-[40px] flex-1"
+              onClick={() =>
+                setFilters({
+                  status: "all",
+                  supplierId: undefined,
+                  warehouseId: undefined,
+                })
+              }
+            >
+              Reset
+            </Button>
+
+            <Button
+              type="primary"
+              className="h-[40px] flex-1"
+              onClick={() => {
+                setPagination((prev) => ({
+                  ...prev,
+                  current: 1,
+                }))
+                setAppliedFilters(filters)
+              }}
+            >
+              Áp dụng
+            </Button>
+          </div>
+        }
+      >
+        {/* STATUS */}
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Trạng thái</Text>
+          <Select
+            value={filters.status}
+            onChange={(value) =>
+              setFilters((prev) => ({ ...prev, status: value }))
+            }
+            options={[
+              { value: "all", label: "Tất cả trạng thái" },
+              { value: "PENDING", label: "Chờ xử lý" },
+              { value: "CONFIRMED", label: "Đã xác nhận" },
+              { value: "SHIPPING", label: "Đang giao hàng" },
+              { value: "RECEIVED", label: "Đã nhận hàng" },
+              { value: "APPROVED", label: "Đã duyệt" },
+            ]}
+          />
         </div>
 
-        <Content className="flex flex-col gap-6 p-6 pt-[114px]">
-          <div className="grid gap-3 rounded-2xl bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)] md:grid-cols-3">
-            <Input
-              placeholder="Search PO code or supplier"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Select
-              value={statusFilter}
-              onChange={setStatusFilter}
-              options={[
-                { value: "all", label: "All status" },
-                { value: "PENDING", label: "PENDING" },
-                { value: "CONFIRMED", label: "CONFIRMED" },
-                { value: "SHIPPING", label: "SHIPPED" },
-                { value: "RECEIVED", label: "RECEIVED" },
-                { value: "APPROVED", label: "APPROVED" },
-              ]}
-            />
-            <Space className="justify-end">
+        {/* SUPPLIER */}
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Nhà cung cấp</Text>
+          <Select
+            placeholder="Chọn nhà cung cấp"
+            allowClear
+            value={filters.supplierId}
+            onChange={(value) =>
+              setFilters((prev) => ({ ...prev, supplierId: value }))
+            }
+            options={suppliers.map((s) => ({
+              value: s.supplierId,
+              label: s.supplierName,
+            }))}
+          />
+        </div>
+
+        {/* WAREHOUSE */}
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Kho</Text>
+          <Select
+            placeholder="Chọn kho"
+            allowClear
+            value={filters.warehouseId}
+            onChange={(value) =>
+              setFilters((prev) => ({ ...prev, warehouseId: value }))
+            }
+            options={warehouses.map((w) => ({
+              value: w.warehouseId,
+              label: w.name,
+            }))}
+          />
+        </div>
+      </BaseFilterCard>
+
+      {/* ================= TABLE ================= */}
+      <BaseTable
+        title={() => (
+          <div className="flex items-center justify-between">
+            <Text className="text-[11px] uppercase text-slate-400">
+              Danh sách đơn mua hàng
+            </Text>
+
+            <Space>
+              <Input.Search
+                className="w-[260px]"
+                placeholder="Tìm kiếm..."
+                allowClear
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+
               <Link to="/purchase-orders/create">
-                <Button>Create PO</Button>
+                <Button type="primary">Tạo đơn mua hàng</Button>
               </Link>
             </Space>
           </div>
-
-          <BaseTable
-            title={() => (
-              <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-                Purchase order list
-              </Text>
-            )}
-            columns={columns}
-            dataSource={rows}
-            loading={loading}
-            cardClassName="!rounded-2xl shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
-          />
-        </Content>
-      </Layout>
-    </Layout>
+        )}
+        columns={columns}
+        dataSource={rows}
+        loading={loading}
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: pagination.total,
+          onChange: (page, pageSize) => {
+            setPagination((prev) => ({
+              ...prev,
+              current: page,
+              pageSize,
+            }))
+          },
+        }}
+        cardClassName="!rounded-2xl shadow"
+      />
+    </MainLayout>
   )
 }

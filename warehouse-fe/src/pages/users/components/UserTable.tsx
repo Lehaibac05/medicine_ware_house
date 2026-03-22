@@ -1,140 +1,337 @@
-import { Button, Flex, Input, Space, Typography, Tag } from "antd";
+import { Button, Flex, Input, Space, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import BaseTable from "../../../components/base/BaseTable";
+import { createUser, getUsers } from "../../../services/users";
+import type { User } from "../../../services/types";
+import type { UserFilters } from "../UserPage";
+import UserFormModal, { type UserFormValues } from "./UserFormModal";
+import { getRoles, type Role } from "../../../services/role";
 
 const { Text } = Typography;
 
 type UserRow = {
   key: string;
-  userId: string;
+  userId: number;
   username: string;
-  fullname: string;
+  fullName: string;
   email: string;
   role: string;
-  status: "Active" | "Inactive";
-  createdDate: string;
+  status: string;
+  lastLogin: string;
 };
 
-const data: UserRow[] = [
-  {
-    key: "USR-001",
-    userId: "#USR-001",
-    username: "admin01",
-    fullname: "Admin User",
-    email: "admin@pharmacy.com",
-    role: "Admin",
-    status: "Active",
-    createdDate: "2023-10-27",
-  },
-  {
-    key: "USR-002",
-    userId: "#USR-002",
-    username: "john_doe",
-    fullname: "John Doe",
-    email: "john@example.com",
-    role: "Staff",
-    status: "Active",
-    createdDate: "2023-10-25",
-  },
-  {
-    key: "USR-003",
-    userId: "#USR-003",
-    username: "mary_smith",
-    fullname: "Mary Smith",
-    email: "mary@example.com",
-    role: "Staff",
-    status: "Inactive",
-    createdDate: "2023-10-20",
-  },
-];
+type UserTableProps = {
+  filters?: UserFilters;
+  search?: string;
+  onSearch?: (value: string) => void;
+};
 
-const columns: ColumnsType<UserRow> = [
-  {
-    title: "User ID",
-    dataIndex: "userId",
-    key: "userId",
-    render: (value: string) => <Text strong>{value}</Text>,
-    width: 120,
-  },
-  {
-    title: "Username",
-    dataIndex: "username",
-    key: "username",
-    width: 160,
-  },
-  {
-    title: "Fullname",
-    dataIndex: "fullname",
-    key: "fullname",
-    width: 160,
-  },
-  {
-    title: "Email",
-    dataIndex: "email",
-    key: "email",
-    width: 200,
-  },
-  {
-    title: "Role",
-    dataIndex: "role",
-    key: "role",
-    width: 120,
-  },
-  {
-    title: "Status",
-    dataIndex: "status",
-    key: "status",
-    width: 120,
-    render: (value: UserRow["status"]) => {
-      if (value === "Active") return <Tag color="green">Active</Tag>;
-      return <Tag color="red">Inactive</Tag>;
+const normalizeRole = (roleName?: string | null) =>
+  roleName?.replace(/^ROLE_/i, "").toLowerCase() ?? "";
+
+const normalizeStatus = (status?: string | null) => status?.toLowerCase() ?? "";
+
+const formatDateTime = (value: string | null) => {
+  if (!value) {
+    return "Chưa đăng nhập";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(parsed);
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "Quản trị viên",
+  WAREHOUSE_MANAGER: "Quản lý kho",
+  WAREHOUSE_STAFF: "Nhân viên kho",
+  ACCOUNTANT: "Kế toán",
+  SUPPLIER: "Nhà cung cấp",
+};
+
+const getRoleLabelVN = (role: string) =>
+  ROLE_LABELS[role] ?? role;
+
+function UserTable({ filters, search, onSearch }: UserTableProps) {
+  const [data, setData] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [messageApi, contextHolder] = message.useMessage();
+  const [roleOptions, setRoleOptions] = useState<
+    { value: number; label: string }[]
+  >([]);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const roles = await getRoles();
+        setRoleOptions(
+          roles.map((r: any) => ({
+            value: r.roleId,
+            label: getRoleLabelVN(r.roleName),
+          }))
+        );
+      } catch (err) {
+        console.error("Lỗi getRoles:", err);
+        messageApi.error("Không tải được danh sách vai trò");
+      }
+    };
+
+    fetchRoles();
+  }, [messageApi]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, search]);
+
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      const pageResponse = await getUsers({
+        page: currentPage - 1,
+        size: pageSize,
+        search,
+        sortBy: "username",
+        sortDir: "asc",
+      });
+
+      setData(pageResponse.content);
+      setTotalItems(pageResponse.totalElements);
+
+      const maxPage = Math.max(pageResponse.totalPages, 1);
+      if (currentPage > maxPage) {
+        setCurrentPage(maxPage);
+      }
+    } catch {
+      messageApi.error("Không tải được danh sách người dùng");
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize, search, messageApi]);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
+
+  const filteredData = useMemo(() => {
+    return data.filter((user) => {
+      const matchesRole =
+        !filters?.role ||
+        filters.role === "all" ||
+        normalizeRole(user.roleName) === filters.role.toLowerCase();
+
+      const matchesStatus =
+        !filters?.status ||
+        filters.status === "all" ||
+        normalizeStatus(user.status) === filters.status.toLowerCase();
+
+      const matchesUserId =
+        !filters?.userId || user.userId.toString().includes(filters.userId);
+
+      const matchesDateRange =
+        !filters?.dateRange ||
+        !user.lastLogin ||
+        (() => {
+          const loginDate = user.lastLogin.slice(0, 10);
+          return (
+            loginDate >= filters.dateRange[0] &&
+            loginDate <= filters.dateRange[1]
+          );
+        })();
+
+      return (
+        matchesRole && matchesStatus && matchesUserId && matchesDateRange
+      );
+    });
+  }, [data, filters]);
+
+  const rowData = useMemo<UserRow[]>(
+    () =>
+      filteredData.map((user) => ({
+        key: user.userId.toString(),
+        userId: user.userId,
+        username: user.username,
+        fullName: user.fullName,
+        email: user.email,
+        // role: user.roleName ?? "--",
+        role: getRoleLabelVN(user.roleName ?? "") ?? "--",
+        status: user.status ?? "INACTIVE",
+        lastLogin: formatDateTime(user.lastLogin),
+      })),
+    [filteredData]
+  );
+
+  const openCreateModal = () => {
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+  };
+
+  const handleCreateUser = async (values: UserFormValues) => {
+    setSubmitting(true);
+
+    try {
+      await createUser({
+        username: values.username.trim(),
+        fullName: values.fullName.trim(),
+        email: values.email.trim(),
+        status: values.status,
+        roleId: values.roleId,
+      });
+
+      if (!values.roleId) {
+        messageApi.error("Vui lòng chọn vai trò");
+        return;
+      }
+      messageApi.success("Tạo người dùng thành công");
+      closeModal();
+      await loadUsers();
+    } catch {
+      messageApi.error("Không thể tạo người dùng");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const hasLocalFilters =
+    filters?.role !== "all" ||
+    filters?.status !== "all" ||
+    Boolean(filters?.userId) ||
+    Boolean(filters?.dateRange);
+
+  const columns: ColumnsType<UserRow> = [
+    {
+      title: "Mã người dùng",
+      dataIndex: "userId",
+      key: "userId",
+      render: (value: number) => <Text strong>{value}</Text>,
+      width: 160,
     },
-  },
-  {
-    title: "Created Date",
-    dataIndex: "createdDate",
-    key: "createdDate",
-    width: 160,
-  },
-  {
-    title: "Actions",
-    key: "actions",
-    width: 160,
-    render: () => (
-      <Space>
-        <Button size="small">View</Button>
-        <Button size="small">Export</Button>
-      </Space>
-    ),
-  },
-];
+    {
+      title: "Tên đăng nhập",
+      dataIndex: "username",
+      key: "username",
+      width: 160,
+    },
+    {
+      title: "Họ và tên",
+      dataIndex: "fullName",
+      key: "fullName",
+      width: 180,
+    },
+    {
+      title: "Email",
+      dataIndex: "email",
+      key: "email",
+      width: 220,
+    },
+    {
+      title: "Vai trò",
+      dataIndex: "role",
+      key: "role",
+      width: 140,
+      render: (value: string) => getRoleLabelVN(value),
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      width: 140,
+      render: (value: string) => {
+        if (normalizeStatus(value) === "active") {
+          return <Tag color="green">Hoạt động</Tag>;
+        }
 
-function UserTable() {
+        return <Tag color="red">Không hoạt động</Tag>;
+      },
+    },
+    {
+      title: "Lần đăng nhập cuối",
+      dataIndex: "lastLogin",
+      key: "lastLogin",
+      width: 180,
+    },
+    {
+      title: "Hành động",
+      key: "actions",
+      width: 100,
+      render: () => (
+        <Space>
+          <Button size="small">Xem</Button>
+        </Space>
+      ),
+    },
+  ];
+
   const tableHeader = (
     <Flex justify="space-between" align="center">
       <div className="flex flex-col">
         <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-          Users list
+          Danh sách người dùng
         </Text>
       </div>
       <div className="w-[300px]">
-        <Input.Search
-          placeholder="Search by user ID..."
-          className="w-[320px]"
-          allowClear
-        />
+        <div className="flex items-center gap-3">
+          <Input.Search
+            placeholder="Tìm kiếm theo tên hoặc email..."
+            className="w-[320px]"
+            value={search}
+            onChange={(event) => onSearch?.(event.target.value)}
+            allowClear
+          />
+          <Button type="primary" onClick={openCreateModal}>
+            Tạo người dùng
+          </Button>
+        </div>
       </div>
     </Flex>
   );
 
   return (
-    <BaseTable
-      title={() => tableHeader}
-      columns={columns}
-      dataSource={data}
-      scroll={{ x: 1100 }}
-      cardClassName="!rounded-2xl shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
-    />
+    <>
+      {contextHolder}
+
+      <BaseTable
+        title={() => tableHeader}
+        columns={columns}
+        dataSource={rowData}
+        loading={loading}
+        pagination={{
+          current: currentPage,
+          pageSize,
+          total: hasLocalFilters ? rowData.length : totalItems,
+          onChange: (page, nextPageSize) => {
+            setCurrentPage(page);
+            if (nextPageSize && nextPageSize !== pageSize) {
+              setPageSize(nextPageSize);
+            }
+          },
+        }}
+        cardClassName="!rounded-2xl shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
+      />
+
+      <UserFormModal
+        open={modalOpen}
+        roleOptions={roleOptions}
+        loading={submitting}
+        onCancel={closeModal}
+        onSubmit={handleCreateUser}
+      />
+    </>
   );
 }
 

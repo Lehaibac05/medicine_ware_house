@@ -3,6 +3,7 @@ import {
   approveMedicineRequest,
   createMedicineRequest,
   getMedicineRequests,
+  getMedicineRequestsPage,
   rejectMedicineRequest,
 } from "./medicineRequests"
 
@@ -72,6 +73,7 @@ export type GoodsReceipt = {
   receiptId: number
   receiptCode: string
   status: string
+  createdAt?: string
   receivedAt?: string
   approvedAt?: string
   qualityPassed?: boolean
@@ -169,9 +171,20 @@ export const workflowApi = {
     return response.data
   },
 
-  getRequests: async () => {
+  getRequests: async (params?: {
+    page?: number
+    size?: number
+    status?: string
+    medicineName?: string
+    startDate?: string
+    endDate?: string
+  }) => {
+    if (params?.page !== undefined && params?.size !== undefined) {
+      const data = await getMedicineRequestsPage(params as Parameters<typeof getMedicineRequestsPage>[0])
+      return data
+    }
     const data = await getMedicineRequests()
-    return data as MedicineRequest[]
+    return { content: data, totalElements: data.length, totalPages: 1, size: data.length, number: 0 }
   },
   createRequest: async (payload: {
     warehouseId: number
@@ -223,8 +236,16 @@ export const workflowApi = {
     const response = await http.post<GoodsReceipt>("/goods-receipts", payload)
     return response.data
   },
-  getGoodsReceipts: async () => {
-    const response = await http.get<GoodsReceipt[]>("/goods-receipts")
+  getGoodsReceipts: async (params?: { page?: number; size?: number }) => {
+    const query = new URLSearchParams()
+    if (params?.page !== undefined) {
+      query.append("page", String(params.page))
+    }
+    if (params?.size !== undefined) {
+      query.append("size", String(params.size))
+    }
+    const url = query.toString() ? `/goods-receipts?${query.toString()}` : "/goods-receipts"
+    const response = await http.get<any>(url)
     return response.data
   },
   approveGoodsReceipt: async (id: number, approved = true, notes?: string) => {

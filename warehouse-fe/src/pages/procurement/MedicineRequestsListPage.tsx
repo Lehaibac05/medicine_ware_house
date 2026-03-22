@@ -1,21 +1,24 @@
-import { Button, Layout, Space, Tag, Typography, message } from "antd"
+import { Button, DatePicker, Input, Select, Space, Tag, Typography, message } from "antd"
 import type { ColumnsType } from "antd/es/table"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import dayjs from "dayjs"
+import BaseFilterCard from "../../components/base/BaseFilterCard"
 import { Link } from "react-router-dom"
 import BaseTable from "../../components/base/BaseTable"
-import SidebarNav from "../../layouts/SidebarNav"
-import TopBar from "../../layouts/TopBar"
+import MainLayout from "../../layouts/MainLayout"
 import {
   approveMedicineRequest,
-  getMedicineRequests,
-  getMyMedicineRequests,
+  getMedicineRequestsPage,
+  getMyMedicineRequestsPage,
   rejectMedicineRequest,
+  type GetMedicineRequestsParams,
   type MedicineRequest,
+  type MedicineRequestStatus,
 } from "../../services/medicineRequests"
 import { hasAnyRole } from "../../utils/auth"
 
-const { Content, Sider } = Layout
 const { Text } = Typography
+const { RangePicker } = DatePicker
 
 type RequestRow = {
   key: string
@@ -25,6 +28,12 @@ type RequestRow = {
   requestedBy: string
   createdDate: string
   status: "PENDING" | "APPROVED" | "REJECTED"
+}
+
+type RequestFilters = {
+  medicineName: string
+  status?: MedicineRequestStatus
+  dateRange: [string | null, string | null]
 }
 
 const statusTag = (status: RequestRow["status"]) => {
@@ -44,27 +53,78 @@ export default function MedicineRequestsListPage() {
   const [messageApi, contextHolder] = message.useMessage()
   const [loading, setLoading] = useState(false)
   const [requests, setRequests] = useState<MedicineRequest[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
   const [actingRequestId, setActingRequestId] = useState<number | null>(null)
   const [actingType, setActingType] = useState<"approve" | "reject" | null>(null)
+  const [draftFilters, setDraftFilters] = useState<RequestFilters>({
+    medicineName: "",
+    status: undefined,
+    dateRange: [null, null],
+  })
+  const [appliedFilters, setAppliedFilters] = useState<RequestFilters>({
+    medicineName: "",
+    status: undefined,
+    dateRange: [null, null],
+  })
   const isManagerView = hasAnyRole(["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"])
 
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     try {
       setLoading(true)
-      const data = isManagerView
-        ? await getMedicineRequests()
-        : await getMyMedicineRequests()
-      setRequests(data)
+      const params: GetMedicineRequestsParams = {
+        page: currentPage - 1,
+        size: pageSize,
+        medicineName: appliedFilters.medicineName || undefined,
+        status: appliedFilters.status,
+        startDate: appliedFilters.dateRange[0]
+          ? `${appliedFilters.dateRange[0]}T00:00:00`
+          : undefined,
+        endDate: appliedFilters.dateRange[1]
+          ? `${appliedFilters.dateRange[1]}T23:59:59`
+          : undefined,
+      }
+      const page = isManagerView
+        ? await getMedicineRequestsPage(params)
+        : await getMyMedicineRequestsPage(params)
+      setRequests(page.content)
+      setTotalItems(page.totalElements)
+
+      const maxPage = Math.max(page.totalPages, 1)
+      if (currentPage > maxPage) {
+        setCurrentPage(maxPage)
+      }
     } catch {
       messageApi.error("Failed to load medicine requests")
     } finally {
       setLoading(false)
     }
-  }
+  }, [appliedFilters, currentPage, isManagerView, messageApi, pageSize])
 
   useEffect(() => {
     void loadRequests()
-  }, [isManagerView, messageApi])
+  }, [loadRequests])
+
+  const applyFilters = () => {
+    setCurrentPage(1)
+    setAppliedFilters({
+      medicineName: draftFilters.medicineName.trim(),
+      status: draftFilters.status,
+      dateRange: draftFilters.dateRange,
+    })
+  }
+
+  const resetFilters = () => {
+    const emptyFilters = {
+      medicineName: "",
+      status: undefined,
+      dateRange: [null, null] as [null, null],
+    }
+    setDraftFilters(emptyFilters)
+    setAppliedFilters(emptyFilters)
+    setCurrentPage(1)
+  }
 
   const onApprove = async (requestId: number) => {
     try {
@@ -183,21 +243,78 @@ export default function MedicineRequestsListPage() {
   ]
 
   return (
-    <Layout className="min-h-screen bg-slate-100">
+    <MainLayout>
       {contextHolder}
-      <Sider
-        width={260}
-        className="hidden lg:block !bg-white border-r border-slate-200 px-4 py-6 !fixed left-0 top-0 h-screen"
-      >
-        <SidebarNav />
-      </Sider>
+        <>
+          <BaseFilterCard
+            actions={
+              <div className="flex gap-2">
+                <Button className="h-[40px] flex-1" onClick={resetFilters}>
+                  Reset
+                </Button>
+                <Button type="primary" className="h-[40px] flex-1" onClick={applyFilters}>
+                  Apply
+                </Button>
+              </div>
+            }
+          >
+            <div className="flex flex-col gap-2">
+              <Text className="text-xs text-slate-500">Medicine</Text>
+              <Input
+                placeholder="Enter medicine name"
+                value={draftFilters.medicineName}
+                onChange={(event) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    medicineName: event.target.value,
+                  }))
+                }
+                onPressEnter={applyFilters}
+              />
+            </div>
 
-      <Layout className="lg:ml-[260px]">
-        <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Medicine Requests" subtitle="Procurement" />
-        </div>
+            <div className="flex flex-col gap-2">
+              <Text className="text-xs text-slate-500">Status</Text>
+              <Select
+                allowClear
+                placeholder="Select status"
+                value={draftFilters.status}
+                onChange={(value) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    status: value,
+                  }))
+                }
+                options={[
+                  { label: "Pending", value: "PENDING" },
+                  { label: "Approved", value: "APPROVED" },
+                  { label: "Rejected", value: "REJECTED" },
+                ]}
+              />
+            </div>
 
-        <Content className="flex flex-col gap-6 p-6 pt-[114px]">
+            <div className="flex flex-col gap-2">
+              <Text className="text-xs text-slate-500">Created Date</Text>
+              <RangePicker
+                className="w-full"
+                format="DD/MM/YYYY"
+                value={[
+                  draftFilters.dateRange[0] ? dayjs(draftFilters.dateRange[0]) : null,
+                  draftFilters.dateRange[1] ? dayjs(draftFilters.dateRange[1]) : null,
+                ]}
+                onChange={(_, dateStrings) =>
+                  setDraftFilters((prev) => ({
+                    ...prev,
+                    dateRange: [
+                      dateStrings[0] ? dayjs(dateStrings[0], "DD/MM/YYYY").format("YYYY-MM-DD") : null,
+                      dateStrings[1] ? dayjs(dateStrings[1], "DD/MM/YYYY").format("YYYY-MM-DD") : null,
+                    ],
+                  }))
+                }
+              />
+            </div>
+          </BaseFilterCard>
+
           <BaseTable
             title={() => (
               <div className="flex items-center justify-between">
@@ -219,10 +336,22 @@ export default function MedicineRequestsListPage() {
             columns={columns}
             dataSource={rows}
             loading={loading}
+            pagination={{
+              current: currentPage,
+              pageSize,
+              total: totalItems,
+              onChange: (page, nextPageSize) => {
+                if (nextPageSize && nextPageSize !== pageSize) {
+                  setPageSize(nextPageSize)
+                  setCurrentPage(1)
+                  return
+                }
+                setCurrentPage(page)
+              },
+            }}
             cardClassName="!rounded-2xl shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
           />
-        </Content>
-      </Layout>
-    </Layout>
+        </>
+    </MainLayout>
   )
 }

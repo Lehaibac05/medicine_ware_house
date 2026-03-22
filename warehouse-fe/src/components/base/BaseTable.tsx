@@ -33,6 +33,7 @@ function BaseTable<T extends object>({
         dataSource={dataSource}
         pagination={finalPagination}
         className="mt-1"
+        scroll={{ x: "max-content" }}
         {...rest}
       />
     </Card>

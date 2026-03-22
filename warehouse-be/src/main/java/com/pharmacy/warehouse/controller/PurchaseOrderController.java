@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.pharmacy.warehouse.dto.CreatePurchaseOrderRequest;
@@ -40,9 +42,18 @@ public class PurchaseOrderController {
     private final UserRepository userRepository;
 
     @GetMapping
-    public ResponseEntity<List<PurchaseOrderResponse>> getAllPurchaseOrders() {
-        log.info("GET /purchase-orders - Fetching all purchase orders");
-        List<PurchaseOrderResponse> orders = purchaseOrderService.getAllPurchaseOrders();
+    public ResponseEntity<Page<PurchaseOrderResponse>> getPurchaseOrders(
+            @RequestParam(required = false) Long supplierId,
+            @RequestParam(required = false) Long warehouseId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page) {
+
+        log.info("GET /purchase-orders - supplierId: {}, warehouseId: {}, status: {}, page: {}",
+                supplierId, warehouseId, status, page);
+
+        Page<PurchaseOrderResponse> orders = purchaseOrderService.filterPurchaseOrders(supplierId, warehouseId, status,
+                page);
+
         return ResponseEntity.ok(orders);
     }
 
@@ -63,7 +74,7 @@ public class PurchaseOrderController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
         headers.setContentDisposition(
-            ContentDisposition.attachment().filename(order.getOrderCode() + ".pdf").build());
+                ContentDisposition.attachment().filename(order.getOrderCode() + ".pdf").build());
 
         return ResponseEntity.ok()
                 .headers(headers)
@@ -89,12 +100,12 @@ public class PurchaseOrderController {
     public ResponseEntity<PurchaseOrderResponse> createPurchaseOrder(
             @RequestBody CreatePurchaseOrderRequest request,
             Authentication authentication) {
-        log.info("POST /purchase-orders - Creating purchase order by user: {}", 
+        log.info("POST /purchase-orders - Creating purchase order by user: {}",
                 authentication != null ? authentication.getName() : "unknown");
-        
+
         User user = userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         PurchaseOrderResponse order = purchaseOrderService.createPurchaseOrder(request, user.getUserId());
         return ResponseEntity.ok(order);
     }
@@ -130,11 +141,11 @@ public class PurchaseOrderController {
     public ResponseEntity<Map<String, String>> cancelPurchaseOrder(
             @PathVariable Long id,
             Authentication authentication) {
-        log.info("POST /purchase-orders/{}/cancel - Cancelling purchase order by user: {}", 
+        log.info("POST /purchase-orders/{}/cancel - Cancelling purchase order by user: {}",
                 id, authentication != null ? authentication.getName() : "unknown");
-        
+
         purchaseOrderService.cancelPurchaseOrder(id);
-        
+
         Map<String, String> response = new HashMap<>();
         response.put("message", "Purchase order cancelled successfully");
         return ResponseEntity.ok(response);

@@ -1,116 +1,241 @@
-import { Badge, Button, Menu, Image } from "antd";
+import { Button, Image, Menu } from "antd";
+import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import type { MenuProps } from "antd";
+import {
+  CreditCardOutlined,
+  DashboardOutlined,
+  FileTextOutlined,
+  InboxOutlined,
+  LineChartOutlined,
+  SettingOutlined,
+  ShoppingCartOutlined,
+} from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import logo from "../assets/pharmacy_logo.png";
 import { getUserRoles } from "../utils/auth";
-import {
-  DashboardOutlined,
-  InboxOutlined,
-  MedicineBoxOutlined,
-  AppstoreOutlined,
-  ShoppingCartOutlined,
-  ShoppingOutlined,
-  CreditCardOutlined,
-  LineChartOutlined,
-  AlertOutlined,
-  FileTextOutlined,
-  UserOutlined,
-  SettingOutlined,
-} from "@ant-design/icons";
+import { useEffect, useState } from "react";
+
+type SidebarMenuItem = NonNullable<MenuProps["items"]>[number];
 
 const baseMenuItems: NonNullable<MenuProps["items"]> = [
   {
-    key: "dashboard",
+    key: "overview",
     icon: <DashboardOutlined />,
-    label: <Link to="/dashboard">Dashboard</Link>,
-  },
-  {
-    key: "inventory",
-    icon: <InboxOutlined />,
-    label: <Link to="/inventory">Inventory</Link>,
-  },
-  {
-    key: "medicines",
-    icon: <MedicineBoxOutlined />,
-    label: <Link to="/medicines">Medicines</Link>,
-  },
-  {
-    key: "batches",
-    icon: <AppstoreOutlined />,
-    label: <Link to="/batches">Batches</Link>,
-  },
-  {
-    key: "orders",
-    icon: <ShoppingCartOutlined />,
-    label: <Link to="/orders">Orders</Link>,
-  },
-  {
-    key: "requests",
-    icon: <ShoppingOutlined />,
-    label: <Link to="/requests">Requests</Link>,
-  },
-  {
-    key: "medicine-requests",
-    icon: <ShoppingOutlined />,
-    label: <Link to="/medicine-requests">My Requests</Link>,
-  },
-  {
-    key: "purchase-orders",
-    icon: <ShoppingOutlined />,
-    label: <Link to="/purchase-orders">Purchase Orders</Link>,
-  },
-  {
-    key: "goods-receipts",
-    icon: <InboxOutlined />,
-    label: <Link to="/goods-receipts">Goods Receipts</Link>,
-  },
-  {
-    key: "payments",
-    icon: <CreditCardOutlined />,
-    label: <Link to="/payments">Supplier Invoices</Link>,
-  },
-  {
-    key: "forecast",
-    icon: <LineChartOutlined />,
-    label: <Link to="/forecast">Forecast</Link>,
-  },
-  {
-    key: "alerts",
-    icon: <AlertOutlined />,
-    label: <Link to="/alerts">Alerts</Link>,
-  },
-  {
-    key: "reports",
-    icon: <FileTextOutlined />,
-    label: "Reports",
+    label: "Tổng quan",
     children: [
       {
-        key: "reports-inventory",
-        label: <Link to="/reports/inventory">Inventory Report</Link>,
-      },
-      {
-        key: "reports-financial",
-        label: <Link to="/reports/financial">Financial Report</Link>,
+        key: "dashboard",
+        label: <Link to="/dashboard">Bảng điều khiển</Link>,
       },
     ],
   },
   {
-    key: "users",
-    icon: <UserOutlined />,
-    label: <Link to="/users">Users Management</Link>,
+    key: "warehouse",
+    icon: <InboxOutlined />,
+    label: "Kho",
+    children: [
+      {
+        key: "inventory",
+        label: <Link to="/inventory">Tồn kho</Link>,
+      },
+      {
+        key: "medicines",
+        label: <Link to="/medicines">Thuốc</Link>,
+      },
+      {
+        key: "batches",
+        label: <Link to="/batches">Lô thuốc</Link>,
+      },
+      {
+        key: "warehouses",
+        label: <Link to="/warehouses">Quản lí kho</Link>,
+      },
+    ],
   },
   {
-    key: "settings",
+    key: "procurement",
+    icon: <ShoppingCartOutlined />,
+    label: "Đơn hàng & yêu cầu",
+    children: [
+      {
+        key: "orders",
+        label: <Link to="/orders">Đơn hàng</Link>,
+      },
+      {
+        key: "requests",
+        label: <Link to="/requests">Yêu cầu</Link>,
+      },
+      {
+        key: "medicine-requests",
+        label: <Link to="/medicine-requests">Yêu cầu của tôi</Link>,
+      },
+      {
+        key: "purchase-orders",
+        label: <Link to="/purchase-orders">Đơn mua hàng</Link>,
+      },
+      {
+        key: "goods-receipts",
+        label: <Link to="/goods-receipts">Phiếu nhập kho</Link>,
+      },
+      {
+        key: "suppliers",
+        label: <Link to="/suppliers">Nhà cung cấp</Link>,
+      },
+    ],
+  },
+  {
+    key: "finance",
+    icon: <CreditCardOutlined />,
+    label: "Tài chính",
+    children: [
+      {
+        key: "payments",
+        label: <Link to="/payments">Hóa đơn nhà cung cấp</Link>,
+      },
+    ],
+  },
+  {
+    key: "reports",
+    icon: <FileTextOutlined />,
+    label: "Báo cáo",
+    children: [
+      {
+        key: "reports-inventory",
+        label: <Link to="/reports/inventory">Báo cáo tồn kho</Link>,
+      },
+      {
+        key: "reports-financial",
+        label: <Link to="/reports/financial">Báo cáo tài chính</Link>,
+      },
+    ],
+  },
+  {
+    key: "analytics",
+    icon: <LineChartOutlined />,
+    label: "Phân tích",
+    children: [
+      {
+        key: "forecast",
+        label: <Link to="/forecast">Dự báo</Link>,
+      },
+      {
+        key: "alerts",
+        label: <Link to="/alerts">Cảnh báo</Link>,
+      },
+    ],
+  },
+  {
+    key: "system",
     icon: <SettingOutlined />,
-    label: <Link to="/settings">Settings</Link>,
+    label: "Hệ thống",
+    children: [
+      {
+        key: "users",
+        label: <Link to="/users">Quản lý người dùng</Link>,
+      },
+      {
+        key: "settings",
+        label: <Link to="/settings">Cài đặt</Link>,
+      },
+    ],
   },
 ];
 
-function SidebarNav() {
+const filterMenuItems = (
+  items: NonNullable<MenuProps["items"]>,
+  flags: {
+    isManager: boolean;
+    isStaffOnly: boolean;
+    canViewInventoryReport: boolean;
+    canViewFinancialReport: boolean;
+  },
+): NonNullable<MenuProps["items"]> =>
+  items
+    .map((item) => {
+      if (!item || typeof item !== "object") return item;
+
+      const nextItem: Exclude<SidebarMenuItem, null> = { ...item };
+
+      if (nextItem.key === "requests" && !flags.isManager) {
+        return null;
+      }
+
+      if (nextItem.key === "warehouses" && !flags.isManager) {
+        return null;
+      }
+
+      if (nextItem.key === "suppliers" && !flags.isManager) {
+        return null;
+      }
+
+      if (nextItem.key === "medicine-requests" && !flags.isStaffOnly) {
+        return null;
+      }
+
+      if (
+        nextItem.key === "reports-inventory" &&
+        !flags.canViewInventoryReport
+      ) {
+        return null;
+      }
+
+      if (
+        nextItem.key === "reports-financial" &&
+        !flags.canViewFinancialReport
+      ) {
+        return null;
+      }
+
+      if ("children" in nextItem && Array.isArray(nextItem.children)) {
+        const children = filterMenuItems(nextItem.children, flags);
+        if (children.length === 0) {
+          return null;
+        }
+        nextItem.children = children;
+      }
+
+      return nextItem;
+    })
+    .filter((item): item is Exclude<SidebarMenuItem, null> => item !== null);
+
+const findOpenKeys = (
+  items: NonNullable<MenuProps["items"]>,
+  targetKey: string,
+  parents: string[] = [],
+): string[] => {
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+
+    if (item.key === targetKey) {
+      return parents;
+    }
+
+    if ("children" in item && Array.isArray(item.children)) {
+      const nested = findOpenKeys(item.children, targetKey, [
+        ...parents,
+        String(item.key),
+      ]);
+      if (nested.length > 0) {
+        return nested;
+      }
+    }
+  }
+
+  return [];
+};
+
+function SidebarNav({
+  collapsed,
+  setCollapsed,
+}: {
+  collapsed: boolean;
+  setCollapsed: (val: boolean) => void;
+}) {
   const { pathname } = useLocation();
   const roles = getUserRoles();
 
-  const isManager = roles.includes("ROLE_ADMIN") || roles.includes("ROLE_WAREHOUSE_MANAGER");
+  const isManager =
+    roles.includes("ROLE_ADMIN") || roles.includes("ROLE_WAREHOUSE_MANAGER");
   const isStaffOnly = roles.includes("ROLE_WAREHOUSE_STAFF") && !isManager;
   const canViewInventoryReport =
     roles.includes("ROLE_ADMIN") ||
@@ -122,93 +247,83 @@ function SidebarNav() {
     roles.includes("ROLE_WAREHOUSE_MANAGER") ||
     roles.includes("ROLE_ACCOUNTANT");
 
-  const menuItems = baseMenuItems.filter((item) => {
-    if (!item || typeof item !== "object") return true;
-
-    if (item.key === "requests") {
-      return isManager;
-    }
-
-    if (item.key === "medicine-requests") {
-      return isStaffOnly;
-    }
-
-    if (item.key === "reports") {
-      if (!canViewInventoryReport && !canViewFinancialReport) {
-        return false;
-      }
-
-      const reportItem = item as Exclude<NonNullable<MenuProps["items"]>[number], null>
-      if ("children" in reportItem && Array.isArray(reportItem.children)) {
-        reportItem.children = reportItem.children.filter((child) => {
-          if (!child || typeof child !== "object") return false
-          if (child.key === "reports-inventory") return canViewInventoryReport
-          if (child.key === "reports-financial") return canViewFinancialReport
-          return true
-        })
-      }
-    }
-
-    return true;
+  const menuItems = filterMenuItems(baseMenuItems, {
+    isManager,
+    isStaffOnly,
+    canViewInventoryReport,
+    canViewFinancialReport,
   });
 
-  const selectedKey =
-    pathname.startsWith("/reports/financial")
-      ? "reports-financial"
-      : pathname.startsWith("/reports/inventory")
+  const selectedKey = pathname.startsWith("/reports/financial")
+    ? "reports-financial"
+    : pathname.startsWith("/reports/inventory")
       ? "reports-inventory"
       : pathname.split("/")[1] || "dashboard";
-  const openKeys = pathname.startsWith("/reports/") ? ["reports"] : []
+
+  const defaultOpenKeys = findOpenKeys(menuItems, selectedKey);
+  const [openKeys, setOpenKeys] = useState<string[]>(defaultOpenKeys);
+
+  const handleOpenChange = (keys: string[]) => {
+    if (collapsed) return; 
+    setOpenKeys(keys);
+  };
+
+  useEffect(() => {
+    if (collapsed) {
+      setOpenKeys([]);
+    } else {
+      setOpenKeys(defaultOpenKeys);
+    }
+  }, [collapsed, selectedKey]);
 
   return (
-    <div className="flex h-full flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-50">
-          <Image
-            src={logo}
-            preview={false}
-            width={32}
-            height={32}
-            style={{ objectFit: "contain" }}
-          />
-        </div>
-        <div>
-          <div className="text-[15px] uppercase tracking-[0.12em] text-slate-400">
-            Warehouse
+    <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-50">
+            <Image
+              src={logo}
+              preview={false}
+              width={32}
+              height={32}
+              style={{ objectFit: "contain" }}
+            />
           </div>
-          <div className="text-[20px] font-semibold text-slate-900">
-            Pharmacy
-          </div>
+
+          {!collapsed && (
+            <div>
+              <div className="text-[15px] uppercase tracking-[0.12em] text-slate-400">
+                Warehouse
+              </div>
+              <div className="text-[20px] font-semibold text-slate-900">
+                Pharmacy
+              </div>
+            </div>
+          )}
         </div>
+
+        <Button
+          type="text"
+          className="rounded-full cursor-pointer"
+          onClick={() => {
+            setCollapsed(!collapsed);
+          }}
+          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+        />
       </div>
 
-      <Menu
-        mode="inline"
-        selectedKeys={[selectedKey]}
-        defaultOpenKeys={openKeys}
-        items={menuItems}
-        className="!border-0"
-        inlineCollapsed={false}
-      />
-
-      <div className="mt-auto rounded-2xl bg-slate-800 p-4 text-white">
-        <div className="text-[11px] uppercase tracking-[0.12em] text-indigo-200">
-          AI Insight
-        </div>
-
-        <div className="mt-2 text-sm font-semibold">Forecast accuracy</div>
-        <div className="mt-1 text-2xl font-bold">98.6%</div>
-
-        <div className="mt-1.5 mb-1.5">
-          <Badge
-            status="processing"
-            text={<span className="text-white">Updated 2 minutes ago</span>}
-          />
-        </div>
-
-        <Button type="primary" className="mt-3 w-full">
-          View insights
-        </Button>
+      <div className="sidebar-shell min-h-0 flex-1 overflow-y-auto pr-1">
+        <Menu
+          mode="inline"
+          selectedKeys={[selectedKey]}
+          openKeys={openKeys}
+          onOpenChange={handleOpenChange}
+          items={menuItems}
+          className={`sidebar-nav-menu !border-0 ${
+            collapsed ? "sidebar-collapsed" : ""
+          }`}
+          inlineIndent={18}
+        />
       </div>
     </div>
   );

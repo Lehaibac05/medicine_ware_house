@@ -1,6 +1,8 @@
 import { apiFetch } from "./api"
 import type { Medicine, PageResponse } from "./types"
 
+export type { Medicine }
+
 export type GetMedicinesParams = {
   page?: number
   size?: number

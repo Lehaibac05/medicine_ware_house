@@ -1,7 +1,16 @@
 import { apiFetch } from "./api"
-import type { Warehouse } from "./types"
+import type { PageResponse, Warehouse } from "./types"
 
-export const getWarehouses = async (): Promise<Warehouse[]> => {
+export const getWarehouses = async (params?: {
+  page?: number
+  size?: number
+}): Promise<Warehouse[] | PageResponse<Warehouse>> => {
+  if (params?.page !== undefined && params?.size !== undefined) {
+    const query = new URLSearchParams()
+    query.append("page", String(params.page))
+    query.append("size", String(params.size))
+    return apiFetch<PageResponse<Warehouse>>(`/warehouses?${query.toString()}`)
+  }
   return apiFetch<Warehouse[]>("/warehouses")
 }
 

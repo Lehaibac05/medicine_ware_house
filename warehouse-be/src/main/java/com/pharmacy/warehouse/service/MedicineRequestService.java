@@ -1,9 +1,16 @@
 package com.pharmacy.warehouse.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +18,7 @@ import com.pharmacy.warehouse.dto.CreateMedicineRequestRequest;
 import com.pharmacy.warehouse.dto.MedicineRequestResponse;
 import com.pharmacy.warehouse.model.Medicine;
 import com.pharmacy.warehouse.model.MedicineRequest;
+import com.pharmacy.warehouse.model.MedicineRequest.RequestStatus;
 import com.pharmacy.warehouse.model.MedicineRequestItem;
 import com.pharmacy.warehouse.model.User;
 import com.pharmacy.warehouse.model.Warehouse;
@@ -19,6 +27,8 @@ import com.pharmacy.warehouse.repository.MedicineRequestRepository;
 import com.pharmacy.warehouse.repository.UserRepository;
 import com.pharmacy.warehouse.repository.WarehouseRepository;
 
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,17 +43,71 @@ public class MedicineRequestService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public List<MedicineRequestResponse> getAllRequests() {
-        return medicineRequestRepository.findAllWithItems().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public Page<MedicineRequestResponse> getAllRequests(
+            String medicineName,
+            RequestStatus status,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            Pageable pageable) {
+        Specification<MedicineRequest> spec = (root, query, cb) -> cb.conjunction();
+
+        if (medicineName != null && !medicineName.isBlank()) {
+            spec = spec.and((root, query, cb) -> {
+                query.distinct(true);
+                Join<MedicineRequest, MedicineRequestItem> itemsJoin = root.join("items", JoinType.INNER);
+                Join<MedicineRequestItem, Medicine> medicineJoin = itemsJoin.join("medicine", JoinType.INNER);
+                return cb.like(cb.lower(medicineJoin.get("name")), "%" + medicineName.toLowerCase() + "%");
+            });
+        }
+
+        if (status != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
+        }
+
+        if (startDate != null) {
+            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("createdDate"), startDate));
+        }
+
+        if (endDate != null) {
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("createdDate"), endDate));
+        }
+
+        return loadDetailedPage(spec, pageable);
     }
 
     @Transactional(readOnly = true)
-    public List<MedicineRequestResponse> getMyRequests(Long userId) {
-        return medicineRequestRepository.findAllByRequestedByUserIdWithItems(userId).stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public Page<MedicineRequestResponse> getMyRequests(
+            Long userId,
+            String medicineName,
+            RequestStatus status,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            Pageable pageable) {
+        Specification<MedicineRequest> spec = Specification.where(
+            (root, query, cb) -> cb.equal(root.get("requestedBy").get("userId"), userId)
+        );
+
+        if (medicineName != null && !medicineName.isBlank()) {
+            spec = spec.and((root, query, cb) -> {
+                query.distinct(true);
+                Join<MedicineRequest, MedicineRequestItem> itemsJoin = root.join("items", JoinType.INNER);
+                Join<MedicineRequestItem, Medicine> medicineJoin = itemsJoin.join("medicine", JoinType.INNER);
+                return cb.like(cb.lower(medicineJoin.get("name")), "%" + medicineName.toLowerCase() + "%");
+            });
+        }
+
+        if (status != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
+        }
+
+        if (startDate != null) {
+            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("createdDate"), startDate));
+        }
+        if (endDate != null) {
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("createdDate"), endDate));
+        }
+
+        return loadDetailedPage(spec, pageable);
     }
 
     @Transactional
@@ -131,6 +195,37 @@ public class MedicineRequestService {
             throw new RuntimeException("Medicine request not found with id: " + requestId);
         }
         return request;
+    }
+
+    private Page<MedicineRequestResponse> loadDetailedPage(
+            Specification<MedicineRequest> spec,
+            Pageable pageable) {
+        Page<MedicineRequest> requestPage = medicineRequestRepository.findAll(spec, pageable);
+        List<Long> requestIds = requestPage.getContent().stream()
+                .map(MedicineRequest::getRequestId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (requestIds.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, requestPage.getTotalElements());
+        }
+
+        LinkedHashMap<Long, MedicineRequest> detailedRequestsById = medicineRequestRepository
+                .findAllByRequestIdInWithDetails(requestIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        MedicineRequest::getRequestId,
+                        request -> request,
+                        (left, right) -> left,
+                        LinkedHashMap::new));
+
+        List<MedicineRequestResponse> content = requestIds.stream()
+                .map(detailedRequestsById::get)
+                .filter(Objects::nonNull)
+                .map(this::toResponse)
+                .toList();
+
+        return new PageImpl<>(content, pageable, requestPage.getTotalElements());
     }
 
     private MedicineRequestResponse toResponse(MedicineRequest request) {

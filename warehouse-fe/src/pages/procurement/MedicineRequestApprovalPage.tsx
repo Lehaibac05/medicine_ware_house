@@ -1,9 +1,7 @@
-import { Button, Layout, Space, Typography, message } from "antd"
+import { Button, Space, Typography, message } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { useEffect, useMemo, useState } from "react"
 import BaseTable from "../../components/base/BaseTable"
-import SidebarNav from "../../layouts/SidebarNav"
-import TopBar from "../../layouts/TopBar"
 import { getInventory } from "../../services/inventory"
 import {
   approveMedicineRequest,
@@ -11,8 +9,8 @@ import {
   rejectMedicineRequest,
   type MedicineRequest,
 } from "../../services/medicineRequests"
+import MainLayout from "../../layouts/MainLayout"
 
-const { Content, Sider } = Layout
 const { Text } = Typography
 
 type ApprovalRow = {
@@ -124,34 +122,19 @@ export default function MedicineRequestApprovalPage() {
   ]
 
   return (
-    <Layout className="min-h-screen bg-slate-100">
+    <MainLayout>
       {contextHolder}
-      <Sider
-        width={260}
-        className="hidden lg:block !bg-white border-r border-slate-200 px-4 py-6 !fixed left-0 top-0 h-screen"
-      >
-        <SidebarNav />
-      </Sider>
-
-      <Layout className="lg:ml-[260px]">
-        <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Request Approval" subtitle="Manager Review" />
-        </div>
-
-        <Content className="flex flex-col gap-6 p-6 pt-[114px]">
-          <BaseTable
-            title={() => (
-              <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-                Pending medicine requests
-              </Text>
-            )}
-            columns={columns}
-            dataSource={rows}
-            loading={loading}
-            cardClassName="!rounded-2xl shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
-          />
-        </Content>
-      </Layout>
-    </Layout>
+      <BaseTable
+        title={() => (
+          <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+            Pending medicine requests
+          </Text>
+        )}
+        columns={columns}
+        dataSource={rows}
+        loading={loading}
+        cardClassName="!rounded-2xl shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
+      />
+    </MainLayout>
   )
 }

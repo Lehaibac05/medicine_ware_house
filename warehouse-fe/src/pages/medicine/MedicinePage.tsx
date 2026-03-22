@@ -1,15 +1,13 @@
-import { Button, Layout, Select, Typography } from "antd";
+import { Button, Select, Typography } from "antd";
 import { useState } from "react";
 import MedicineTable from "./components/MedicineTable";
 import BaseFilterCard from "../../components/base/BaseFilterCard";
-import SidebarNav from "../../layouts/SidebarNav";
-import TopBar from "../../layouts/TopBar";
+import MainLayout from "../../layouts/MainLayout";
 
-const { Content, Sider } = Layout;
 const { Text } = Typography;
 
 const manufacturerOptions = [
-  { value: "all", label: "All manufacturer" },
+  { value: "all", label: "Tất cả nhà sản xuất" },
   { value: "DHG Pharma", label: "DHG Pharma" },
   { value: "Imexpharm", label: "Imexpharm" },
   { value: "Sanofi", label: "Sanofi" },
@@ -17,7 +15,7 @@ const manufacturerOptions = [
 ];
 
 const conditionOptions = [
-  { value: "all", label: "All condition" },
+  { value: "all", label: "Tất cả điều kiện bảo quản" },
   { value: "Room temperature", label: "Room temperature" },
   { value: "Dry place", label: "Dry place" },
   { value: "Cold storage", label: "Cold storage" },
@@ -25,10 +23,10 @@ const conditionOptions = [
 ];
 
 const sortOptions = [
-  { value: "name_asc", label: "Name A -> Z" },
-  { value: "name_desc", label: "Name Z -> A" },
-  { value: "manufacturer_asc", label: "Manufacturer A -> Z" },
-  { value: "manufacturer_desc", label: "Manufacturer Z -> A" },
+  { value: "name_asc", label: "Tên thuốc A -> Z" },
+  { value: "name_desc", label: "Tên thuốc Z -> A" },
+  { value: "manufacturer_asc", label: "Tên nhà sản xuất A -> Z" },
+  { value: "manufacturer_desc", label: "Tên nhà sản xuất Z -> A" },
 ];
 
 type MedicineFilters = {
@@ -65,69 +63,56 @@ const MedicinePage = () => {
   };
 
   return (
-    <Layout className="min-h-screen bg-slate-100">
-      <Sider
-        width={260}
-        className="hidden lg:block !bg-white border-r border-slate-200 px-4 py-6 !fixed left-0 top-0 h-screen"
+    <MainLayout>
+      <BaseFilterCard
+        actions={
+          <div className="flex gap-2">
+            <Button className="h-[40px] flex-1" onClick={handleReset}>
+              Khôi phục
+            </Button>
+            <Button
+              type="primary"
+              className="h-[40px] flex-1"
+              onClick={handleApplyFilters}
+            >
+              Áp dụng
+            </Button>
+          </div>
+        }
       >
-        <SidebarNav />
-      </Sider>
-
-      <Layout className="lg:ml-[260px]">
-        <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Medicine" subtitle="Warehouse" />
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Nhà sản xuất</Text>
+          <Select
+            options={manufacturerOptions}
+            value={manufacturer}
+            onChange={setManufacturer}
+          />
         </div>
 
-        <Content className="flex flex-col gap-6 p-6 pt-[114px]">
-          <BaseFilterCard
-            actions={
-              <div className="flex gap-2">
-                <Button className="h-[40px] flex-1" onClick={handleReset}>
-                  Reset
-                </Button>
-                <Button
-                  type="primary"
-                  className="h-[40px] flex-1"
-                  onClick={handleApplyFilters}
-                >
-                  Apply
-                </Button>
-              </div>
-            }
-          >
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Manufacturer</Text>
-              <Select
-                options={manufacturerOptions}
-                value={manufacturer}
-                onChange={setManufacturer}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Storage Condition</Text>
-              <Select
-                options={conditionOptions}
-                value={storageCondition}
-                onChange={setStorageCondition}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Sort by</Text>
-              <Select options={sortOptions} value={sort} onChange={setSort} />
-            </div>
-          </BaseFilterCard>
-
-          <MedicineTable
-            filters={appliedFilters}
-            search={search}
-            sort={sort}
-            onSearch={setSearch}
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">
+            Điều kiện bảo quản
+          </Text>
+          <Select
+            options={conditionOptions}
+            value={storageCondition}
+            onChange={setStorageCondition}
           />
-        </Content>
-      </Layout>
-    </Layout>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Sắp xếp theo</Text>
+          <Select options={sortOptions} value={sort} onChange={setSort} />
+        </div>
+      </BaseFilterCard>
+
+      <MedicineTable
+        filters={appliedFilters}
+        search={search}
+        sort={sort}
+        onSearch={setSearch}
+      />
+    </MainLayout>
   );
 };
 
