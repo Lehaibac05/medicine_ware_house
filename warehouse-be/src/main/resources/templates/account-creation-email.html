@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông tin tài khoản - Hệ thống Quản lý Kho Thuốc</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #007bff;
+            margin: 0;
+            font-size: 28px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .info-box {
+            background-color: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .info-box h3 {
+            color: #007bff;
+            margin-top: 0;
+        }
+        .info-item {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .info-item strong {
+            color: #495057;
+            display: inline-block;
+            min-width: 120px;
+        }
+        .password {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            color: #dc3545;
+            background-color: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            border: 2px dashed #dc3545;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #007bff;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 20px 0;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Hệ thống Quản lý Kho Thuốc</h1>
+            <h2>Chào mừng <span th:text="${fullName}">Người dùng</span>!</h2>
+        </div>
+
+        <div class="content">
+            <p>Tài khoản của bạn đã được tạo thành công trong Hệ thống Quản lý Kho Thuốc. Dưới đây là thông tin đăng nhập của bạn:</p>
+
+            <div class="info-box">
+                <h3>📋 Thông tin tài khoản</h3>
+                <div class="info-item">
+                    <strong>Họ và tên:</strong> <span th:text="${fullName}">Tên người dùng</span>
+                </div>
+                <div class="info-item">
+                    <strong>Tên đăng nhập:</strong> <span th:text="${username}">username</span>
+                </div>
+                <div class="info-item">
+                    <strong>Mật khẩu tạm thời:</strong>
+                    <div class="password" th:text="${temporaryPassword}">12345@</div>
+                </div>
+            </div>
+
+            <div class="warning">
+                <strong>⚠️ Lưu ý quan trọng:</strong>
+                <ul>
+                    <li>Đây là mật khẩu tạm thời được hệ thống tự động tạo</li>
+                    <li>Bạn <strong>bắt buộc</strong> phải đổi mật khẩu ngay sau lần đăng nhập đầu tiên</li>
+                    <li>Vui lòng không chia sẻ thông tin tài khoản cho người khác</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center;">
+                <a th:href="${loginUrl}" class="btn">🔐 Đăng nhập ngay</a>
+            </div>
+
+            <p><strong>Hướng dẫn đăng nhập:</strong></p>
+            <ol>
+                <li>Nhấn vào nút "Đăng nhập ngay" ở trên hoặc truy cập: <span th:text="${loginUrl}">http://localhost:3000/login</span></li>
+                <li>Nhập tên đăng nhập và mật khẩu tạm thời được cung cấp</li>
+                <li>Hệ thống sẽ yêu cầu bạn đổi mật khẩu ngay lập tức</li>
+                <li>Nhập mật khẩu mới của bạn và hoàn tất quá trình</li>
+            </ol>
+        </div>
+
+        <div class="footer">
+            <p>📧 Email này được gửi tự động từ Hệ thống Quản lý Kho Thuốc</p>
+            <p>Nếu bạn có câu hỏi nào, vui lòng liên hệ quản trị viên hệ thống</p>
+            <p>© 2024 Hệ thống Quản lý Kho Thuốc. Tất cả quyền được bảo lưu.</p>
+        </div>
+    </div>
+</body>
+</html>

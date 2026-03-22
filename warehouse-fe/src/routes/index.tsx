@@ -11,9 +11,14 @@ import PaymentPage from "../pages/payments/PaymentPage"
 import ForecastPage from "../pages/forecast/ForecastPage"
 import AlertsPage from "../pages/alerts/AlertsPage"
 import SettingsPage from "../pages/settings/SettingsPage"
-import OrdersPage from "../pages/orders/OrdersPage"
+import CreateIssueRequestPage from "../pages/issue/CreateIssueRequestPage"
+import IssueRequestListPage from "../pages/issue/IssueRequestListPage"
+import IssueApprovalPage from "../pages/issue/IssueApprovalPage"
+import IssueExecutionPage from "../pages/issue/IssueExecutionPage"
+import IssueHistoryPage from "../pages/issue/IssueHistoryPage"
 import InventoryReportPage from "../pages/reports/InventoryReportPage"
 import FinancialReportPage from "../pages/reports/FinancialReportPage"
+import IssueReportPage from "../pages/reports/IssueReportPage"
 import UserPage from "../pages/users/UserPage"
 import WarehousePage from "../pages/warehouses/WarehousePage"
 import SupplierPage from "../pages/suppliers/SupplierPage"
@@ -103,10 +108,42 @@ const AppRouter = () => {
           }
         />
         <Route
-          path="/orders"
+          path="/issue-request/create"
           element={
-            <ProtectedRoute>
-              <OrdersPage />
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT"]}>
+              <CreateIssueRequestPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/issue-request"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT"]}>
+              <IssueRequestListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/issue-request/approval"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"]}>
+              <IssueApprovalPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/issue/execute"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_STAFF"]}>
+              <IssueExecutionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/issue/history"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT"]}>
+              <IssueHistoryPage />
             </ProtectedRoute>
           }
         />
@@ -171,6 +208,14 @@ const AppRouter = () => {
           element={
             <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_ACCOUNTANT", "ROLE_WAREHOUSE_MANAGER"]}>
               <FinancialReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/issues"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_ACCOUNTANT", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF"]}>
+              <IssueReportPage />
             </ProtectedRoute>
           }
         />
