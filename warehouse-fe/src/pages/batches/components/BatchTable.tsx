@@ -1,15 +1,16 @@
 import {
   Button,
+  Input,
   Popconfirm,
   Space,
   Tag,
   Typography,
-  Input,
   message,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
+import { useEffect, useMemo, useState } from "react";
 import BaseTable from "../../../components/base/BaseTable";
 import {
   createBatch,
@@ -32,24 +33,34 @@ type BatchRow = {
   name: string;
   manufacturer: string;
   storageCondition: string;
+  manufactureDate: string;
+  expiryDate: string;
   mfg: string;
   expiry: string;
   quantity: string;
   warehouse: string;
+  warehouseId: number | null;
   status: "AVAILABLE" | "EXPIRED";
 };
 
 type BatchFilters = {
-  medicineName: string;
-  manufacturer: string;
-  storageCondition: string;
+  warehouseId: number | "all";
+  dateRange: [Dayjs | null, Dayjs | null] | null;
   status: string;
+};
+
+type BatchFilterOptions = {
+  warehouses: Array<{
+    value: number;
+    label: string;
+  }>;
 };
 
 type BatchTableProps = {
   filters?: BatchFilters;
   search?: string;
   onSearch?: (value: string) => void;
+  onFilterOptionsChange?: (options: BatchFilterOptions) => void;
 };
 
 const getBatchStatus = (expiryDate: string): BatchRow["status"] => {
@@ -60,7 +71,12 @@ const getBatchStatus = (expiryDate: string): BatchRow["status"] => {
   return "AVAILABLE";
 };
 
-function BatchTable({ filters, search, onSearch }: BatchTableProps) {
+function BatchTable({
+  filters,
+  search,
+  onSearch,
+  onFilterOptionsChange,
+}: BatchTableProps) {
   const [data, setData] = useState<Batch[]>([]);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -69,25 +85,56 @@ function BatchTable({ filters, search, onSearch }: BatchTableProps) {
   const [submitting, setSubmitting] = useState(false);
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   useEffect(() => {
     void loadPageData();
   }, []);
 
+  useEffect(() => {
+    void loadBatches();
+  }, [pagination.current, pagination.pageSize]);
+
+  useEffect(() => {
+    onFilterOptionsChange?.({
+      warehouses: warehouses
+        .map((warehouse) => ({
+          value: warehouse.warehouseId,
+          label: warehouse.name || `Kho ${warehouse.warehouseId}`,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    });
+  }, [warehouses, onFilterOptionsChange]);
+
   const loadPageData = async () => {
     setLoading(true);
     try {
-      const [batchesResponse, medicinesResponse, warehousesResponse] =
-        await Promise.all([
-          getAllBatches(),
-          getAllMedicines(),
-          getWarehouses(),
-        ]);
-      setData(batchesResponse);
+      const batchesResponse = await getAllBatches({
+        page: pagination.current - 1,
+        size: pagination.pageSize,
+      });
+      const batchesData = Array.isArray(batchesResponse)
+        ? batchesResponse
+        : batchesResponse.content;
+      const total =
+        Array.isArray(batchesResponse) ? batchesResponse.length : batchesResponse.totalElements;
+      const [medicinesResponse, warehousesResponse] = await Promise.all([
+        getAllMedicines(),
+        getWarehouses(),
+      ]);
+      setData(batchesData);
       setMedicines(medicinesResponse);
       setWarehouses(warehousesResponse);
+      setPagination((prev) => ({
+        ...prev,
+        total,
+      }));
     } catch (error) {
-      messageApi.error("Failed to load batch data");
+      messageApi.error("Lỗi khi tải dữ liệu");
       console.error(error);
     } finally {
       setLoading(false);
@@ -97,10 +144,22 @@ function BatchTable({ filters, search, onSearch }: BatchTableProps) {
   const loadBatches = async () => {
     setLoading(true);
     try {
-      const batches = await getAllBatches();
-      setData(batches);
+      const batchesResponse = await getAllBatches({
+        page: pagination.current - 1,
+        size: pagination.pageSize,
+      });
+      const batchesData = Array.isArray(batchesResponse)
+        ? batchesResponse
+        : batchesResponse.content;
+      const total =
+        Array.isArray(batchesResponse) ? batchesResponse.length : batchesResponse.totalElements;
+      setData(batchesData);
+      setPagination((prev) => ({
+        ...prev,
+        total,
+      }));
     } catch (error) {
-      messageApi.error("Failed to load batches");
+      messageApi.error("Lỗi khi tải dữ liệu lô thuốc.");
       console.error(error);
     } finally {
       setLoading(false);
@@ -109,9 +168,11 @@ function BatchTable({ filters, search, onSearch }: BatchTableProps) {
 
   const rowData = useMemo<BatchRow[]>(() => {
     const normalizedName = search?.toLowerCase().trim() || "";
-    const selectedManufacturer = filters?.manufacturer || "all";
-    const selectedStorage = filters?.storageCondition || "all";
+    const selectedWarehouseId = filters?.warehouseId || "all";
+    const selectedDateRange = filters?.dateRange;
     const selectedStatus = filters?.status || "all";
+    const startDate = selectedDateRange?.[0]?.startOf("day") || null;
+    const endDate = selectedDateRange?.[1]?.endOf("day") || null;
 
     return data
       .map((batch) => {
@@ -127,10 +188,13 @@ function BatchTable({ filters, search, onSearch }: BatchTableProps) {
           name: medicine?.name || "N/A",
           manufacturer: medicine?.manufacturer || "",
           storageCondition: medicine?.storageCondition || "",
+          manufactureDate: batch.manufactureDate,
+          expiryDate: batch.expiryDate,
           mfg: dayjs(batch.manufactureDate).format("DD/MM/YYYY"),
           expiry: dayjs(batch.expiryDate).format("DD/MM/YYYY"),
           quantity: batch.quantity.toLocaleString(),
           warehouse: warehouse?.name || "N/A",
+          warehouseId: warehouse?.warehouseId ?? null,
           status,
         };
       })
@@ -142,15 +206,15 @@ function BatchTable({ filters, search, onSearch }: BatchTableProps) {
           return false;
         }
         if (
-          selectedManufacturer !== "all" &&
-          row.manufacturer.toLowerCase() !== selectedManufacturer.toLowerCase()
+          selectedWarehouseId !== "all" &&
+          row.warehouseId !== selectedWarehouseId
         ) {
           return false;
         }
-        if (
-          selectedStorage !== "all" &&
-          row.storageCondition.toLowerCase() !== selectedStorage.toLowerCase()
-        ) {
+        if (startDate && dayjs(row.manufactureDate).isBefore(startDate)) {
+          return false;
+        }
+        if (endDate && dayjs(row.expiryDate).isAfter(endDate)) {
           return false;
         }
         if (
@@ -161,12 +225,12 @@ function BatchTable({ filters, search, onSearch }: BatchTableProps) {
         }
         return true;
       });
-  }, [data, filters]);
+  }, [data, filters, search]);
 
-  const openCreateModal = () => {
-    setEditingBatch(null);
-    setModalOpen(true);
-  };
+  // const openCreateModal = () => {
+  //   setEditingBatch(null);
+  //   setModalOpen(true);
+  // };
 
   const openEditModal = (batchId: number) => {
     const batch = data.find((item) => item.batchId === batchId);
@@ -198,20 +262,20 @@ function BatchTable({ filters, search, onSearch }: BatchTableProps) {
       if (editingBatch) {
         const existingMedicineId = editingBatch.medicine?.medicineId;
         if (!existingMedicineId) {
-          messageApi.error("This batch has invalid medicine information");
+          messageApi.error("Lô thuốc không có thông tin thuốc.");
           return;
         }
         await updateBatch(existingMedicineId, editingBatch.batchId, payload);
-        messageApi.success("Batch updated successfully");
+        messageApi.success("Cập nhật lô thuốc thành công.");
       } else {
         await createBatch(values.medicineId, payload);
-        messageApi.success("Batch created successfully");
+        messageApi.success("Tạo lô thuốc thành công.");
       }
 
       closeModal();
       await loadBatches();
     } catch (error) {
-      messageApi.error("Failed to save batch");
+      messageApi.error("Lỗi khi cập nhật lô thuốc.");
       console.error(error);
     } finally {
       setSubmitting(false);
@@ -221,60 +285,60 @@ function BatchTable({ filters, search, onSearch }: BatchTableProps) {
   const handleDelete = async (batch: BatchRow) => {
     try {
       if (batch.medicineId < 0) {
-        messageApi.error("This batch has invalid medicine information");
+        messageApi.error("Lô thuốc không có thông tin thuốc.");
         return;
       }
       await deleteBatch(batch.medicineId, batch.batchId);
-      messageApi.success("Batch deleted successfully");
+      messageApi.success("Xóa lô thuốc thành công.");
       await loadBatches();
     } catch (error) {
-      messageApi.error("Failed to delete batch");
+      messageApi.error("Lỗi khi xóa lô thuốc.");
       console.error(error);
     }
   };
 
   const columns: ColumnsType<BatchRow> = [
     {
-      title: "Batch number",
+      title: "Số lô thuốc",
       dataIndex: "batch",
       key: "batch",
     },
     {
-      title: "Medicine name",
+      title: "Tên thuốc",
       dataIndex: "name",
       key: "name",
     },
     {
-      title: "Mfg date",
+      title: "Ngày sản xuất",
       dataIndex: "mfg",
       key: "mfg",
     },
     {
-      title: "Expiry date",
+      title: "Hạn sử dụng",
       dataIndex: "expiry",
       key: "expiry",
     },
     {
-      title: "Quantity",
+      title: "Số lượng",
       dataIndex: "quantity",
       key: "quantity",
     },
     {
-      title: "Warehouse",
+      title: "Kho",
       dataIndex: "warehouse",
       key: "warehouse",
     },
     {
-      title: "Status",
+      title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       render: (value: BatchRow["status"]) => {
-        if (value === "AVAILABLE") return <Tag color="green">AVAILABLE</Tag>;
-        return <Tag color="red">EXPIRED</Tag>;
+        if (value === "AVAILABLE") return <Tag color="green">CÒN HÀNG</Tag>;
+        return <Tag color="red">HẾT HẠN</Tag>;
       },
     },
     {
-      title: "Action",
+      title: "Hành động",
       key: "action",
       render: (_, record) => (
         <Space>
@@ -283,17 +347,17 @@ function BatchTable({ filters, search, onSearch }: BatchTableProps) {
             type="primary"
             onClick={() => openEditModal(record.batchId)}
           >
-            Edit
+            Sửa
           </Button>
           <Popconfirm
-            title="Delete batch"
-            description="Are you sure you want to delete this batch?"
+            title="Xóa lô thuốc"
+            description="Bạn có chắc chắn muốn xóa lô thuốc này?"
             onConfirm={() => handleDelete(record)}
-            okText="Delete"
-            cancelText="Cancel"
+            okText="Xóa"
+            cancelText="Hủy"
           >
             <Button size="small" danger>
-              Delete
+              Xóa
             </Button>
           </Popconfirm>
         </Space>
@@ -308,27 +372,39 @@ function BatchTable({ filters, search, onSearch }: BatchTableProps) {
         title={() => (
           <div className="flex justify-between items-center">
             <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-              Batches list
+              Danh sách lô thuốc
             </Text>
 
             <div className="flex items-center gap-3">
               <Input.Search
                 className="w-[300px]"
-                placeholder="Search medicine..."
+                placeholder="Tìm kiếm lô thuốc..."
                 value={search}
                 onChange={(e) => onSearch?.(e.target.value)}
                 allowClear
               />
 
-              <Button type="primary" onClick={openCreateModal}>
-                Add batch
-              </Button>
+              {/* <Button type="primary" onClick={openCreateModal}>
+                Thêm lô thuốc
+              </Button> */}
             </div>
           </div>
         )}
         columns={columns}
         dataSource={rowData}
         loading={loading}
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: pagination.total,
+          onChange: (page, pageSize) => {
+            setPagination((prev) => ({
+              ...prev,
+              current: page,
+              pageSize,
+            }))
+          },
+        }}
       />
       <BatchFormModal
         open={modalOpen}

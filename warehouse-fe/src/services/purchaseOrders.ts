@@ -1,5 +1,13 @@
 import { ApiError, apiFetch, getAuthToken } from "./api"
 
+export type PageResponse<T> = {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+}
+
 export type PurchaseOrderItem = {
   itemId: number
   requestedQuantity: number
@@ -53,8 +61,34 @@ export type CreatePurchaseOrderPayload = {
   }>
 }
 
-export const getPurchaseOrders = async (): Promise<PurchaseOrder[]> => {
-  return apiFetch<PurchaseOrder[]>("/purchase-orders")
+export const getPurchaseOrders = async (params?: {
+  supplierId?: number
+  warehouseId?: number
+  status?: string
+  page?: number
+  size?: number
+}): Promise<PageResponse<PurchaseOrder>> => {
+  const query = new URLSearchParams()
+
+  if (params?.supplierId) query.append("supplierId", String(params.supplierId))
+  if (params?.warehouseId) query.append("warehouseId", String(params.warehouseId))
+  if (params?.status && params.status !== "all") {
+    query.append("status", params.status)
+  }
+
+  if (params?.page !== undefined) {
+    query.append("page", String(params.page))
+  }
+
+  if (params?.size !== undefined) {
+    query.append("size", String(params.size))
+  }
+
+  const url = query.toString()
+    ? `/purchase-orders?${query.toString()}`
+    : `/purchase-orders`
+
+  return apiFetch<PageResponse<PurchaseOrder>>(url)
 }
 
 export const getPurchaseOrderById = async (id: number): Promise<PurchaseOrder> => {

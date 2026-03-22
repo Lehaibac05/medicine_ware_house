@@ -27,7 +27,10 @@ public class Forecast {
     private Double confidenceLevel;
 
     @ManyToOne
+    @JoinColumn(name = "medicine_id")
+    private Medicine medicine;
+
+    @ManyToOne
     @JoinColumn(name = "model_id")
     private AIModel model;
 }
-

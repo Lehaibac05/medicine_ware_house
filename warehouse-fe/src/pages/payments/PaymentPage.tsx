@@ -6,7 +6,6 @@ import {
   Divider,
   Input,
   InputNumber,
-  Layout,
   Modal,
   Select,
   Space,
@@ -14,13 +13,18 @@ import {
   Typography,
   message,
 } from "antd";
+import {
+  FileTextOutlined,
+  DollarOutlined,
+  CheckCircleOutlined,
+  WarningOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
 import { AxiosError } from "axios";
-import SidebarNav from "../../layouts/SidebarNav";
-import TopBar from "../../layouts/TopBar";
 import BaseFilterCard from "../../components/base/BaseFilterCard";
 import PaymentTable from "./components/PaymentTable";
 import BaseStatsGrid from "../../components/base/BaseStatsGrid";
+import MainLayout from "../../layouts/MainLayout";
 import {
   useCreateSupplierInvoiceMutation,
   useGoodsReceiptsQuery,
@@ -32,7 +36,6 @@ import {
 import type { GoodsReceipt, SupplierInvoice } from "../../services/workflow";
 import { getPrimaryRole, getRoleLabel, hasAnyRole } from "../../utils/auth";
 
-const { Content, Sider } = Layout;
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
@@ -49,27 +52,27 @@ type InvoiceDraftItem = {
 };
 
 const statusOptions = [
-  { value: "all", label: "All status" },
-  { value: "PENDING_VERIFICATION", label: "PENDING_VERIFICATION" },
-  { value: "VERIFIED", label: "VERIFIED" },
-  { value: "PARTIALLY_PAID", label: "PARTIALLY_PAID" },
-  { value: "PAID", label: "PAID" },
-  { value: "REJECTED", label: "REJECTED" },
+  { value: "all", label: "Tất cả trạng thái" },
+  { value: "PENDING_VERIFICATION", label: "Chờ xác minh" },
+  { value: "VERIFIED", label: "Đã xác minh" },
+  { value: "PARTIALLY_PAID", label: "Thanh toán một phần" },
+  { value: "PAID", label: "Đã thanh toán" },
+  { value: "REJECTED", label: "Đã từ chối" },
 ];
 
 const methodOptions = [
-  { value: "BANK_TRANSFER", label: "Bank Transfer" },
-  { value: "CASH", label: "Cash" },
-  { value: "CREDIT_CARD", label: "Credit Card" },
-  { value: "E_WALLET", label: "E-Wallet" },
+  { value: "BANK_TRANSFER", label: "Chuyển khoản ngân hàng" },
+  { value: "CASH", label: "Tiền mặt" },
+  { value: "CREDIT_CARD", label: "Thẻ tín dụng" },
+  { value: "E_WALLET", label: "Ví điện tử" },
 ];
 
 const paymentTermOptions = [
-  { value: "DUE_ON_RECEIPT", label: "Due on receipt (thanh toan ngay khi nhan hoa don)" },
-  { value: "NET_7", label: "Net 7 (thanh toan trong 7 ngay)" },
-  { value: "NET_15", label: "Net 15 (thanh toan trong 15 ngay)" },
-  { value: "NET_30", label: "Net 30 (thanh toan trong 30 ngay)" },
-  { value: "CUSTOM", label: "Custom" },
+  { value: "DUE_ON_RECEIPT", label: "Thanh toán ngay khi nhận hóa đơn" },
+  { value: "NET_7", label: "Thanh toán trong 7 ngày" },
+  { value: "NET_15", label: "Thanh toán trong 15 ngày" },
+  { value: "NET_30", label: "Thanh toán trong 30 ngày" },
+  { value: "CUSTOM", label: "Tùy chỉnh" },
 ];
 
 const PaymentPage = () => {
@@ -90,9 +93,13 @@ const PaymentPage = () => {
   });
   const [draftItems, setDraftItems] = useState<InvoiceDraftItem[]>([]);
 
-  const [verifyTarget, setVerifyTarget] = useState<SupplierInvoice | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<SupplierInvoice | null>(
+    null,
+  );
   const [verifyNotes, setVerifyNotes] = useState("");
-  const [rejectTarget, setRejectTarget] = useState<SupplierInvoice | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<SupplierInvoice | null>(
+    null,
+  );
   const [rejectReason, setRejectReason] = useState("");
   const [payTarget, setPayTarget] = useState<SupplierInvoice | null>(null);
   const [payAmount, setPayAmount] = useState<number | null>(null);
@@ -104,9 +111,10 @@ const PaymentPage = () => {
   const currentRoleLabel = getRoleLabel(getPrimaryRole());
 
   const showPermissionError = () => {
-    messageApi.error(`403 Forbidden: only Accountant can create/verify/reject/pay invoice. Current role: ${currentRoleLabel}`);
+    messageApi.error(
+      `403: Chỉ kế toán mới có quyền tạo/xác minh/từ chối/thanh toán hóa đơn. Vai trò hiện tại: ${currentRoleLabel}`,
+    );
   };
-
   const { data: invoices = [], isLoading } = useSupplierInvoicesQuery();
   const { data: goodsReceipts = [] } = useGoodsReceiptsQuery();
   const createMutation = useCreateSupplierInvoiceMutation();
@@ -131,63 +139,108 @@ const PaymentPage = () => {
       .filter((invoice) => {
         if (!range || !invoice.invoiceDate) return true;
         const date = dayjs(invoice.invoiceDate);
-        return !date.isBefore(range[0].startOf("day")) && !date.isAfter(range[1].endOf("day"));
+        return (
+          !date.isBefore(range[0].startOf("day")) &&
+          !date.isAfter(range[1].endOf("day"))
+        );
       });
   }, [invoices, search, status, range]);
 
   const paymentStats = useMemo(() => {
     const totalInvoices = invoices.length;
-    const totalValue = invoices.reduce((sum, row) => sum + Number(row.totalAmount || 0), 0);
-    const paidValue = invoices.reduce((sum, row) => sum + Number(row.paidAmount || 0), 0);
+
+    const totalValue = invoices.reduce(
+      (sum, row) => sum + Number(row.totalAmount || 0),
+      0,
+    );
+
+    const paidValue = invoices.reduce(
+      (sum, row) => sum + Number(row.paidAmount || 0),
+      0,
+    );
+
     const pendingVerification = invoices.filter(
-      (row) => (row.status || "").toUpperCase() === "PENDING_VERIFICATION"
+      (row) => (row.status || "").toUpperCase() === "PENDING_VERIFICATION",
     ).length;
+
     const mismatchCount = invoices.filter((row) => !!row.hasMismatch).length;
 
     return [
       {
-        label: "Total invoices",
+        label: "Tổng số hóa đơn",
         value: totalInvoices,
-        note: `${filteredInvoices.length} invoices in current view`,
+        note: `${filteredInvoices.length} hóa đơn trong danh sách`,
+        icon: <FileTextOutlined />,
+        color: "text-blue-600",
+        bg: "bg-[#eff6ff]",
+        trend: "+5%",
+        trendUp: true,
       },
       {
-        label: "Invoice value",
-        value: totalValue.toLocaleString("en-US"),
-        note: "Sum of invoice totals",
+        label: "Tổng giá trị hóa đơn",
+        value: totalValue,
+        note: "Tổng giá trị tất cả hóa đơn",
+        icon: <DollarOutlined />,
+        color: "text-emerald-600",
+        bg: "bg-[#f0fdf4]",
+        trend: "+8%",
+        trendUp: true,
       },
       {
-        label: "Paid amount",
-        value: paidValue.toLocaleString("en-US"),
-        note: `${pendingVerification} waiting verification`,
+        label: "Đã thanh toán",
+        value: paidValue,
+        note: `${pendingVerification} hóa đơn chờ xác minh`,
+        icon: <CheckCircleOutlined />,
+        color: "text-green-600",
+        bg: "bg-[#ecfdf5]",
+        trend: "+3%",
+        trendUp: true,
       },
       {
-        label: "Mismatch warnings",
+        label: "Sai lệch",
         value: mismatchCount,
-        note: "Must be fixed before verify",
+        note: "Cần xử lý trước khi xác minh",
+        icon: <WarningOutlined />,
+        color: "text-red-600",
+        bg: "bg-[#fef2f2]",
+        trend: "-2%",
+        trendUp: false,
       },
     ];
   }, [invoices, filteredInvoices.length]);
 
   const normalizeStatus = (status?: string) =>
-    status?.trim().toUpperCase().replace(/[\s-]+/g, "_") ?? "";
+    status
+      ?.trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, "_") ?? "";
 
   const existingInvoiceReceiptIds = useMemo(
-    () => new Set(invoices.map((invoice) => invoice.goodsReceipt?.receiptId).filter((id): id is number => !!id)),
-    [invoices]
+    () =>
+      new Set(
+        invoices
+          .map((invoice) => invoice.goodsReceipt?.receiptId)
+          .filter((id): id is number => !!id),
+      ),
+    [invoices],
   );
 
   const availableGoodsReceipts = useMemo(
     () =>
       goodsReceipts.filter(
         (receipt) =>
-          normalizeStatus(receipt.status) === "APPROVED" && !existingInvoiceReceiptIds.has(receipt.receiptId)
+          normalizeStatus(receipt.status) === "APPROVED" &&
+          !existingInvoiceReceiptIds.has(receipt.receiptId),
       ),
-    [goodsReceipts, existingInvoiceReceiptIds]
+    [goodsReceipts, existingInvoiceReceiptIds],
   );
 
   const selectedReceipt = useMemo(
-    () => goodsReceipts.find((receipt) => receipt.receiptId === createPayload.goodsReceiptId),
-    [goodsReceipts, createPayload.goodsReceiptId]
+    () =>
+      goodsReceipts.find(
+        (receipt) => receipt.receiptId === createPayload.goodsReceiptId,
+      ),
+    [goodsReceipts, createPayload.goodsReceiptId],
   );
 
   const buildDraftItemsFromReceipt = (receipt?: GoodsReceipt) => {
@@ -201,12 +254,15 @@ const PaymentPage = () => {
         const medicineId = item.medicine?.medicineId;
         if (!medicineId) return null;
 
-        const receivedQty = Number(item.receivedQuantity ?? item.requestedQuantity ?? 0);
+        const receivedQty = Number(
+          item.receivedQuantity ?? item.requestedQuantity ?? 0,
+        );
         const poUnitPrice = Number(item.unitPrice ?? 0);
         return {
           key: String(medicineId),
           medicineId,
-          medicineName: item.medicine?.medicineName || `Medicine #${medicineId}`,
+          medicineName:
+            item.medicine?.medicineName || `Medicine #${medicineId}`,
           receivedQuantity: receivedQty,
           poUnitPrice,
           invoiceQuantity: receivedQty,
@@ -220,58 +276,83 @@ const PaymentPage = () => {
   };
 
   const compareSummary = useMemo(() => {
-    const qtyMismatch = draftItems.filter((item) => item.invoiceQuantity !== item.receivedQuantity).length;
-    const priceMismatch = draftItems.filter((item) => item.invoiceUnitPrice !== item.poUnitPrice).length;
+    const qtyMismatch = draftItems.filter(
+      (item) => item.invoiceQuantity !== item.receivedQuantity,
+    ).length;
+    const priceMismatch = draftItems.filter(
+      (item) => item.invoiceUnitPrice !== item.poUnitPrice,
+    ).length;
     return { qtyMismatch, priceMismatch };
   }, [draftItems]);
 
   const draftInvoiceTotal = useMemo(
-    () => draftItems.reduce((sum, item) => sum + Number(item.invoiceQuantity || 0) * Number(item.invoiceUnitPrice || 0), 0),
-    [draftItems]
+    () =>
+      draftItems.reduce(
+        (sum, item) =>
+          sum +
+          Number(item.invoiceQuantity || 0) *
+            Number(item.invoiceUnitPrice || 0),
+        0,
+      ),
+    [draftItems],
   );
 
   const referenceTotal = useMemo(
     () =>
       draftItems.reduce(
-        (sum, item) => sum + Number(item.receivedQuantity || 0) * Number(item.poUnitPrice || 0),
-        0
+        (sum, item) =>
+          sum +
+          Number(item.receivedQuantity || 0) * Number(item.poUnitPrice || 0),
+        0,
       ),
-    [draftItems]
+    [draftItems],
   );
 
-  const supplierInvoiceAmount = Number(createPayload.supplierInvoiceAmount || 0);
+  const supplierInvoiceAmount = Number(
+    createPayload.supplierInvoiceAmount || 0,
+  );
   const amountDiffWithLines = supplierInvoiceAmount - draftInvoiceTotal;
   const amountDiffWithReference = supplierInvoiceAmount - referenceTotal;
   const amountMatchesLines = Math.abs(amountDiffWithLines) < 0.01;
   const amountMatchesReference = Math.abs(amountDiffWithReference) < 0.01;
 
-  const invoiceDateObj = createPayload.invoiceDate ? dayjs(createPayload.invoiceDate) : null;
-  const dueDateObj = createPayload.dueDate ? dayjs(createPayload.dueDate) : null;
-  const invalidDateRange = !!invoiceDateObj && !!dueDateObj && dueDateObj.isBefore(invoiceDateObj, "day");
+  const invoiceDateObj = createPayload.invoiceDate
+    ? dayjs(createPayload.invoiceDate)
+    : null;
+  const dueDateObj = createPayload.dueDate
+    ? dayjs(createPayload.dueDate)
+    : null;
+  const invalidDateRange =
+    !!invoiceDateObj &&
+    !!dueDateObj &&
+    dueDateObj.isBefore(invoiceDateObj, "day");
 
   const handleCreateInvoice = async () => {
     if (!createPayload.goodsReceiptId) {
-      messageApi.error("Please select an approved goods receipt");
+      messageApi.error("Vui lòng chọn phiếu nhập đã được duyệt");
       return;
     }
 
     if (!draftItems.length) {
-      messageApi.error("No invoice items found from selected goods receipt");
+      messageApi.error("Không tìm thấy sản phẩm hóa đơn từ phiếu nhập đã chọn");
       return;
     }
 
-    if (!createPayload.supplierInvoiceAmount || createPayload.supplierInvoiceAmount <= 0) {
-      messageApi.error("Please input supplier invoice amount");
+    if (
+      !createPayload.supplierInvoiceAmount ||
+      createPayload.supplierInvoiceAmount <= 0
+    ) {
+      messageApi.error("Vui lòng nhập số tiền hóa đơn nhà cung cấp");
       return;
     }
 
     if (invalidDateRange) {
-      messageApi.error("Due date must be on or after invoice date");
+      messageApi.error("Ngày đến hạn phải bằng hoặc sau ngày hóa đơn");
       return;
     }
 
     if (!amountMatchesLines) {
-      messageApi.error("Supplier invoice amount must match total of invoice lines");
+      messageApi.error("Số tiền hóa đơn phải khớp với tổng các dòng hóa đơn");
       return;
     }
 
@@ -285,23 +366,31 @@ const PaymentPage = () => {
       }));
 
     if (!payloadItems.length) {
-      messageApi.error("Invoice must contain at least one valid item");
+      messageApi.error("Hóa đơn phải có ít nhất một mặt hàng hợp lệ");
       return;
     }
 
     try {
       const selectedPaymentTerms =
         createPayload.paymentTerms === "CUSTOM"
-          ? (createPayload.customPaymentTerms || "Custom payment terms").trim()
-          : paymentTermOptions.find((item) => item.value === createPayload.paymentTerms)?.label || createPayload.paymentTerms;
+          ? (
+              createPayload.customPaymentTerms ||
+              "Điều khoản thanh toán tùy chỉnh"
+            ).trim()
+          : paymentTermOptions.find(
+              (item) => item.value === createPayload.paymentTerms,
+            )?.label || createPayload.paymentTerms;
 
       const mergedNotes = [
         createPayload.notes?.trim(),
-        `Supplier stated payable amount: ${supplierInvoiceAmount.toLocaleString("en-US", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`,
-        `Payment terms: ${selectedPaymentTerms}`,
+        `Số tiền phải thanh toán theo nhà cung cấp: ${supplierInvoiceAmount.toLocaleString(
+          "vi-VN",
+          {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          },
+        )}`,
+        `Điều khoản thanh toán: ${selectedPaymentTerms}`,
       ]
         .filter((value) => !!value)
         .join(" | ");
@@ -325,13 +414,13 @@ const PaymentPage = () => {
         notes: "",
       });
       setDraftItems([]);
-      messageApi.success("Supplier invoice created");
+      messageApi.success("Tạo hóa đơn nhà cung cấp thành công");
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 403) {
         showPermissionError();
         return;
       }
-      messageApi.error("Failed to create supplier invoice");
+      messageApi.error("Lỗi khi tạo hóa đơn nhà cung cấp");
     }
   };
 
@@ -363,19 +452,19 @@ const PaymentPage = () => {
       });
       setRejectTarget(null);
       setRejectReason("");
-      messageApi.success("Invoice rejected");
+      messageApi.success("Hóa đơn đã bị từ chối");
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 403) {
         showPermissionError();
         return;
       }
-      messageApi.error("Failed to reject invoice");
+      messageApi.error("Không thể từ chối hóa đơn");
     }
   };
 
   const handlePay = async () => {
     if (!payTarget || !payAmount || payAmount <= 0) {
-      messageApi.error("Please enter valid amount");
+      messageApi.error("Vui lòng nhập số tiền hợp lệ");
       return;
     }
 
@@ -392,135 +481,129 @@ const PaymentPage = () => {
       setPayNotes("");
       setPayTransactionReference("");
       setPayMethod("BANK_TRANSFER");
-      messageApi.success("Payment recorded");
+      messageApi.success("Ghi nhận thanh toán thành công");
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 403) {
         showPermissionError();
         return;
       }
-      messageApi.error("Failed to process payment");
+      messageApi.error("Không thể xử lý thanh toán");
     }
   };
 
   return (
-   <Layout className="min-h-screen bg-slate-100">
+    <MainLayout>
       {contextHolder}
-      <Sider
-        width={260}
-        className="hidden lg:block !bg-white border-r border-slate-200 px-4 py-6 !fixed left-0 top-0 h-screen"
+      {!canManageInvoices && (
+        <Alert
+          type="warning"
+          showIcon
+          message={`Bạn chỉ có thể xem hóa đơn. Vai trò ${currentRoleLabel} không có quyền tạo/xác minh/từ chối/thanh toán.`}
+        />
+      )}
+
+      <BaseStatsGrid stats={paymentStats} />
+
+      <BaseFilterCard
+        actions={
+          <Space>
+            <Button
+              type="primary"
+              className="h-[40px]"
+              onClick={() => {
+                if (!canManageInvoices) {
+                  showPermissionError();
+                  return;
+                }
+                setCreateOpen(true);
+              }}
+              disabled={!canManageInvoices}
+            >
+              Tạo hóa đơn
+            </Button>
+            <Button
+              className="h-[40px]"
+              onClick={() => {
+                setSearch("");
+                setStatus("all");
+                setRange(null);
+              }}
+            >
+              Khôi phục
+            </Button>
+          </Space>
+        }
       >
-        <SidebarNav />
-      </Sider>
-      <Layout className="lg:ml-[260px]">
-        <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Supplier Invoices" subtitle="Procurement Finance" />
-        </div>
-        <Content className="flex flex-col gap-6 p-6 pt-[114px]">
-          {!canManageInvoices && (
-            <Alert
-              type="warning"
-              showIcon
-              message={`You can view invoices only. Role ${currentRoleLabel} does not have permission to create/verify/reject/pay.`}
-            />
-          )}
-
-          <BaseStatsGrid stats={paymentStats} />
-
-          <BaseFilterCard
-            actions={
-              <Space>
-                <Button
-                  type="primary"
-                  className="h-[40px]"
-                  onClick={() => {
-                    if (!canManageInvoices) {
-                      showPermissionError();
-                      return;
-                    }
-                    setCreateOpen(true);
-                  }}
-                  disabled={!canManageInvoices}
-                >
-                  Create Invoice
-                </Button>
-                <Button
-                  className="h-[40px]"
-                  onClick={() => {
-                    setSearch("");
-                    setStatus("all");
-                    setRange(null);
-                  }}
-                >
-                  Reset
-                </Button>
-              </Space>
-            }
-          >
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Invoice / Supplier</Text>
-              <Input
-                placeholder="Enter invoice code or supplier"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Process Status</Text>
-              <Select options={statusOptions} value={status} onChange={setStatus} />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Payment Method (for modal)</Text>
-              <Select options={methodOptions} value={payMethod} onChange={setPayMethod} />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Invoice Date Range</Text>
-              <RangePicker
-                className="w-full"
-                format="DD/MM/YYYY"
-                placeholder={["Start date", "End date"]}
-                value={range}
-                onChange={(values) => setRange(values as [dayjs.Dayjs, dayjs.Dayjs] | null)}
-              />
-            </div>
-          </BaseFilterCard>
-
-          <PaymentTable
-            data={filteredInvoices}
-            loading={isLoading}
-            search={search}
-            onSearchChange={setSearch}
-            onVerify={(invoice) => {
-              if (!canManageInvoices) {
-                showPermissionError();
-                return;
-              }
-              setVerifyTarget(invoice);
-            }}
-            onReject={(invoice) => {
-              if (!canManageInvoices) {
-                showPermissionError();
-                return;
-              }
-              setRejectTarget(invoice);
-            }}
-            onPay={(invoice) => {
-              if (!canManageInvoices) {
-                showPermissionError();
-                return;
-              }
-              setPayTarget(invoice);
-              setPayAmount(Number(invoice.remainingAmount || 0));
-              setPayTransactionReference("");
-            }}
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Hóa đơn / Nhà cung cấp</Text>
+          <Input
+            placeholder="Nhập mã hóa đơn hoặc tên nhà cung cấp"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
-        </Content>
-      </Layout>
+        </div>
 
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Trạng thái xử lý</Text>
+          <Select options={statusOptions} value={status} onChange={setStatus} />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Phương thức thanh toán</Text>
+          <Select
+            options={methodOptions}
+            value={payMethod}
+            onChange={setPayMethod}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">
+            Khoảng thời gian hóa đơn
+          </Text>
+          <RangePicker
+            className="w-full"
+            format="DD/MM/YYYY"
+            placeholder={["Start date", "End date"]}
+            value={range}
+            onChange={(values) =>
+              setRange(values as [dayjs.Dayjs, dayjs.Dayjs] | null)
+            }
+          />
+        </div>
+      </BaseFilterCard>
+
+      <PaymentTable
+        data={filteredInvoices}
+        loading={isLoading}
+        search={search}
+        onSearchChange={setSearch}
+        onVerify={(invoice) => {
+          if (!canManageInvoices) {
+            showPermissionError();
+            return;
+          }
+          setVerifyTarget(invoice);
+        }}
+        onReject={(invoice) => {
+          if (!canManageInvoices) {
+            showPermissionError();
+            return;
+          }
+          setRejectTarget(invoice);
+        }}
+        onPay={(invoice) => {
+          if (!canManageInvoices) {
+            showPermissionError();
+            return;
+          }
+          setPayTarget(invoice);
+          setPayAmount(Number(invoice.remainingAmount || 0));
+          setPayTransactionReference("");
+        }}
+      />
       <Modal
-        title="Create Supplier Invoice"
+        title="Tạo hóa đơn nhà cung cấp"
         open={createOpen}
         onCancel={() => {
           setCreateOpen(false);
@@ -536,16 +619,14 @@ const PaymentPage = () => {
           setDraftItems([]);
         }}
         onOk={() => void handleCreateInvoice()}
-        okText="Create"
+        okText="Tạo"
         confirmLoading={createMutation.isPending}
         width={980}
       >
         <div className="grid gap-3">
-
-
           <Select
             className="w-full"
-            placeholder="Select approved goods receipt"
+            placeholder="Chọn phiếu nhập đã được duyệt"
             value={createPayload.goodsReceiptId}
             options={availableGoodsReceipts.map((receipt) => ({
               value: receipt.receiptId,
@@ -553,25 +634,37 @@ const PaymentPage = () => {
             }))}
             onChange={(value) => {
               const receiptId = Number(value || 0) || undefined;
-              const receipt = goodsReceipts.find((item) => item.receiptId === receiptId);
-              setCreatePayload((prev) => ({ ...prev, goodsReceiptId: receiptId }));
+              const receipt = goodsReceipts.find(
+                (item) => item.receiptId === receiptId,
+              );
+              setCreatePayload((prev) => ({
+                ...prev,
+                goodsReceiptId: receiptId,
+              }));
               buildDraftItemsFromReceipt(receipt);
             }}
           />
 
           {selectedReceipt && (
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <Text className="block text-xs text-slate-500">Selected Goods Receipt</Text>
+              <Text className="block text-xs text-slate-500">
+                Phiếu nhập đã chọn
+              </Text>
               <Text className="block text-sm text-slate-700">
-                {selectedReceipt.receiptCode} | PO: {selectedReceipt.purchaseOrder?.orderCode || "-"}
+                {selectedReceipt.receiptCode} | Đơn mua:{" "}
+                {selectedReceipt.purchaseOrder?.orderCode || "-"}
               </Text>
             </div>
           )}
 
           <DatePicker
             className="w-full"
-            placeholder="Invoice Date"
-            value={createPayload.invoiceDate ? dayjs(createPayload.invoiceDate) : null}
+            placeholder="Ngày lập hóa đơn"
+            value={
+              createPayload.invoiceDate
+                ? dayjs(createPayload.invoiceDate)
+                : null
+            }
             onChange={(value) =>
               setCreatePayload((prev) => ({
                 ...prev,
@@ -582,7 +675,7 @@ const PaymentPage = () => {
 
           <DatePicker
             className="w-full"
-            placeholder="Due Date"
+            placeholder="Hạn thanh toán"
             value={createPayload.dueDate ? dayjs(createPayload.dueDate) : null}
             onChange={(value) =>
               setCreatePayload((prev) => ({
@@ -596,36 +689,41 @@ const PaymentPage = () => {
             className="w-full"
             min={0.01}
             precision={2}
-            placeholder="Supplier invoice amount (so tien phai tra tren hoa don NCC)"
+            placeholder="Số tiền phải thanh toán (theo NCC)"
             value={createPayload.supplierInvoiceAmount}
             onChange={(value) =>
               setCreatePayload((prev) => ({
                 ...prev,
-                supplierInvoiceAmount: value == null ? undefined : Number(value),
+                supplierInvoiceAmount:
+                  value == null ? undefined : Number(value),
               }))
             }
           />
 
           <Select
             className="w-full"
-            placeholder="Payment terms"
+            placeholder="Điều khoản thanh toán"
             value={createPayload.paymentTerms}
             options={paymentTermOptions}
             onChange={(value) =>
               setCreatePayload((prev) => ({
                 ...prev,
                 paymentTerms: value,
-                customPaymentTerms: value === "CUSTOM" ? prev.customPaymentTerms : "",
+                customPaymentTerms:
+                  value === "CUSTOM" ? prev.customPaymentTerms : "",
               }))
             }
           />
 
           {createPayload.paymentTerms === "CUSTOM" && (
             <Input
-              placeholder="Enter custom payment terms"
+              placeholder="Nhập điều khoản thanh toán tùy chỉnh"
               value={createPayload.customPaymentTerms}
               onChange={(e) =>
-                setCreatePayload((prev) => ({ ...prev, customPaymentTerms: e.target.value }))
+                setCreatePayload((prev) => ({
+                  ...prev,
+                  customPaymentTerms: e.target.value,
+                }))
               }
             />
           )}
@@ -634,30 +732,48 @@ const PaymentPage = () => {
             <Alert
               type="warning"
               showIcon
-              message="Due date is earlier than invoice date"
+              message="Hạn thanh toán không được trước ngày hóa đơn"
             />
           )}
 
           <TextArea
             rows={2}
-            placeholder="Invoice notes"
+            placeholder="Ghi chú hóa đơn"
             value={createPayload.notes}
-            onChange={(e) => setCreatePayload((prev) => ({ ...prev, notes: e.target.value }))}
+            onChange={(e) =>
+              setCreatePayload((prev) => ({ ...prev, notes: e.target.value }))
+            }
           />
 
           <Divider className="!my-1" />
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <Text className="block text-xs text-slate-500">Invoice Amount Summary</Text>
-            <Text className="block text-sm text-slate-700">Total lines: {draftItems.length}</Text>
+            <Text className="block text-xs text-slate-500">
+              Tổng hợp số tiền hóa đơn
+            </Text>
+            <Text className="block text-sm text-slate-700">
+              Tổng số dòng: {draftItems.length}
+            </Text>
             <Text className="block text-lg font-semibold text-slate-900">
-              Total invoice amount: {draftInvoiceTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Tổng tiền hóa đơn:{" "}
+              {draftInvoiceTotal.toLocaleString("vi-VN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </Text>
             <Text className="block text-sm text-slate-700">
-              Supplier stated amount: {supplierInvoiceAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Số tiền theo nhà cung cấp:{" "}
+              {supplierInvoiceAmount.toLocaleString("vi-VN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </Text>
             <Text className="block text-sm text-slate-700">
-              Reference amount (GR/PO): {referenceTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              "Số tiền tham chiếu (phiếu nhập hàng / đơn mua hàng)":{" "}
+              {referenceTotal.toLocaleString("vi-VN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </Text>
           </div>
 
@@ -666,11 +782,14 @@ const PaymentPage = () => {
             type={amountMatchesLines ? "success" : "warning"}
             message={
               amountMatchesLines
-                ? "Supplier amount matches invoice line total"
-                : `Supplier amount differs from invoice line total by ${amountDiffWithLines.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`
+                ? "Số tiền theo nhà cung cấp khớp với tổng chi tiết hóa đơn"
+                : `Số tiền theo nhà cung cấp lệch so với tổng chi tiết hóa đơn: ${amountDiffWithLines.toLocaleString(
+                    "vi-VN",
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    },
+                  )}`
             }
           />
 
@@ -679,41 +798,50 @@ const PaymentPage = () => {
             type={amountMatchesReference ? "success" : "warning"}
             message={
               amountMatchesReference
-                ? "Supplier amount matches Goods Receipt/PO reference amount"
-                : `Supplier amount differs from Goods Receipt/PO reference by ${amountDiffWithReference.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`
+                ? "Số tiền theo nhà cung cấp khớp với số tiền tham chiếu từ phiếu nhập hàng và đơn mua hàng"
+                : `Số tiền theo nhà cung cấp lệch so với số tiền tham chiếu từ phiếu nhập hàng và đơn mua hàng: ${amountDiffWithReference.toLocaleString(
+                    "vi-VN",
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    },
+                  )}`
             }
           />
 
-          <Text className="text-xs uppercase tracking-[0.12em] text-slate-500">Invoice Items (doi chieu voi Goods Receipt)</Text>
+          <Text className="text-xs uppercase tracking-[0.12em] text-slate-500">
+            Chi tiết hóa đơn (đối chiếu với phiếu nhập hàng)
+          </Text>
 
           <Table<InvoiceDraftItem>
             rowKey="key"
             pagination={false}
             size="small"
             dataSource={draftItems}
-            locale={{ emptyText: "Select an approved goods receipt to load items" }}
+            locale={{
+              emptyText:
+                "Vui lòng chọn phiếu nhập đã duyệt để tải các mặt hàng",
+            }}
             columns={[
               {
-                title: "Medicine",
+                title: "Thuốc",
                 dataIndex: "medicineName",
                 width: 200,
               },
               {
-                title: "GR Qty",
+                title: "Số lượng nhập",
                 dataIndex: "receivedQuantity",
                 width: 110,
               },
               {
-                title: "PO Unit Price",
+                title: "Đơn giá theo đơn mua hàng",
                 dataIndex: "poUnitPrice",
                 width: 140,
-                render: (value: number) => Number(value || 0).toLocaleString("en-US"),
+                render: (value: number) =>
+                  Number(value || 0).toLocaleString("en-US"),
               },
               {
-                title: "Invoice Qty",
+                title: "Số lượng theo hóa đơn",
                 key: "invoiceQuantity",
                 width: 130,
                 render: (_, record) => (
@@ -726,15 +854,15 @@ const PaymentPage = () => {
                         prev.map((item) =>
                           item.key === record.key
                             ? { ...item, invoiceQuantity: Number(value ?? 0) }
-                            : item
-                        )
+                            : item,
+                        ),
                       )
                     }
                   />
                 ),
               },
               {
-                title: "Invoice Unit Price",
+                title: "Đơn giá theo hóa đơn",
                 key: "invoiceUnitPrice",
                 width: 160,
                 render: (_, record) => (
@@ -747,15 +875,15 @@ const PaymentPage = () => {
                         prev.map((item) =>
                           item.key === record.key
                             ? { ...item, invoiceUnitPrice: Number(value ?? 0) }
-                            : item
-                        )
+                            : item,
+                        ),
                       )
                     }
                   />
                 ),
               },
               {
-                title: "Item Notes",
+                title: "Ghi chú",
                 key: "notes",
                 render: (_, record) => (
                   <Input
@@ -763,8 +891,10 @@ const PaymentPage = () => {
                     onChange={(e) =>
                       setDraftItems((prev) =>
                         prev.map((item) =>
-                          item.key === record.key ? { ...item, notes: e.target.value } : item
-                        )
+                          item.key === record.key
+                            ? { ...item, notes: e.target.value }
+                            : item,
+                        ),
                       )
                     }
                   />
@@ -775,12 +905,16 @@ const PaymentPage = () => {
 
           {draftItems.length > 0 && (
             <Alert
-              type={compareSummary.qtyMismatch || compareSummary.priceMismatch ? "warning" : "success"}
+              type={
+                compareSummary.qtyMismatch || compareSummary.priceMismatch
+                  ? "warning"
+                  : "success"
+              }
               showIcon
               message={
                 compareSummary.qtyMismatch || compareSummary.priceMismatch
-                  ? `Detected ${compareSummary.qtyMismatch} quantity mismatch and ${compareSummary.priceMismatch} unit-price mismatch before verification`
-                  : "Current invoice data matches Goods Receipt and PO reference values"
+                  ? `Phát hiện ${compareSummary.qtyMismatch} sai lệch về số lượng và ${compareSummary.priceMismatch} sai lệch về đơn giá trước khi xác minh`
+                  : "Dữ liệu hóa đơn hiện tại khớp với giá trị tham chiếu từ phiếu nhập hàng và đơn mua hàng"
               }
             />
           )}
@@ -788,69 +922,75 @@ const PaymentPage = () => {
       </Modal>
 
       <Modal
-        title={`Verify ${verifyTarget?.invoiceCode || "invoice"}`}
+        title={`Xác minh ${verifyTarget?.invoiceCode || "hóa đơn"}`}
         open={!!verifyTarget}
         onCancel={() => setVerifyTarget(null)}
         onOk={() => void handleVerify()}
-        okText="Verify"
+        okText="Xác minh"
         confirmLoading={verifyMutation.isPending}
       >
         <TextArea
           rows={3}
-          placeholder="Verification notes"
+          placeholder="Ghi chú xác minh"
           value={verifyNotes}
           onChange={(e) => setVerifyNotes(e.target.value)}
         />
       </Modal>
 
       <Modal
-        title={`Reject ${rejectTarget?.invoiceCode || "invoice"}`}
+        title={`Từ chối ${rejectTarget?.invoiceCode || "hóa đơn"}`}
         open={!!rejectTarget}
         onCancel={() => setRejectTarget(null)}
         onOk={() => void handleReject()}
-        okText="Reject"
+        okText="Từ chối"
         okButtonProps={{ danger: true }}
         confirmLoading={rejectMutation.isPending}
       >
         <TextArea
           rows={3}
-          placeholder="Rejection reason"
+          placeholder="Lý do từ chối"
           value={rejectReason}
           onChange={(e) => setRejectReason(e.target.value)}
         />
       </Modal>
 
       <Modal
-        title={`Pay ${payTarget?.invoiceCode || "invoice"}`}
+        title={`Thanh toán ${payTarget?.invoiceCode || "hóa đơn"}`}
         open={!!payTarget}
         onCancel={() => setPayTarget(null)}
         onOk={() => void handlePay()}
-        okText="Confirm Payment"
+        okText="Xác nhận thanh toán"
         confirmLoading={payMutation.isPending}
       >
         <div className="grid gap-3">
           <InputNumber
             className="w-full"
             min={0.01}
-            placeholder="Payment amount"
+            placeholder="Số tiền thanh toán"
             value={payAmount ?? undefined}
-            onChange={(value) => setPayAmount(value == null ? null : Number(value))}
+            onChange={(value) =>
+              setPayAmount(value == null ? null : Number(value))
+            }
           />
-          <Select options={methodOptions} value={payMethod} onChange={setPayMethod} />
+          <Select
+            options={methodOptions}
+            value={payMethod}
+            onChange={setPayMethod}
+          />
           <Input
-            placeholder="Transaction reference (optional)"
+            placeholder="Mã giao dịch (không bắt buộc)"
             value={payTransactionReference}
             onChange={(e) => setPayTransactionReference(e.target.value)}
           />
           <TextArea
             rows={3}
-            placeholder="Payment notes"
+            placeholder="Ghi chú thanh toán"
             value={payNotes}
             onChange={(e) => setPayNotes(e.target.value)}
           />
         </div>
       </Modal>
-    </Layout>
+    </MainLayout>
   );
 };
 

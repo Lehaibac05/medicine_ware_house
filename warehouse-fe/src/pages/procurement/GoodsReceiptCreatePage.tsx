@@ -109,7 +109,7 @@ export default function GoodsReceiptCreatePage() {
 
       <Layout className="lg:ml-[260px]">
         <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Create Goods Receipt" subtitle="Warehouse Receiving" />
+          <TopBar />
         </div>
 
         <Content className="p-6 pt-[114px] flex flex-col gap-6">

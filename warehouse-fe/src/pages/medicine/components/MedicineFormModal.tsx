@@ -51,20 +51,20 @@ function MedicineFormModal({
   return (
     <BaseModal
       open={open}
-      title={mode === "create" ? "Create Medicine" : "Edit Medicine"}
+      title={mode === "create" ? "Thêm thuốc" : "Sửa thông tin thuốc"}
       onCancel={onCancel}
       onOk={handleOk}
-      okText={mode === "create" ? "Create" : "Update"}
+      okText={mode === "create" ? "Tạo" : "Cập nhật"}
       confirmLoading={loading}
       width={680}
     >
       <Form form={form} layout="vertical">
         <Form.Item
           name="name"
-          label="Medicine Name"
+          label="Tên thuốc"
           rules={[
-            { required: true, message: "Please enter medicine name" },
-            { max: 255, message: "Medicine name is too long" },
+            { required: true, message: "Vui lòng nhập tên thuốc." },
+            { max: 255, message: "Tên thuốc quá dài." },
           ]}
         >
           <Input placeholder="e.g. Paracetamol 500mg" />
@@ -72,7 +72,7 @@ function MedicineFormModal({
 
         <Form.Item
           name="manufacturer"
-          label="Manufacturer"
+          label="Nhà cung cấp"
           rules={[
             { required: true, message: "Please enter manufacturer" },
             { max: 255, message: "Manufacturer is too long" },
@@ -83,26 +83,22 @@ function MedicineFormModal({
 
         <Form.Item
           name="storageCondition"
-          label="Storage Condition"
+          label="Điều kiện bảo quản"
           rules={[
-            { required: true, message: "Please enter storage condition" },
-            { max: 255, message: "Storage condition is too long" },
+            { required: true, message: "Vui lòng nhập điều kiện bảo quản." },
+            { max: 255, message: "Điều kiện bảo quản quá dài." },
           ]}
         >
-          <Input placeholder="e.g. Room temperature" />
+          <Input placeholder="e.g. Nhiệt độ phòng..." />
         </Form.Item>
 
         <Form.Item
           name="description"
-          label="Description"
-          rules={[
-            { required: true, message: "Please enter description" },
-            { max: 1000, message: "Description is too long" },
-          ]}
+          label="Mô tả"
         >
           <Input.TextArea
             rows={4}
-            placeholder="Medicine description"
+            placeholder="Nhập mô tả thuốc..."
             showCount
             maxLength={1000}
           />

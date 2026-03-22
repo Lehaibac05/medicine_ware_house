@@ -1,4 +1,5 @@
 import { apiFetch } from "./api"
+import type { PageResponse } from "./types"
 
 export type InventoryStatus = "NORMAL" | "LOW_STOCK" | "EXPIRING_SOON"
 
@@ -55,6 +56,8 @@ type InventoryQuery = {
   status?: string
   expiryFrom?: string
   expiryTo?: string
+  page?: number
+  size?: number
 }
 
 const toQueryString = (query?: InventoryQuery) => {
@@ -66,12 +69,19 @@ const toQueryString = (query?: InventoryQuery) => {
   if (query.status) params.set("status", query.status)
   if (query.expiryFrom) params.set("expiryFrom", query.expiryFrom)
   if (query.expiryTo) params.set("expiryTo", query.expiryTo)
+  if (query.page !== undefined) params.set("page", String(query.page))
+  if (query.size !== undefined) params.set("size", String(query.size))
 
   const qs = params.toString()
   return qs ? `?${qs}` : ""
 }
 
-export const getInventory = async (query?: InventoryQuery): Promise<InventoryRow[]> => {
+export const getInventory = async (
+  query?: InventoryQuery,
+): Promise<InventoryRow[] | PageResponse<InventoryRow>> => {
+  if (query?.page !== undefined && query?.size !== undefined) {
+    return apiFetch<PageResponse<InventoryRow>>(`/inventory${toQueryString(query)}`)
+  }
   return apiFetch<InventoryRow[]>(`/inventory${toQueryString(query)}`)
 }
 

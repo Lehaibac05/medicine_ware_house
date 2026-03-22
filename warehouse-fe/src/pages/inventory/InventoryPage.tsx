@@ -1,29 +1,18 @@
-import {
-  Button,
-  DatePicker,
-  Input,
-  Layout,
-  Select,
-  Space,
-  Typography,
-} from "antd";
+import { Button, DatePicker, Input, Select, Typography } from "antd";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import InventoryTable from "./components/InventoryTable";
-import SidebarNav from "../../layouts/SidebarNav";
-import TopBar from "../../layouts/TopBar";
 import BaseFilterCard from "../../components/base/BaseFilterCard";
+import MainLayout from "../../layouts/MainLayout";
 import { getWarehouses } from "../../services/warehouses";
 import type { Warehouse } from "../../services/types";
 
-const { Content, Sider } = Layout;
 const { Text } = Typography;
 
 const statusOptions = [
-  { value: "all", label: "All status" },
-  { value: "NORMAL", label: "In stock" },
-  { value: "LOW_STOCK", label: "Low" },
-  { value: "EXPIRING_SOON", label: "Expiring soon" },
+  { value: "all", label: "Tất cả trạng thái" },
+  { value: "NORMAL", label: "Còn hàng" },
+  { value: "LOW_STOCK", label: "Sắp hết hàng" },
+  { value: "EXPIRING_SOON", label: "Sắp hết hạn" },
 ];
 
 const InventoryPage = () => {
@@ -57,7 +46,7 @@ const InventoryPage = () => {
 
   const warehouseOptions = useMemo(
     () => [
-      { value: "all", label: "All warehouses" },
+      { value: "all", label: "Tất cả kho" },
       ...warehouses.map((warehouse) => ({
         value: String(warehouse.warehouseId),
         label: warehouse.name || `Warehouse ${warehouse.warehouseId}`,
@@ -67,7 +56,9 @@ const InventoryPage = () => {
   );
 
   const applyFilters = () => {
-    setAppliedWarehouse(tempWarehouse === "all" ? undefined : Number(tempWarehouse));
+    setAppliedWarehouse(
+      tempWarehouse === "all" ? undefined : Number(tempWarehouse),
+    );
     setAppliedMedicine(tempMedicine.trim() ? tempMedicine.trim() : undefined);
     setAppliedStatus(
       tempStatus === "all"
@@ -77,76 +68,53 @@ const InventoryPage = () => {
   };
 
   return (
-    <Layout className="h-screen bg-slate-100">
-      <Sider
-        width={260}
-        className="hidden lg:block !bg-white border-r border-slate-200 px-4 py-6 !fixed left-0 top-0 h-screen"
+    <MainLayout>
+      <BaseFilterCard
+        actions={
+          <Button type="primary" className="h-[40px]" onClick={applyFilters}>
+            Áp dụng
+          </Button>
+        }
       >
-        <SidebarNav />
-      </Sider>
-      <Layout className="lg:ml-[260px]">
-        <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Inventory" subtitle="Warehouse" />
-        </div>
-        <Content className="flex flex-col gap-6 p-6 pt-[114px]">
-          <Space className="w-full justify-end rounded-2xl bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
-            <Link to="/requests/new">
-              <Button type="primary">Create Medicine Request</Button>
-            </Link>
-          </Space>
-
-          <BaseFilterCard
-            actions={
-              <Button
-                type="primary"
-                className="h-[40px]"
-                onClick={applyFilters}
-              >
-                Apply
-              </Button>
-            }
-          >
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Warehouse</Text>
-              <Select
-                options={warehouseOptions}
-                value={tempWarehouse}
-                onChange={setTempWarehouse}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Medicine name</Text>
-              <Input
-                placeholder="Enter medicine name"
-                value={tempMedicine}
-                onChange={(e) => setTempMedicine(e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Status</Text>
-              <Select
-                options={statusOptions}
-                value={tempStatus}
-                onChange={setTempStatus}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Expiry date</Text>
-              <DatePicker.RangePicker format="DD/MM/YYYY" className="w-full" />
-            </div>
-          </BaseFilterCard>
-
-          <InventoryTable
-            warehouseId={appliedWarehouse}
-            medicineName={appliedMedicine}
-            status={appliedStatus}
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Kho</Text>
+          <Select
+            options={warehouseOptions}
+            value={tempWarehouse}
+            onChange={setTempWarehouse}
           />
-        </Content>
-      </Layout>
-    </Layout>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Tên thuốc</Text>
+          <Input
+            placeholder="Nhập tên thuốc..."
+            value={tempMedicine}
+            onChange={(e) => setTempMedicine(e.target.value)}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Trạng thái</Text>
+          <Select
+            options={statusOptions}
+            value={tempStatus}
+            onChange={setTempStatus}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Hạn sử dụng</Text>
+          <DatePicker.RangePicker format="DD/MM/YYYY" className="w-full" />
+        </div>
+      </BaseFilterCard>
+
+      <InventoryTable
+        warehouseId={appliedWarehouse}
+        medicineName={appliedMedicine}
+        status={appliedStatus}
+      />
+    </MainLayout>
   );
 };
 

@@ -1,81 +1,118 @@
-import { Button, DatePicker, Input, Layout, Select, Typography } from "antd";
-import SidebarNav from "../../layouts/SidebarNav";
-import TopBar from "../../layouts/TopBar";
+import { Button, DatePicker, Input, Select, Typography } from "antd";
+import { useState } from "react";
+import type { Dayjs } from "dayjs";
 import BaseFilterCard from "../../components/base/BaseFilterCard";
 import UserTable from "./components/UserTable";
+import MainLayout from "../../layouts/MainLayout";
 
-const { Content, Sider } = Layout;
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
 
 const roleOptions = [
-  { value: "all", label: "All roles" },
-  { value: "admin", label: "Admin" },
-  { value: "staff", label: "Staff" },
+  { value: "all", label: "Tất cả vai trò" },
+  { value: "admin", label: "Quản trị viên" },
+  { value: "staff", label: "Nhân viên" },
+  { value: "manager", label: "Quản lý" },
+  { value: "supplier", label: "Nhà cung cấp" },
+  { value: "accountant", label: "Kế toán" },
 ];
 
 const statusOptions = [
-  { value: "all", label: "All status" },
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
+  { value: "all", label: "Tất cả trạng thái" },
+  { value: "active", label: "Hoạt động" },
+  { value: "inactive", label: "Không hoạt động" },
 ];
 
-const UserPage = () => {
-  return (
-    <Layout className="h-screen bg-slate-100">
-      <Sider
-        width={260}
-        className="hidden lg:block !bg-white border-r border-slate-200 px-4 py-6 !fixed left-0 top-0 h-screen"
-      >
-        <SidebarNav />
-      </Sider>
+export type UserFilters = {
+  role: string;
+  status: string;
+  userId: string;
+  dateRange: [string, string] | null;
+};
 
-      <Layout className="lg:ml-[260px]">
-        <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Users" subtitle="Management" />
+const UserPage = () => {
+  const [role, setRole] = useState("all");
+  const [status, setStatus] = useState("all");
+  const [userId, setUserId] = useState("");
+  const [dateRange, setDateRange] = useState<[string, string] | null>(null);
+  const [search, setSearch] = useState("");
+  const [appliedFilters, setAppliedFilters] = useState<UserFilters>({
+    role: "all",
+    status: "all",
+    userId: "",
+    dateRange: null,
+  });
+
+  const handleApplyFilters = () => {
+    setAppliedFilters({
+      role,
+      status,
+      userId: userId.trim(),
+      dateRange,
+    });
+  };
+
+  const handleDateChange = (dates: [Dayjs | null, Dayjs | null] | null) => {
+    if (!dates?.[0] || !dates?.[1]) {
+      setDateRange(null);
+      return;
+    }
+
+    setDateRange([
+      dates[0].format("YYYY-MM-DD"),
+      dates[1].format("YYYY-MM-DD"),
+    ]);
+  };
+
+  return (
+    <MainLayout>
+      <BaseFilterCard
+        actions={
+          <Button
+            type="primary"
+            className="h-[40px]"
+            onClick={handleApplyFilters}
+          >
+            Áp dụng
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Vai trò</Text>
+          <Select options={roleOptions} value={role} onChange={setRole} />
         </div>
 
-        <Content className="flex flex-col gap-6 p-6 pt-[114px]">
-          <BaseFilterCard
-            actions={
-              <Button type="primary" className="h-[40px]">
-                Apply filters
-              </Button>
-            }
-          >
-            {/* Role */}
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Role</Text>
-              <Select options={roleOptions} defaultValue="all" />
-            </div>
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Trạng thái</Text>
+          <Select options={statusOptions} value={status} onChange={setStatus} />
+        </div>
 
-            {/* Status */}
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Status</Text>
-              <Select options={statusOptions} defaultValue="all" />
-            </div>
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Khoảng ngày đăng nhập</Text>
+          <RangePicker
+            className="w-full"
+            format="YYYY-MM-DD"
+            placeholder={["Start date", "End date"]}
+            onChange={handleDateChange}
+          />
+        </div>
 
-            {/* Date */}
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Created Date</Text>
-              <RangePicker
-                className="w-full"
-                format="YYYY-MM-DD"
-                placeholder={["Start date", "End date"]}
-              />
-            </div>
+        <div className="flex flex-col gap-2">
+          <Text className="text-xs text-slate-500">Mã người dùng</Text>
+          <Input
+            placeholder="Nhập mã người dùng..."
+            value={userId}
+            onChange={(event) => setUserId(event.target.value)}
+          />
+        </div>
+      </BaseFilterCard>
 
-            {/* User ID */}
-            <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">User ID</Text>
-              <Input placeholder="Enter user ID" />
-            </div>
-          </BaseFilterCard>
-
-          <UserTable />
-        </Content>
-      </Layout>
-    </Layout>
+      <UserTable
+        filters={appliedFilters}
+        search={search}
+        onSearch={setSearch}
+      />
+    </MainLayout>
   );
 };
 
