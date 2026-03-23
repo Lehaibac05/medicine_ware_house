@@ -35,7 +35,7 @@ const InventoryPage = () => {
     const loadWarehouses = async () => {
       try {
         const data = await getWarehouses();
-        setWarehouses(data);
+        setWarehouses(data || []);
       } catch {
         setWarehouses([]);
       }
@@ -47,7 +47,7 @@ const InventoryPage = () => {
   const warehouseOptions = useMemo(
     () => [
       { value: "all", label: "Tất cả kho" },
-      ...warehouses.map((warehouse) => ({
+      ...(warehouses || []).map((warehouse) => ({
         value: String(warehouse.warehouseId),
         label: warehouse.name || `Warehouse ${warehouse.warehouseId}`,
       })),

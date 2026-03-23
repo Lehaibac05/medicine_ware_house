@@ -76,13 +76,40 @@ const toQueryString = (query?: InventoryQuery) => {
   return qs ? `?${qs}` : ""
 }
 
+const normalizePage = <T>(page: PageResponse<T> | T[]): PageResponse<T> => {
+  if (Array.isArray(page)) {
+    const size = page.length
+    return {
+      content: page,
+      totalElements: page.length,
+      totalPages: page.length > 0 ? 1 : 0,
+      size,
+      number: 0,
+    }
+  }
+
+  const content = Array.isArray(page.content) ? page.content : []
+  return {
+    ...page,
+    content,
+    totalElements: page.totalElements ?? content.length,
+    totalPages: page.totalPages ?? (content.length > 0 ? 1 : 0),
+    size: page.size ?? content.length,
+    number: page.number ?? 0,
+  }
+}
+
 export const getInventory = async (
   query?: InventoryQuery,
 ): Promise<InventoryRow[] | PageResponse<InventoryRow>> => {
   if (query?.page !== undefined && query?.size !== undefined) {
-    return apiFetch<PageResponse<InventoryRow>>(`/inventory${toQueryString(query)}`)
+    const response = await apiFetch<PageResponse<InventoryRow>>(`/inventory/paged${toQueryString(query)}`);
+    return normalizePage(response);
   }
-  return apiFetch<InventoryRow[]>(`/inventory${toQueryString(query)}`)
+  // For non-paginated requests, get a large page to simulate getting all data
+  const largePageQuery = { ...query, page: 0, size: 10000 };
+  const response = await apiFetch<PageResponse<InventoryRow>>(`/inventory/paged${toQueryString(largePageQuery)}`);
+  return normalizePage(response).content;
 }
 
 export const getInventoryDetail = async (medicineId: number): Promise<InventoryDetailGroup[]> => {

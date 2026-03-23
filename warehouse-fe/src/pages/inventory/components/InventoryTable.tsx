@@ -146,10 +146,21 @@ function InventoryTable({
           page: pagination.current - 1,
           size: pagination.pageSize,
         });
-        const inventoryData = Array.isArray(data) ? data : data.content;
-        const total = Array.isArray(data) ? data.length : data.totalElements;
+
+        let inventoryData: InventoryApiRow[];
+        let total: number;
+
+        if (Array.isArray(data)) {
+          // Non-paginated response
+          inventoryData = data;
+          total = data.length;
+        } else {
+          // Paginated response
+          inventoryData = data.content;
+          total = data.totalElements;
+        } // For now, since we're getting all data
         setRows(
-          inventoryData.map((item) => ({
+          inventoryData.map((item: InventoryApiRow) => ({
             key: `${item.medicineId}-${item.warehouseId}`,
             medicineId: item.medicineId,
             warehouseId: item.warehouseId,

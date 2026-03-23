@@ -1,13 +1,14 @@
 import { Avatar, Layout, Typography, Dropdown, Tag } from "antd";
 import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { clearAuthToken, getPrimaryRole, getRoleLabel } from "../utils/auth";
+import { clearAuthToken, getPrimaryRole, getRoleLabel, getUserName } from "../utils/auth";
 
 const { Header } = Layout;
-const { Text} = Typography;
+const { Text } = Typography;
 
 function TopBar() {
   const navigate = useNavigate();
+  const userName = getUserName()
   const roleLabel = getRoleLabel(getPrimaryRole());
 
   const handleLogout = () => {
@@ -20,21 +21,6 @@ function TopBar() {
       className="!h-[80px] px-6 flex items-center justify-end shadow-sm"
       style={{ background: "#ecfdf5" }} // pastel green
     >
-      {/* LEFT */}
-      {/* <div className="flex flex-col">
-        <Text className="text-[10px] uppercase tracking-widest text-green-700/60">
-          {subtitle}
-        </Text>
-
-        <Title
-          level={4}
-          className="!m-0 !font-semibold tracking-tight text-green-900"
-        >
-          {title}
-        </Title>
-      </div> */}
-
-      {/* RIGHT */}
       <div className="flex items-center gap-4">
         {/* ROLE */}
         <Tag
@@ -54,10 +40,10 @@ function TopBar() {
           trigger={["click"]}
           menu={{
             items: [
-              { key: "profile", label: "Profile", icon: <UserOutlined /> },
+              { key: "profile", label: "Thông tin cá nhân", icon: <UserOutlined /> },
               {
                 key: "logout",
-                label: "Logout",
+                label: "Đăng xuất",
                 onClick: handleLogout,
                 danger: true,
                 icon: <LogoutOutlined />,
@@ -78,11 +64,11 @@ function TopBar() {
 
             <div className="leading-tight">
               <Text className="block text-[11px] text-green-800/60">
-                Xin chào, 
+                Xin chào,
               </Text>
 
               <div className="text-sm font-semibold text-green-900">
-                Sam
+                {userName || "User"}
               </div>
             </div>
           </div>

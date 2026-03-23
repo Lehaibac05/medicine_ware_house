@@ -132,7 +132,7 @@ export default function IssueApprovalPage() {
       </Sider>
       <Layout className="lg:ml-[260px]">
         <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Issue Approval" subtitle="Issue" />
+          <TopBar />
         </div>
         <Content className="p-6 pt-[114px] flex flex-col gap-4">
           <div className="rounded-xl bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)] flex items-center gap-3">

@@ -228,7 +228,7 @@ const PaymentPage = () => {
   const availableGoodsReceipts = useMemo(
     () =>
       goodsReceipts.filter(
-        (receipt) =>
+        (receipt: GoodsReceipt) =>
           normalizeStatus(receipt.status) === "APPROVED" &&
           !existingInvoiceReceiptIds.has(receipt.receiptId),
       ),
@@ -238,7 +238,7 @@ const PaymentPage = () => {
   const selectedReceipt = useMemo(
     () =>
       goodsReceipts.find(
-        (receipt) => receipt.receiptId === createPayload.goodsReceiptId,
+        (receipt: GoodsReceipt) => receipt.receiptId === createPayload.goodsReceiptId,
       ),
     [goodsReceipts, createPayload.goodsReceiptId],
   );
@@ -628,14 +628,14 @@ const PaymentPage = () => {
             className="w-full"
             placeholder="Chọn phiếu nhập đã được duyệt"
             value={createPayload.goodsReceiptId}
-            options={availableGoodsReceipts.map((receipt) => ({
+            options={availableGoodsReceipts.map((receipt: GoodsReceipt) => ({
               value: receipt.receiptId,
               label: `${receipt.receiptCode} | PO: ${receipt.purchaseOrder?.orderCode || "-"}`,
             }))}
             onChange={(value) => {
               const receiptId = Number(value || 0) || undefined;
               const receipt = goodsReceipts.find(
-                (item) => item.receiptId === receiptId,
+                (item: GoodsReceipt) => item.receiptId === receiptId,
               );
               setCreatePayload((prev) => ({
                 ...prev,
