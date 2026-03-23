@@ -98,7 +98,7 @@ export default function InventoryAdjustmentPage() {
 
       <Layout className="lg:ml-[260px]">
         <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Inventory Correction" subtitle="Adjust Quantity" />
+          <TopBar />
         </div>
 
         <Content className="p-6 pt-[114px]">

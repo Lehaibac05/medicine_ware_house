@@ -42,7 +42,7 @@ export default function IssueReportPage() {
 
   const { data, isLoading } = useIssueReportQuery(params)
   const { data: medicines = [] } = useQuery({ queryKey: ["medicines"], queryFn: getAllMedicines })
-  const { data: warehouses = [] } = useQuery({ queryKey: ["warehouses"], queryFn: getWarehouses })
+  const { data: warehouses = [] } = useQuery({ queryKey: ["warehouses"], queryFn: () => getWarehouses() })
 
   const issuedByOptions = useMemo(() => {
     const map = new Map<number, string>()
@@ -137,7 +137,7 @@ export default function IssueReportPage() {
 
       <Layout className="lg:ml-[260px]">
         <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Issue Report" subtitle="Reporting" />
+          <TopBar />
         </div>
 
         <Content className="flex flex-col gap-6 p-6 pt-[114px]">

@@ -5,7 +5,7 @@ export type AppRole =
   | "ROLE_WAREHOUSE_MANAGER"
   | "ROLE_WAREHOUSE_STAFF"
   | "ROLE_ACCOUNTANT"
-  | "ROLE_SUPPLIER"
+  | "ROLE_REQUESTER"
   | string
 
 export const getAuthToken = (): string | null => {
@@ -58,13 +58,28 @@ export const getPrimaryRole = (): AppRole | null => {
 }
 
 export const getRoleLabel = (role: AppRole | null): string => {
-  if (!role) return "Guest"
+  if (!role) return "Khách"
 
-  if (role === "ROLE_ADMIN") return "Admin"
-  if (role === "ROLE_WAREHOUSE_MANAGER") return "Warehouse Manager"
-  if (role === "ROLE_WAREHOUSE_STAFF") return "Warehouse Staff"
-  if (role === "ROLE_ACCOUNTANT") return "Accountant"
-  if (role === "ROLE_SUPPLIER") return "Supplier"
+  if (role === "ROLE_ADMIN") return "Quản trị viên"
+  if (role === "ROLE_WAREHOUSE_MANAGER") return "Quản lý kho"
+  if (role === "ROLE_WAREHOUSE_STAFF") return "Nhân viên kho"
+  if (role === "ROLE_ACCOUNTANT") return "Kế toán"
+  if (role === "ROLE_REQUESTER") return "Người yêu cầu"
 
   return role.replace(/^ROLE_/, "").replace(/_/g, " ")
+}
+
+export const getUserName = (): string => {
+  const token = getAuthToken()
+  if (!token) return ""
+
+  const payload = parseJwtPayload(token)
+  if (!payload) return ""
+
+  return (
+    (payload.name as string) ||
+    (payload.username as string) ||
+    (payload.sub as string) ||
+    ""
+  )
 }
