@@ -23,6 +23,7 @@ import MainLayout from "../../layouts/MainLayout";
 import BaseFilterCard from "../../components/base/BaseFilterCard";
 import CreateMedicineRequestModal from "./components/CreateMedicineRequestModal";
 import BaseTable from "../../components/base/BaseTable";
+import { getUserRoles } from "../../utils/auth";
 
 const { Text } = Typography;
 
@@ -87,6 +88,11 @@ export default function RequestsManagementPage() {
   const approveMutation = useApproveRequestMutation();
   const rejectMutation = useRejectRequestMutation();
   const [openModal, setOpenModal] = useState(false);
+
+  const userRoles = getUserRoles();
+  const canManageRequests = userRoles.some((role) =>
+    ["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"].includes(role),
+  );
 
   // Update total when data changes
   useEffect(() => {
@@ -194,7 +200,8 @@ export default function RequestsManagementPage() {
     }));
   };
 
-  const columns: ColumnsType<RequestRow> = [
+  const baseColumns: ColumnsType<RequestRow> = [
+    { title: "ID", dataIndex: "requestId", width: 100 },
     { title: "Thuốc", dataIndex: "medicine" },
     { title: "Số lượng yêu cầu", dataIndex: "requestedQuantity", width: 160 },
     { title: "Tồn kho hiện tại", dataIndex: "currentStock", width: 140 },
@@ -205,43 +212,48 @@ export default function RequestsManagementPage() {
       width: 130,
       render: (value: RequestRow["status"]) => statusTag(value),
     },
-    {
-      title: "Hành động",
-      width: 250,
-      render: (_, record) => (
-        <Space>
-          <Button
-            size="small"
-            onClick={() => void onApprove(record.requestId)}
-            loading={
-              actingRequestId === record.requestId && actingType === "approve"
-            }
-          >
-            Chấp nhận
-          </Button>
-
-          <Button
-            size="small"
-            danger
-            onClick={() => void onReject(record.requestId)}
-            loading={
-              actingRequestId === record.requestId && actingType === "reject"
-            }
-          >
-            Từ chối
-          </Button>
-
-          {record.status === "APPROVED" && (
-            <Link to={`/purchase-orders/create?requestId=${record.requestId}`}>
-              <Button size="small" type="primary">
-                Tạo đơn nhập
-              </Button>
-            </Link>
-          )}
-        </Space>
-      ),
-    },
   ];
+
+  const actionColumn: ColumnsType<RequestRow>[number] = {
+    title: "Hành động",
+    width: 250,
+    render: (_, record) => (
+      <Space>
+        <Button
+          size="small"
+          onClick={() => void onApprove(record.requestId)}
+          loading={
+            actingRequestId === record.requestId && actingType === "approve"
+          }
+        >
+          Chấp nhận
+        </Button>
+
+        <Button
+          size="small"
+          danger
+          onClick={() => void onReject(record.requestId)}
+          loading={
+            actingRequestId === record.requestId && actingType === "reject"
+          }
+        >
+          Từ chối
+        </Button>
+
+        {record.status === "APPROVED" && (
+          <Link to={`/purchase-orders/create?requestId=${record.requestId}`}>
+            <Button size="small" type="primary">
+              Tạo đơn nhập
+            </Button>
+          </Link>
+        )}
+      </Space>
+    ),
+  };
+
+  const columns: ColumnsType<RequestRow> = canManageRequests
+    ? [...baseColumns, actionColumn]
+    : baseColumns;
 
   return (
     <MainLayout>

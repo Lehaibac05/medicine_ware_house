@@ -44,15 +44,15 @@ public class DataInitializer implements CommandLineRunner {
         accountant.setRoleName("ACCOUNTANT");
         accountant.setDescription("Accountant");
 
-        Role supplier = new Role();
-        supplier.setRoleName("SUPPLIER");
-        supplier.setDescription("Supplier");
+        Role requester = new Role();
+        requester.setRoleName("REQUESTER");
+        requester.setDescription("Issue requester");
 
         admin = roleRepository.save(admin);
         roleRepository.save(manager);
         roleRepository.save(staff);
         roleRepository.save(accountant);
-        roleRepository.save(supplier);
+        roleRepository.save(requester);
 
         User adminUser = new User();
         adminUser.setUsername("admin");

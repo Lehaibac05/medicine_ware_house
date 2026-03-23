@@ -18,6 +18,7 @@ import StatusTag from "../../components/common/StatusTag"
 import MainLayout from "../../layouts/MainLayout"
 import { apiFetch } from "../../services/api"
 import BaseFilterCard from "../../components/base/BaseFilterCard"
+import { getUserRoles } from "../../utils/auth"
 
 const { Text } = Typography
 
@@ -64,6 +65,12 @@ export default function PurchaseOrdersPage() {
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
+  const roles = getUserRoles()
+
+  const isAdmin = roles.includes("ROLE_ADMIN")
+  const isManager = roles.includes("ROLE_WAREHOUSE_MANAGER")
+
+  const canCreatePurchaseOrder = isAdmin || isManager
 
   // ================= LOAD FILTER DATA =================
   useEffect(() => {
@@ -284,9 +291,11 @@ export default function PurchaseOrdersPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
 
-              <Link to="/purchase-orders/create">
-                <Button type="primary">Tạo đơn mua hàng</Button>
-              </Link>
+              {canCreatePurchaseOrder && (
+                <Link to="/purchase-orders/create">
+                  <Button type="primary">Tạo đơn mua hàng</Button>
+                </Link>
+              )}
             </Space>
           </div>
         )}

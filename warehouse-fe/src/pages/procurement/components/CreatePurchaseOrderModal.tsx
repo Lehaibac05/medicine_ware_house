@@ -10,7 +10,7 @@ import {
   message,
 } from "antd";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 import {
   createPurchaseOrder,
@@ -44,13 +44,6 @@ export default function CreatePurchaseOrderModal({
   const [messageApi, contextHolder] = message.useMessage();
 
   const isEditMode = !!orderId;
-
-  const medicineNameById = useMemo(() => {
-    return medicines.reduce((acc, m) => {
-      acc[m.medicineId] = m.name;
-      return acc;
-    }, {} as Record<number, string>);
-  }, [medicines]);
 
   useEffect(() => {
     if (!open) return;

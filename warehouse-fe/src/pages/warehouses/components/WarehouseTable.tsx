@@ -52,8 +52,8 @@ function WarehouseTable({ filters, search, onSearch }: WarehouseTableProps) {
         page: pagination.current - 1,
         size: pagination.pageSize,
       });
-      const warehouses = Array.isArray(response) ? response : response.content;
-      const total = Array.isArray(response) ? response.length : response.totalElements;
+      const warehouses = response;
+      const total = response.length;
       setData(warehouses);
       setPagination((prev) => ({
         ...prev,
