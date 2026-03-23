@@ -19,6 +19,7 @@ import {
   getLowStockInventory,
   type InventoryRow,
 } from "../../../services/inventory";
+import { getUserRoles } from "../../../utils/auth";
 
 const { Text, Title } = Typography;
 
@@ -130,12 +131,26 @@ function AlertsPanel() {
   const [messageApi, contextHolder] = message.useMessage();
   const [loading, setLoading] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const userRoles = getUserRoles();
+  const canTriggerAlertScan = userRoles.some((role) =>
+    ["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"].includes(role),
+  );
+  const canShowCreateRequestButton = userRoles.some((role) =>
+    ["ROLE_ADMIN", "ROLE_WAREHOUSE_STAFF"].includes(role),
+  );
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
+      if (canTriggerAlertScan) {
+        try {
+          await checkAndGenerateAlerts();
+        } catch {
+          // ignore scan failures for users without explicit alert permissions
+        }
+      }
+
       try {
-        setLoading(true);
-        await checkAndGenerateAlerts();
         const { activeAlerts, lowStockRows } = await loadAlertsAndLowStock();
         setAlerts(normalizeDashboardAlerts(activeAlerts, lowStockRows));
       } catch {
@@ -146,7 +161,7 @@ function AlertsPanel() {
     };
 
     void load();
-  }, [messageApi]);
+  }, [messageApi, canTriggerAlertScan]);
 
   const alertCountLabel = useMemo(
     () => `${alerts.length} mới`,
@@ -219,7 +234,7 @@ function AlertsPanel() {
               </Text>
 
               {/* Action */}
-              {canCreateRequest(item) ? (
+              {canCreateRequest(item) && canShowCreateRequestButton ? (
                 <div className="mt-3 flex items-center justify-between">
                   <Text className="text-xs text-slate-400">
                     Đề xuất tạo yêu cầu

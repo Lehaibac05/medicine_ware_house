@@ -63,7 +63,7 @@ export default function InventoryReportPage() {
   const { data, isLoading } = useInventoryReportQuery(params);
   const { data: warehouses = [] } = useQuery({
     queryKey: ["warehouses"],
-    queryFn: getWarehouses,
+    queryFn: () => getWarehouses(),
   });
 
   const columns: ColumnsType<InventoryReportItem> = [

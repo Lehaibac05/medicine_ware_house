@@ -114,7 +114,7 @@ export default function CreateIssueRequestPage() {
       </Sider>
       <Layout className="lg:ml-[260px]">
         <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Create Issue Request" subtitle="Issue" />
+          <TopBar />
         </div>
         <Content className="p-6 pt-[114px]">
           <div className="rounded-2xl bg-white p-6 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
