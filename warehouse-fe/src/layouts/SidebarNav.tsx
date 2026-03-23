@@ -58,18 +58,18 @@ const baseMenuItems: NonNullable<MenuProps["items"]> = [
     icon: <ShoppingCartOutlined />,
     label: "Đơn hàng & yêu cầu",
     children: [
-      {
-        key: "orders",
-        label: <Link to="/orders">Đơn hàng</Link>,
-      },
+      // {
+      //   key: "orders",
+      //   label: <Link to="/orders">Đơn hàng</Link>,
+      // },
       {
         key: "requests",
         label: <Link to="/requests">Yêu cầu</Link>,
       },
-      {
-        key: "medicine-requests",
-        label: <Link to="/medicine-requests">Yêu cầu của tôi</Link>,
-      },
+      // {
+      //   key: "medicine-requests",
+      //   label: <Link to="/medicine-requests">Yêu cầu của tôi</Link>,
+      // },
       {
         key: "purchase-orders",
         label: <Link to="/purchase-orders">Đơn mua hàng</Link>,
@@ -176,8 +176,11 @@ const baseMenuItems: NonNullable<MenuProps["items"]> = [
 const filterMenuItems = (
   items: NonNullable<MenuProps["items"]>,
   flags: {
+    isAdmin: boolean;
     isManager: boolean;
-    isStaffOnly: boolean;
+    isStaff: boolean;
+    isAccountant: boolean;
+    isRequester: boolean;
     canViewInventoryReport: boolean;
     canViewFinancialReport: boolean;
     canViewIssueReport: boolean;
@@ -193,43 +196,96 @@ const filterMenuItems = (
 
       const nextItem: Exclude<SidebarMenuItem, null> = { ...item };
 
-      if (nextItem.key === "requests" && !flags.isManager) {
+      // System menu - only ADMIN
+      if (nextItem.key === "system" && !flags.isAdmin) {
         return null;
       }
 
-      if (nextItem.key === "warehouses" && !flags.isManager) {
+      // Overview - ADMIN, WAREHOUSE_MANAGER
+      if (nextItem.key === "overview" && !flags.isAdmin && !flags.isManager && !flags.isStaff && !flags.isAccountant) {
         return null;
       }
 
-      if (nextItem.key === "suppliers" && !flags.isManager) {
+      // Users - only ADMIN
+      if (nextItem.key === "users" && !flags.isAdmin) {
         return null;
       }
 
-      if (nextItem.key === "medicine-requests" && !flags.isStaffOnly) {
-        return null;
-      }
-
+      // Suppliers - ADMIN, WAREHOUSE_MANAGER
       if (
-        nextItem.key === "reports-inventory" &&
-        !flags.canViewInventoryReport
+        nextItem.key === "suppliers"
+        && !flags.isAdmin
+        && !flags.isManager
       ) {
         return null;
       }
 
+      // Warehouses - ADMIN, WAREHOUSE_MANAGER, WAREHOUSE_STAFF
+      if (nextItem.key === "warehouses" && !flags.isAdmin && !flags.isManager) {
+        return null;
+      }
+
+      // Medicines - ADMIN, WAREHOUSE_MANAGER, WAREHOUSE_STAFF, ACCOUNTANT
+      if (nextItem.key === "medicines" && !flags.isAdmin && !flags.isManager && !flags.isStaff && !flags.isAccountant && !flags.isRequester) {
+        return null;
+      }
+
+      // Batches - ADMIN, WAREHOUSE_MANAGER, WAREHOUSE_STAFF, ACCOUNTANT
+      if (nextItem.key === "batches" && !flags.isAdmin && !flags.isManager && !flags.isStaff && !flags.isAccountant && !flags.isRequester) {
+        return null;
+      }
+
+      // Purchase Orders - ADMIN, WAREHOUSE_MANAGER, WAREHOUSE_STAFF
+      if (nextItem.key === "purchase-orders" && !flags.isAdmin && !flags.isManager && !flags.isStaff) {
+        return null;
+      }
+
+      // Goods Receipts - ADMIN, WAREHOUSE_MANAGER, WAREHOUSE_STAFF
+      if (nextItem.key === "goods-receipts" && !flags.isAdmin && !flags.isManager && !flags.isStaff) {
+        return null;
+      }
+
+      // Medicine Requests - ADMIN, WAREHOUSE_MANAGER, WAREHOUSE_STAFF, REQUESTER
       if (
-        nextItem.key === "reports-financial" &&
-        !flags.canViewFinancialReport
+        nextItem.key === "requests"
+        && !flags.isAdmin
+        && !flags.isManager
+        && !flags.isStaff
       ) {
         return null;
       }
 
-      if (
-        nextItem.key === "reports-issues" &&
-        !flags.canViewIssueReport
-      ) {
+      // Finance menu - ADMIN, ACCOUNTANT
+      if (nextItem.key === "finance" && !flags.isAdmin && !flags.isAccountant) {
         return null;
       }
 
+      // Payments - ADMIN, ACCOUNTANT
+      if (nextItem.key === "payments" && !flags.isAdmin && !flags.isAccountant) {
+        return null;
+      }
+
+      // Analytics menu - ADMIN, WAREHOUSE_MANAGER
+      if (nextItem.key === "analytics" && !flags.isAdmin && !flags.isManager) {
+        return null;
+      }
+
+      // Alerts - ADMIN, WAREHOUSE_MANAGER
+      if (nextItem.key === "alerts" && !flags.isAdmin && !flags.isManager) {
+        return null;
+      }
+
+      // Forecast - ADMIN, WAREHOUSE_MANAGER
+      if (nextItem.key === "forecast" && !flags.isAdmin && !flags.isManager) {
+        return null;
+      }
+
+      // Settings - only ADMIN
+      if (nextItem.key === "settings" && !flags.isAdmin) {
+        return null;
+      }
+
+      // Issue related items
       if (nextItem.key === "issue-request" && !flags.canCreateIssueRequest) {
         return null;
       }
@@ -247,6 +303,19 @@ const filterMenuItems = (
       }
 
       if (nextItem.key === "issue-history" && !flags.canViewIssueHistory) {
+        return null;
+      }
+
+      // Reports
+      if (nextItem.key === "reports-inventory" && !flags.canViewInventoryReport) {
+        return null;
+      }
+
+      if (nextItem.key === "reports-financial" && !flags.canViewFinancialReport) {
+        return null;
+      }
+
+      if (nextItem.key === "reports-issues" && !flags.canViewIssueReport) {
         return null;
       }
 
@@ -288,49 +357,35 @@ const findOpenKeys = (
   return [];
 };
 
-function SidebarNav({
-  collapsed,
-  setCollapsed,
-}: {
-  collapsed: boolean;
-  setCollapsed: (val: boolean) => void;
-}) {
+function SidebarNav() {
   const { pathname } = useLocation();
   const roles = getUserRoles();
+  const [collapsed, setCollapsed] = useState(false);
 
-  const isManager =
-    roles.includes("ROLE_ADMIN") || roles.includes("ROLE_WAREHOUSE_MANAGER");
-  const isStaffOnly = roles.includes("ROLE_WAREHOUSE_STAFF") && !isManager;
+  const isAdmin = roles.includes("ROLE_ADMIN");
+  const isManager = roles.includes("ROLE_WAREHOUSE_MANAGER");
+  const isStaff = roles.includes("ROLE_WAREHOUSE_STAFF");
+  const isAccountant = roles.includes("ROLE_ACCOUNTANT");
+  const isRequester = roles.includes("ROLE_REQUESTER");
   const canViewInventoryReport =
-    roles.includes("ROLE_ADMIN") ||
-    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
-    roles.includes("ROLE_WAREHOUSE_STAFF") ||
-    roles.includes("ROLE_ACCOUNTANT");
+    isAdmin || isManager || isStaff || isAccountant;
   const canViewFinancialReport =
-    roles.includes("ROLE_ADMIN") ||
-    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
-    roles.includes("ROLE_ACCOUNTANT");
+    isAdmin || isManager || isAccountant;
   const canViewIssueReport =
-    roles.includes("ROLE_ADMIN") ||
-    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
-    roles.includes("ROLE_WAREHOUSE_STAFF") ||
-    roles.includes("ROLE_ACCOUNTANT");
+    isAdmin || isManager || isStaff || isAccountant;
   const canCreateIssueRequest =
-    roles.includes("ROLE_ADMIN") ||
-    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
-    roles.includes("ROLE_WAREHOUSE_STAFF") ||
-    roles.includes("ROLE_ACCOUNTANT");
-  const canApproveIssue = roles.includes("ROLE_ADMIN") || roles.includes("ROLE_WAREHOUSE_MANAGER");
-  const canExecuteIssue = roles.includes("ROLE_ADMIN") || roles.includes("ROLE_WAREHOUSE_STAFF");
+    isAdmin || isManager || isStaff || isAccountant || isRequester;
+  const canApproveIssue = isAdmin || isManager;
+  const canExecuteIssue = isAdmin || isStaff;
   const canViewIssueHistory =
-    roles.includes("ROLE_ADMIN") ||
-    roles.includes("ROLE_WAREHOUSE_MANAGER") ||
-    roles.includes("ROLE_WAREHOUSE_STAFF") ||
-    roles.includes("ROLE_ACCOUNTANT");
+    isAdmin || isManager || isStaff || isAccountant || isRequester;
 
   const menuItems = filterMenuItems(baseMenuItems, {
+    isAdmin,
     isManager,
-    isStaffOnly,
+    isStaff,
+    isAccountant,
+    isRequester,
     canViewInventoryReport,
     canViewFinancialReport,
     canViewIssueReport,

@@ -1,6 +1,29 @@
 import { apiFetch } from "./api"
 import type { Batch, PageResponse } from "./types"
 
+const normalizePage = <T>(page: PageResponse<T> | T[]): PageResponse<T> => {
+  if (Array.isArray(page)) {
+    const size = page.length
+    return {
+      content: page,
+      totalElements: page.length,
+      totalPages: page.length > 0 ? 1 : 0,
+      size,
+      number: 0,
+    }
+  }
+
+  const content = Array.isArray(page.content) ? page.content : []
+  return {
+    ...page,
+    content,
+    totalElements: page.totalElements ?? content.length,
+    totalPages: page.totalPages ?? (content.length > 0 ? 1 : 0),
+    size: page.size ?? content.length,
+    number: page.number ?? 0,
+  }
+}
+
 export const getAllBatches = async (params?: {
   page?: number
   size?: number
@@ -9,7 +32,8 @@ export const getAllBatches = async (params?: {
     const query = new URLSearchParams()
     query.append("page", String(params.page))
     query.append("size", String(params.size))
-    return apiFetch<PageResponse<Batch>>(`/batches?${query.toString()}`)
+    const response = await apiFetch<PageResponse<Batch>>(`/batches?${query.toString()}`)
+    return normalizePage(response)
   }
   return apiFetch<Batch[]>("/batches")
 }

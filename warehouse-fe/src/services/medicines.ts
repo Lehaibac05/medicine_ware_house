@@ -13,6 +13,29 @@ export type GetMedicinesParams = {
   sortDir?: "asc" | "desc"
 }
 
+const normalizePage = <T>(page: PageResponse<T> | T[]): PageResponse<T> => {
+  if (Array.isArray(page)) {
+    const size = page.length
+    return {
+      content: page,
+      totalElements: page.length,
+      totalPages: page.length > 0 ? 1 : 0,
+      size,
+      number: 0,
+    }
+  }
+
+  const content = Array.isArray(page.content) ? page.content : []
+  return {
+    ...page,
+    content,
+    totalElements: page.totalElements ?? content.length,
+    totalPages: page.totalPages ?? (content.length > 0 ? 1 : 0),
+    size: page.size ?? content.length,
+    number: page.number ?? 0,
+  }
+}
+
 export const getMedicines = async (
   params: GetMedicinesParams = {}
 ): Promise<PageResponse<Medicine>> => {
@@ -42,7 +65,8 @@ export const getMedicines = async (
 
   const query = searchParams.toString()
   const endpoint = query ? `/medicines?${query}` : "/medicines"
-  return apiFetch<PageResponse<Medicine>>(endpoint)
+  const response = await apiFetch<PageResponse<Medicine>>(endpoint)
+  return normalizePage(response)
 }
 
 export const getAllMedicines = async (): Promise<Medicine[]> => {

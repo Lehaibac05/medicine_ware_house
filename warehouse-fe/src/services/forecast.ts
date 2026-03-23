@@ -76,7 +76,7 @@ export const forecastApi = {
   },
 
   // Get forecast by ID
-  getForecastById: async (id: number): Promise<Forecast> => {
+  getForecastById: async (_id: number): Promise<Forecast> => {
     // return apiFetch<Forecast>(`/forecast/${id}`);
     throw new Error('Not implemented');
   },
@@ -104,7 +104,7 @@ export const forecastApi = {
   },
 
   // Create new forecast
-  createForecast: async (forecast: Omit<Forecast, 'forecastId'>): Promise<Forecast> => {
+  createForecast: async (_forecast: Omit<Forecast, 'forecastId'>): Promise<Forecast> => {
     // return apiFetch<Forecast>('/forecast', {
     //   method: 'POST',
     //   body: JSON.stringify(forecast),
@@ -113,7 +113,7 @@ export const forecastApi = {
   },
 
   // Update forecast
-  updateForecast: async (id: number, forecast: Partial<Forecast>): Promise<Forecast> => {
+  updateForecast: async (_id: number, _forecast: Partial<Forecast>): Promise<Forecast> => {
     // return apiFetch<Forecast>(`/forecast/${id}`, {
     //   method: 'PUT',
     //   body: JSON.stringify(forecast),
@@ -122,7 +122,7 @@ export const forecastApi = {
   },
 
   // Delete forecast
-  deleteForecast: async (id: number): Promise<void> => {
+  deleteForecast: async (_id: number): Promise<void> => {
     // return apiFetch<void>(`/forecast/${id}`, {
     //   method: 'DELETE',
     // });
@@ -130,7 +130,7 @@ export const forecastApi = {
   },
 
   // Get forecasts by medicine
-  getForecastsByMedicine: async (medicineId: number): Promise<Forecast[]> => {
+  getForecastsByMedicine: async (_medicineId: number): Promise<Forecast[]> => {
     // return apiFetch<Forecast[]>(`/forecast/medicine/${medicineId}`);
     return [];
   },

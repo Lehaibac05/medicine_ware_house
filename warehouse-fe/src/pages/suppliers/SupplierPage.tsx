@@ -121,7 +121,6 @@ const SupplierPage = () => {
       <SupplierTable
         filters={appliedFilters}
         search={search}
-        onSearch={setSearch}
       />
     </MainLayout>
   );
