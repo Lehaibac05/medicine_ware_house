@@ -1,15 +1,10 @@
-import { Button, Space, Tag, Typography, message, Flex, Input } from "antd";
-import type { ColumnsType } from "antd/es/table";
-import { useEffect, useState, useMemo } from "react";
-import BaseTable from "../../../components/base/BaseTable";
-import {
-  type Alert,
-  getAllAlerts,
-  resolveAlert,
-  checkAndGenerateAlerts,
-} from "../../../services/alerts";
-import type { AlertFilters } from "../AlertsPage";
-import dayjs from "dayjs";
+import { Button, Space, Tag, Typography, message, Flex, Input } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { useEffect, useState, useMemo } from 'react'
+import BaseTable from '../../../components/base/BaseTable'
+import { type Alert, getAllAlerts, resolveAlert, checkAndGenerateAlerts } from '../../../services/alerts'
+import type { AlertFilters } from '../AlertsPage'
+import dayjs from 'dayjs'
 
 const { Text } = Typography;
 
@@ -27,25 +22,25 @@ export type AlertRow = {
 
 const severityTag = (value: string) => {
   const upper = value.toUpperCase();
-  if (upper === "CRITICAL") return <Tag color="red">Nghiêm trọng</Tag>;
-  if (upper === "HIGH") return <Tag color="volcano">Cao</Tag>;
-  if (upper === "MEDIUM") return <Tag color="gold">Trung bình</Tag>;
-  return <Tag>Thấp</Tag>;
+  if (upper === "CRITICAL") return <Tag color="red">Critical</Tag>;
+  if (upper === "HIGH") return <Tag color="volcano">High</Tag>;
+  if (upper === "MEDIUM") return <Tag color="gold">Medium</Tag>;
+  return <Tag>Low</Tag>;
 };
 
 const statusTag = (value: string) => {
   const upper = value.toUpperCase();
-  if (upper === "RESOLVED") return <Tag color="green">Đã xử lý</Tag>;
-  if (upper === "IN_PROGRESS") return <Tag color="blue">Đang xử lý</Tag>;
-  return <Tag color="default">Đang mở</Tag>;
+  if (upper === "RESOLVED") return <Tag color="green">Resolved</Tag>;
+  if (upper === "IN_PROGRESS") return <Tag color="blue">In progress</Tag>;
+  return <Tag color="default">Open</Tag>;
 };
 
 const typeTag = (value: string) => {
   const upper = value.toUpperCase();
-  if (upper === "EXPIRED") return <Tag color="red">Đã hết hạn</Tag>;
-  if (upper === "EXPIRING_SOON") return <Tag color="gold">Sắp hết hạn</Tag>;
-  if (upper === "LOW_STOCK") return <Tag color="volcano">Tồn kho thấp</Tag>;
-  return <Tag color="geekblue">Hệ thống</Tag>;
+  if (upper === "EXPIRED") return <Tag color="red">Expired</Tag>;
+  if (upper === "EXPIRING_SOON") return <Tag color="gold">Expiring Soon</Tag>;
+  if (upper === "LOW_STOCK") return <Tag color="volcano">Low Stock</Tag>;
+  return <Tag color="geekblue">System</Tag>;
 };
 
 type AlertsTableProps = {
@@ -63,12 +58,12 @@ function AlertsTable({ filters, onSearch }: AlertsTableProps) {
     <Flex justify="space-between" align="center">
       <div className="flex flex-col">
         <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-          Danh sách cảnh báo
+          Alerts list
         </Text>
       </div>
       <div className="w-[200px]">
         <Input.Search
-          placeholder="Tìm kiếm theo ID hoặc tên thuốc..."
+          placeholder="Search by alert ID..."
           className="w-[320px]"
           allowClear
           onSearch={onSearch}
@@ -85,20 +80,20 @@ function AlertsTable({ filters, onSearch }: AlertsTableProps) {
     try {
       setLoading(true);
 
-      // Tự động quét các lô để tạo/cập nhật cảnh báo
-      console.log("Đang quét các lô để tạo cảnh báo...");
+      // Auto-scan batches to generate/update alerts from real batch data
+      console.log("🔍 Auto-scanning batches for alerts...");
       try {
         const scanResult = await checkAndGenerateAlerts();
-        console.log("Quét hoàn tất:", scanResult);
+        console.log("✅ Scan completed:", scanResult);
       } catch (scanError) {
-        console.warn("Quét thất bại, tải cảnh báo hiện có:", scanError);
+        console.warn("⚠️ Scan failed, loading existing alerts:", scanError);
       }
 
-      // Sau đó tải danh sách cảnh báo để hiển thị
+      // Then load the alerts to display
       await loadAlerts();
     } catch (error) {
-      console.error("Lỗi khởi tạo cảnh báo:", error);
-      messageApi.error("Không thể tải cảnh báo");
+      console.error("❌ Initialize alerts error:", error);
+      messageApi.error("Failed to load alerts");
     } finally {
       setLoading(false);
     }
@@ -106,9 +101,9 @@ function AlertsTable({ filters, onSearch }: AlertsTableProps) {
 
   const loadAlerts = async () => {
     try {
-      console.log("Đang tải danh sách cảnh báo...");
+      console.log("📊 Loading alerts...");
       const data = await getAllAlerts();
-      console.log("Đã tải danh sách cảnh báo:", data.length);
+      console.log("✅ Loaded alerts:", data.length);
 
       const mapped: AlertRow[] = data.map((alert: Alert) => ({
         key: alert.alertId.toString(),
@@ -124,8 +119,8 @@ function AlertsTable({ filters, onSearch }: AlertsTableProps) {
 
       setAlerts(mapped);
     } catch (error) {
-      messageApi.error("Lỗi khi tải danh sách cảnh báo");
-      console.error("Tải danh sách cảnh báo lỗi:", error);
+      messageApi.error("Failed to load alerts");
+      console.error("Load alerts error:", error);
     } finally {
       setLoading(false);
     }
@@ -204,12 +199,12 @@ function AlertsTable({ filters, onSearch }: AlertsTableProps) {
   const handleResolve = async (alertId: number) => {
     try {
       setResolvingId(alertId);
-      await resolveAlert(alertId, "Xử lý từ dashboard");
-      messageApi.success("Đã xử lý cảnh báo thành công");
-      await loadAlerts(); // Tải lại dữ liệu
+      await resolveAlert(alertId, "Resolved from dashboard");
+      messageApi.success("Alert resolved successfully");
+      await loadAlerts(); // Reload data
     } catch (error) {
-      messageApi.error("Không thể xử lý cảnh báo");
-      console.error("Lỗi xử lý cảnh báo:", error);
+      messageApi.error("Failed to resolve alert");
+      console.error("Resolve alert error:", error);
     } finally {
       setResolvingId(null);
     }
@@ -217,7 +212,7 @@ function AlertsTable({ filters, onSearch }: AlertsTableProps) {
 
   const columns: ColumnsType<AlertRow> = [
     {
-      title: "Mã cảnh báo",
+      title: "Alert ID",
       dataIndex: "alertId",
       key: "alertId",
       render: (value: number) => (
@@ -226,52 +221,52 @@ function AlertsTable({ filters, onSearch }: AlertsTableProps) {
       width: 120,
     },
     {
-      title: "Loại cảnh báo",
+      title: "Alert Type",
       dataIndex: "alertType",
       key: "alertType",
       render: (value: string) => typeTag(value),
       width: 140,
     },
     {
-      title: "Tên thuốc",
+      title: "Medicine name",
       dataIndex: "medicineName",
       key: "medicineName",
       ellipsis: true,
     },
     {
-      title: "Kho",
+      title: "Warehouse",
       dataIndex: "warehouse",
       key: "warehouse",
       width: 160,
     },
     {
-      title: "Ngày tạo",
+      title: "Date",
       dataIndex: "date",
       key: "date",
       width: 120,
     },
     {
-      title: "Mức độ nghiêm trọng",
+      title: "Severity",
       dataIndex: "severity",
       key: "severity",
       render: (value: string) => severityTag(value),
-      width: 200,
+      width: 120,
     },
     {
-      title: "Trạng thái",
+      title: "Status",
       dataIndex: "status",
       key: "status",
       render: (value: string) => statusTag(value),
       width: 140,
     },
     {
-      title: "Hành động",
+      title: "Actions",
       key: "actions",
       width: 180,
       render: (_: unknown, record: AlertRow) => (
         <Space>
           <Button size="small" onClick={() => messageApi.info(record.message)}>
-            Xem
+            View
           </Button>
           {record.status.toUpperCase() !== "RESOLVED" && (
             <Button
@@ -280,7 +275,7 @@ function AlertsTable({ filters, onSearch }: AlertsTableProps) {
               loading={resolvingId === record.alertId}
               onClick={() => handleResolve(record.alertId)}
             >
-              Xử lý
+              Resolve
             </Button>
           )}
         </Space>
@@ -296,6 +291,7 @@ function AlertsTable({ filters, onSearch }: AlertsTableProps) {
         columns={columns}
         dataSource={filteredAndSortedAlerts}
         loading={loading}
+        scroll={{ x: 980 }}
         cardClassName="!rounded-2xl shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
       />
     </>

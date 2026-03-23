@@ -13,7 +13,12 @@ import {
 } from "@ant-design/icons";
 import { Navigate, useNavigate } from "react-router-dom";
 import { login } from "../../services/auth";
-import { getAuthToken, setAuthToken } from "../../utils/auth";
+import {
+  getAuthToken,
+  setCurrentUserProfile,
+  setAuthToken,
+  setForceChangePasswordRequired,
+} from "../../utils/auth";
 
 type LoginFormValues = {
   username: string;
@@ -35,6 +40,8 @@ const LoginPage = () => {
     try {
       const response = await login(values);
       setAuthToken(response.token);
+      setCurrentUserProfile(response.user ?? null);
+      setForceChangePasswordRequired(response.forceChangePassword === true);
       messageApi.success("Login successful");
       navigate("/dashboard", { replace: true });
     } catch {

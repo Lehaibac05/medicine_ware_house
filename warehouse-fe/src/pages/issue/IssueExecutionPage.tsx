@@ -1,7 +1,8 @@
-import { Button, Layout, Space, Typography, message } from "antd"
+import { Button, Layout, Space, Typography } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { useEffect, useState } from "react"
 import BaseTable from "../../components/base/BaseTable"
+import { useToast } from "../../hooks/useToast"
 import SidebarNav from "../../layouts/SidebarNav"
 import TopBar from "../../layouts/TopBar"
 import { executeIssue, getIssueRequests, type IssueRequest } from "../../services/issue"
@@ -11,7 +12,7 @@ const { Content, Sider } = Layout
 const { Text } = Typography
 
 export default function IssueExecutionPage() {
-  const [messageApi, contextHolder] = message.useMessage()
+  const { toast, contextHolder } = useToast()
   const [loading, setLoading] = useState(false)
   const [executingId, setExecutingId] = useState<number | null>(null)
   const [rows, setRows] = useState<IssueRequest[]>([])
@@ -21,8 +22,8 @@ export default function IssueExecutionPage() {
       setLoading(true)
       const data = await getIssueRequests()
       setRows(data.filter((row) => row.status === "APPROVED"))
-    } catch {
-      messageApi.error("Failed to load approved requests")
+    } catch (error) {
+      toast.error(error, "Failed to load approved requests")
     } finally {
       setLoading(false)
     }
@@ -36,10 +37,10 @@ export default function IssueExecutionPage() {
     try {
       setExecutingId(requestId)
       await executeIssue(requestId)
-      messageApi.success("Issue executed successfully")
+      toast.success("Issue executed successfully")
       await loadData()
-    } catch {
-      messageApi.error("Failed to execute issue")
+    } catch (error) {
+      toast.error(error, "Failed to execute issue")
     } finally {
       setExecutingId(null)
     }

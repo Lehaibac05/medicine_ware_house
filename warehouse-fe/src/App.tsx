@@ -1,8 +1,12 @@
 import AppRouter from './routes'
+import ForceChangePasswordModal from './components/common/ForceChangePasswordModal'
 
 const App = () => {
   return (
-    <AppRouter />
+    <>
+      <AppRouter />
+      <ForceChangePasswordModal />
+    </>
   )
 }
 

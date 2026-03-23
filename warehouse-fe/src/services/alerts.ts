@@ -1,4 +1,5 @@
 import { apiFetch } from "./api"
+import type { PageResponse } from "./types"
 
 export type Alert = {
   alertId: number
@@ -37,6 +38,66 @@ export type AlertHistory = {
   timestamp: string
   username?: string
   userFullName?: string
+}
+
+export type GetAlertsPagedParams = {
+  page?: number
+  size?: number
+  type?: string
+  severity?: string
+  status?: string
+  fromDate?: string
+  toDate?: string
+  search?: string
+  sortBy?: "createdAt" | "severity"
+  sortDir?: "asc" | "desc"
+  activeOnly?: boolean
+}
+
+export const getAlertsPaged = async (
+  params: GetAlertsPagedParams = {}
+): Promise<PageResponse<Alert>> => {
+  const searchParams = new URLSearchParams()
+
+  if (typeof params.page === "number") {
+    searchParams.set("page", String(params.page))
+  }
+  if (typeof params.size === "number") {
+    searchParams.set("size", String(params.size))
+  }
+  if (params.type && params.type !== "all") {
+    searchParams.set("type", params.type)
+  }
+  if (params.severity && params.severity !== "all") {
+    searchParams.set("severity", params.severity)
+  }
+  if (params.status) {
+    searchParams.set("status", params.status)
+  }
+  if (params.fromDate) {
+    searchParams.set("fromDate", params.fromDate)
+  }
+  if (params.toDate) {
+    searchParams.set("toDate", params.toDate)
+  }
+  if (params.search?.trim()) {
+    searchParams.set("search", params.search.trim())
+  }
+  if (params.sortBy) {
+    searchParams.set("sortBy", params.sortBy)
+  }
+  if (params.sortDir) {
+    searchParams.set("sortDir", params.sortDir)
+  }
+  if (typeof params.activeOnly === "boolean") {
+    searchParams.set("activeOnly", String(params.activeOnly))
+  }
+
+  const query = searchParams.toString()
+  const endpoint = query ? `/alerts/paged?${query}` : "/alerts/paged"
+  return apiFetch<PageResponse<Alert>>(endpoint, {
+    method: "GET",
+  })
 }
 
 export const getAllAlerts = async (): Promise<Alert[]> => {

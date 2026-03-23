@@ -1,4 +1,18 @@
 export const AUTH_TOKEN_KEY = "warehouse_auth_token"
+export const FORCE_CHANGE_PASSWORD_KEY = "warehouse_force_change_password"
+export const CURRENT_USER_KEY = "warehouse_current_user"
+export const AUTH_STATE_CHANGE_EVENT = "warehouse-auth-state-change"
+
+export type CurrentUserProfile = {
+  userId: number
+  username: string
+  fullName: string
+  email: string
+  status: string
+  lastLogin: string | null
+  roleId: number | null
+  roleName: string | null
+}
 
 export type AppRole =
   | "ROLE_ADMIN"
@@ -14,10 +28,51 @@ export const getAuthToken = (): string | null => {
 
 export const setAuthToken = (token: string): void => {
   localStorage.setItem(AUTH_TOKEN_KEY, token)
+  window.dispatchEvent(new Event(AUTH_STATE_CHANGE_EVENT))
 }
 
 export const clearAuthToken = (): void => {
   localStorage.removeItem(AUTH_TOKEN_KEY)
+  localStorage.removeItem(FORCE_CHANGE_PASSWORD_KEY)
+  localStorage.removeItem(CURRENT_USER_KEY)
+  window.dispatchEvent(new Event(AUTH_STATE_CHANGE_EVENT))
+}
+
+export const setCurrentUserProfile = (user: CurrentUserProfile | null): void => {
+  if (!user) {
+    localStorage.removeItem(CURRENT_USER_KEY)
+    window.dispatchEvent(new Event(AUTH_STATE_CHANGE_EVENT))
+    return
+  }
+
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user))
+  window.dispatchEvent(new Event(AUTH_STATE_CHANGE_EVENT))
+}
+
+export const getCurrentUserProfile = (): CurrentUserProfile | null => {
+  const raw = localStorage.getItem(CURRENT_USER_KEY)
+  if (!raw) return null
+
+  try {
+    return JSON.parse(raw) as CurrentUserProfile
+  } catch {
+    return null
+  }
+}
+
+export const setForceChangePasswordRequired = (required: boolean): void => {
+  if (required) {
+    localStorage.setItem(FORCE_CHANGE_PASSWORD_KEY, "true")
+    window.dispatchEvent(new Event(AUTH_STATE_CHANGE_EVENT))
+    return
+  }
+
+  localStorage.removeItem(FORCE_CHANGE_PASSWORD_KEY)
+  window.dispatchEvent(new Event(AUTH_STATE_CHANGE_EVENT))
+}
+
+export const isForceChangePasswordRequired = (): boolean => {
+  return localStorage.getItem(FORCE_CHANGE_PASSWORD_KEY) === "true"
 }
 
 const parseJwtPayload = (token: string): Record<string, unknown> | null => {
@@ -70,6 +125,11 @@ export const getRoleLabel = (role: AppRole | null): string => {
 }
 
 export const getUserName = (): string => {
+  const currentUser = getCurrentUserProfile()
+  if (currentUser?.fullName?.trim()) {
+    return currentUser.fullName.trim()
+  }
+
   const token = getAuthToken()
   if (!token) return ""
 

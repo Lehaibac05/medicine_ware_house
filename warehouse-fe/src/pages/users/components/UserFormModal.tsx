@@ -9,6 +9,8 @@ export type UserFormValues = {
   status: string;
   roleId?: number;
   roleName?: string;
+  password?: string;
+  confirmPassword?: string;
 };
 
 type RoleOption = {
@@ -19,6 +21,8 @@ type RoleOption = {
 type UserFormModalProps = {
   open: boolean;
   loading?: boolean;
+  mode?: "create" | "edit";
+  initialValues?: Partial<UserFormValues>;
   roleOptions: RoleOption[];
   onCancel: () => void;
   onSubmit: (values: UserFormValues) => Promise<void> | void;
@@ -36,11 +40,15 @@ const defaultValues: UserFormValues = {
   status: "ACTIVE",
   roleId: undefined,
   roleName: "",
+  password: "",
+  confirmPassword: "",
 };
 
 function UserFormModal({
   open,
   loading = false,
+  mode = "create",
+  initialValues,
   roleOptions,
   onCancel,
   onSubmit,
@@ -50,9 +58,12 @@ function UserFormModal({
   useEffect(() => {
     if (open) {
       form.resetFields();
-      form.setFieldsValue(defaultValues);
+      form.setFieldsValue({
+        ...defaultValues,
+        ...initialValues,
+      });
     }
-  }, [open, form]);
+  }, [open, form, initialValues]);
 
   const handleOk = async () => {
     try {
@@ -67,13 +78,13 @@ function UserFormModal({
   return (
     <BaseModal
       open={open}
-      title="Tạo người dùng"
+      title={mode === "edit" ? "Chỉnh sửa người dùng" : "Tạo người dùng"}
       onCancel={() => {
         form.resetFields();
         onCancel();
       }}
       onOk={handleOk}
-      okText="Tạo"
+      okText={mode === "edit" ? "Lưu" : "Tạo"}
       confirmLoading={loading}
       width={640}
     >
@@ -83,11 +94,14 @@ function UserFormModal({
           name="username"
           label="Tên đăng nhập"
           rules={[
-            { required: true, message: "Vui lòng nhập tên đăng nhập." },
+            { required: mode === "create", message: "Vui lòng nhập tên đăng nhập." },
             { max: 255, message: "Tên đăng nhập quá dài." },
           ]}
         >
-          <Input placeholder="Nhập tên đăng nhập..." />
+          <Input
+            placeholder="Nhập tên đăng nhập..."
+            disabled={mode === "edit"}
+          />
         </Form.Item>
 
         {/* Full Name */}
@@ -143,6 +157,46 @@ function UserFormModal({
             }}
           />
         </Form.Item>
+
+        {mode === "edit" && (
+          <>
+            <Form.Item
+              name="password"
+              label="Mật khẩu mới"
+              rules={[
+                { min: 6, message: "Mật khẩu phải có ít nhất 6 ký tự." },
+              ]}
+              extra="Để trống nếu không đổi mật khẩu"
+            >
+              <Input.Password placeholder="Nhập mật khẩu mới (tuỳ chọn)" />
+            </Form.Item>
+
+            <Form.Item
+              name="confirmPassword"
+              label="Xác nhận mật khẩu mới"
+              dependencies={["password"]}
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const password = getFieldValue("password") as string | undefined;
+                    if (!password && !value) {
+                      return Promise.resolve();
+                    }
+                    if (password && !value) {
+                      return Promise.reject(new Error("Vui lòng xác nhận mật khẩu mới."));
+                    }
+                    if (password !== value) {
+                      return Promise.reject(new Error("Mật khẩu xác nhận không khớp."));
+                    }
+                    return Promise.resolve();
+                  },
+                }),
+              ]}
+            >
+              <Input.Password placeholder="Nhập lại mật khẩu mới" />
+            </Form.Item>
+          </>
+        )}
       </Form>
     </BaseModal>
   );
