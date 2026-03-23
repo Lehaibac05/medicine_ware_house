@@ -1,5 +1,5 @@
-@import "tailwindcss";
 @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap");
+@import "tailwindcss";
 
 @layer base {
   :root {
@@ -241,6 +241,43 @@
 .sidebar-nav-menu-collapsed.ant-menu-inline-collapsed .ant-menu-item::before,
 .sidebar-nav-menu-collapsed.ant-menu-inline-collapsed .ant-menu-submenu-arrow {
   display: none !important;
+}
+
+.app-toast.ant-message-notice .ant-message-notice-content,
+.ant-message-notice-content.app-toast {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16);
+  padding: 11px 14px;
+  backdrop-filter: blur(4px);
+}
+
+.ant-message-notice-content.app-toast-success {
+  background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%);
+  border-color: #86efac;
+}
+
+.ant-message-notice-content.app-toast-error {
+  background: linear-gradient(180deg, #fef2f2 0%, #fff1f2 100%);
+  border-color: #fda4af;
+}
+
+.ant-message-notice-content.app-toast-warning {
+  background: linear-gradient(180deg, #fffbeb 0%, #fefce8 100%);
+  border-color: #fcd34d;
+}
+
+.ant-message-notice-content.app-toast-info {
+  background: linear-gradient(180deg, #eff6ff 0%, #eef2ff 100%);
+  border-color: #93c5fd;
+}
+
+.ant-message-notice-content.app-toast .ant-message-custom-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 /* Ẩn text */

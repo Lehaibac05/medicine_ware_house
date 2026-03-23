@@ -1,7 +1,8 @@
-import { Alert, Button, DatePicker, Form, Input, InputNumber, Layout, Select, Typography, message } from "antd"
+import { Alert, Button, DatePicker, Form, Input, InputNumber, Layout, Select, Typography } from "antd"
 import dayjs from "dayjs"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useToast } from "../../hooks/useToast"
 import SidebarNav from "../../layouts/SidebarNav"
 import TopBar from "../../layouts/TopBar"
 import { getAllMedicines } from "../../services/medicines"
@@ -23,7 +24,7 @@ type FormValues = {
 
 export default function CreateIssueRequestPage() {
   const [form] = Form.useForm<FormValues>()
-  const [messageApi, contextHolder] = message.useMessage()
+  const { toast, contextHolder } = useToast()
   const [medicines, setMedicines] = useState<Medicine[]>([])
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [submitting, setSubmitting] = useState(false)
@@ -44,13 +45,13 @@ export default function CreateIssueRequestPage() {
           warehouseId: warehouseData[0]?.warehouseId,
           quantity: 1,
         })
-      } catch {
-        messageApi.error("Failed to load form data")
+      } catch (error) {
+        toast.error(error, "Failed to load form data")
       }
     }
 
     void load()
-  }, [form, messageApi])
+  }, [form, toast])
 
   useEffect(() => {
     const loadStockInsight = async () => {
@@ -97,10 +98,10 @@ export default function CreateIssueRequestPage() {
         purpose: values.purpose,
         neededDate: values.neededDate ? values.neededDate.toISOString() : undefined,
       })
-      messageApi.success("Issue request created")
+      toast.success("Issue request created successfully")
       navigate("/issue-request")
-    } catch {
-      messageApi.error("Failed to create issue request")
+    } catch (error) {
+      toast.error(error, "Failed to create issue request")
     } finally {
       setSubmitting(false)
     }

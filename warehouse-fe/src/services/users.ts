@@ -68,10 +68,57 @@ export type CreateUserPayload = {
   roleId?: number
 }
 
+export type UpdateUserPayload = {
+  fullName?: string
+  email?: string
+  status?: string
+  password?: string
+  roleId?: number
+}
+
+export type ChangePasswordPayload = {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
+}
+
 export const createUser = async (
   payload: CreateUserPayload
 ): Promise<User> => {
   return apiFetch<User>("/users", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export const updateUser = async (
+  userId: number,
+  payload: UpdateUserPayload,
+): Promise<User> => {
+  return apiFetch<User>(`/users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  })
+}
+
+export const changePassword = async (
+  payload: ChangePasswordPayload,
+): Promise<{ message: string }> => {
+  return apiFetch<{ message: string }>("/users/change-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
+export type ForceChangePasswordPayload = {
+  newPassword: string
+  confirmPassword: string
+}
+
+export const forceChangePassword = async (
+  payload: ForceChangePasswordPayload,
+): Promise<{ message: string }> => {
+  return apiFetch<{ message: string }>("/users/force-change-password", {
     method: "POST",
     body: JSON.stringify(payload),
   })

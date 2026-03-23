@@ -2,7 +2,7 @@ import { Button, Flex, Input, Space, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import BaseTable from "../../../components/base/BaseTable";
-import { createUser, getUsers } from "../../../services/users";
+import { createUser, getUsers, updateUser } from "../../../services/users";
 import type { User } from "../../../services/types";
 import type { UserFilters } from "../UserPage";
 import UserFormModal, { type UserFormValues } from "./UserFormModal";
@@ -65,8 +65,11 @@ function UserTable({ filters, search, onSearch }: UserTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [statusUpdatingUserId, setStatusUpdatingUserId] = useState<number | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
   const [roleOptions, setRoleOptions] = useState<
     { value: number; label: string }[]
@@ -174,11 +177,27 @@ function UserTable({ filters, search, onSearch }: UserTableProps) {
   );
 
   const openCreateModal = () => {
-    setModalOpen(true);
+    setCreateModalOpen(true);
   };
 
   const closeModal = () => {
-    setModalOpen(false);
+    setCreateModalOpen(false);
+  };
+
+  const openEditModal = (userId: number) => {
+    const user = data.find((item) => item.userId === userId);
+    if (!user) {
+      messageApi.error("Không tìm thấy người dùng");
+      return;
+    }
+
+    setEditingUser(user);
+    setEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setEditModalOpen(false);
+    setEditingUser(null);
   };
 
   const handleCreateUser = async (values: UserFormValues) => {
@@ -204,6 +223,47 @@ function UserTable({ filters, search, onSearch }: UserTableProps) {
       messageApi.error("Không thể tạo người dùng");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEditUser = async (values: UserFormValues) => {
+    if (!editingUser) {
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      await updateUser(editingUser.userId, {
+        fullName: values.fullName.trim(),
+        email: values.email.trim(),
+        status: values.status,
+        roleId: values.roleId,
+        password: values.password?.trim() ? values.password.trim() : undefined,
+      });
+
+      messageApi.success("Cập nhật người dùng thành công");
+      closeEditModal();
+      await loadUsers();
+    } catch {
+      messageApi.error("Không thể cập nhật người dùng");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleUserStatus = async (userId: number, currentStatus: string) => {
+    const nextStatus = normalizeStatus(currentStatus) === "active" ? "INACTIVE" : "ACTIVE";
+
+    setStatusUpdatingUserId(userId);
+    try {
+      await updateUser(userId, { status: nextStatus });
+      messageApi.success(nextStatus === "ACTIVE" ? "Đã kích hoạt tài khoản" : "Đã vô hiệu hóa tài khoản");
+      await loadUsers();
+    } catch {
+      messageApi.error("Không thể cập nhật trạng thái tài khoản");
+    } finally {
+      setStatusUpdatingUserId(null);
     }
   };
 
@@ -268,10 +328,20 @@ function UserTable({ filters, search, onSearch }: UserTableProps) {
     {
       title: "Hành động",
       key: "actions",
-      width: 100,
-      render: () => (
+      width: 240,
+      render: (_, record) => (
         <Space>
-          <Button size="small">Xem</Button>
+          <Button size="small" onClick={() => openEditModal(record.userId)}>
+            Sửa
+          </Button>
+          <Button
+            size="small"
+            danger={normalizeStatus(record.status) === "active"}
+            loading={statusUpdatingUserId === record.userId}
+            onClick={() => handleToggleUserStatus(record.userId, record.status)}
+          >
+            {normalizeStatus(record.status) === "active" ? "Vô hiệu hóa" : "Kích hoạt"}
+          </Button>
         </Space>
       ),
     },
@@ -325,11 +395,28 @@ function UserTable({ filters, search, onSearch }: UserTableProps) {
       />
 
       <UserFormModal
-        open={modalOpen}
+        open={createModalOpen}
         roleOptions={roleOptions}
         loading={submitting}
+        mode="create"
         onCancel={closeModal}
         onSubmit={handleCreateUser}
+      />
+
+      <UserFormModal
+        open={editModalOpen}
+        roleOptions={roleOptions}
+        loading={submitting}
+        mode="edit"
+        initialValues={{
+          username: editingUser?.username ?? "",
+          fullName: editingUser?.fullName ?? "",
+          email: editingUser?.email ?? "",
+          status: editingUser?.status ?? "ACTIVE",
+          roleId: editingUser?.roleId ?? undefined,
+        }}
+        onCancel={closeEditModal}
+        onSubmit={handleEditUser}
       />
     </>
   );

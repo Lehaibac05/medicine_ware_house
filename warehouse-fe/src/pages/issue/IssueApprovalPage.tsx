@@ -1,10 +1,10 @@
-import { Button, Input, Layout, Modal, Space, Switch, Typography, message } from "antd"
+import { Button, Input, Layout, Modal, Space, Switch, Typography } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { useEffect, useState } from "react"
 import BaseTable from "../../components/base/BaseTable"
+import { useToast } from "../../hooks/useToast"
 import SidebarNav from "../../layouts/SidebarNav"
 import TopBar from "../../layouts/TopBar"
-import { ApiError } from "../../services/api"
 import { approveIssueRequest, getIssueRequests, rejectIssueRequest, type IssueRequest } from "../../services/issue"
 import IssueStatusTag from "./components/IssueStatusTag"
 
@@ -12,7 +12,7 @@ const { Content, Sider } = Layout
 const { Text } = Typography
 
 export default function IssueApprovalPage() {
-  const [messageApi, contextHolder] = message.useMessage()
+  const { toast, contextHolder } = useToast()
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<IssueRequest[]>([])
   const [allowPartial, setAllowPartial] = useState(true)
@@ -20,22 +20,13 @@ export default function IssueApprovalPage() {
   const [rejectReason, setRejectReason] = useState("")
   const [rejectSubmitting, setRejectSubmitting] = useState(false)
 
-  const getActionError = (error: unknown, fallback: string) => {
-    if (error instanceof ApiError) {
-      if (error.status === 403) return "You do not have permission to perform this action"
-      if (error.status === 401) return "You need to login again"
-      return `${fallback} (${error.status}: ${error.statusText})`
-    }
-    return fallback
-  }
-
   const loadData = async () => {
     try {
       setLoading(true)
       const data = await getIssueRequests()
       setRows(data.filter((row) => row.status === "PENDING"))
-    } catch {
-      messageApi.error("Failed to load pending requests")
+    } catch (error) {
+      toast.error(error, "Failed to load pending requests")
     } finally {
       setLoading(false)
     }
@@ -48,10 +39,10 @@ export default function IssueApprovalPage() {
   const onApprove = async (requestId: number) => {
     try {
       await approveIssueRequest(requestId, { allowPartial })
-      messageApi.success("Request approved")
+      toast.success("Request approved")
       await loadData()
     } catch (error) {
-      messageApi.error(getActionError(error, "Failed to approve request"))
+      toast.error(error, "Failed to approve request")
     }
   }
 
@@ -65,19 +56,19 @@ export default function IssueApprovalPage() {
 
     const trimmedReason = rejectReason.trim()
     if (!trimmedReason) {
-      messageApi.warning("Reject reason is required")
+      toast.warning("Reject reason is required")
       return
     }
 
     try {
       setRejectSubmitting(true)
       await rejectIssueRequest(rejectingRequestId, { reason: trimmedReason })
-      messageApi.success("Request rejected")
+      toast.success("Request rejected")
       setRejectingRequestId(null)
       setRejectReason("")
       await loadData()
     } catch (error) {
-      messageApi.error(getActionError(error, "Failed to reject request"))
+      toast.error(error, "Failed to reject request")
     } finally {
       setRejectSubmitting(false)
     }
