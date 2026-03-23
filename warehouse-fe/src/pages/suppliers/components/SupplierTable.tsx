@@ -1,4 +1,4 @@
-import { Button, Input, Popconfirm, Space, Tag, Typography, message } from "antd";
+import { Button, Popconfirm, Space, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import BaseTable from "../../../components/base/BaseTable";
@@ -31,10 +31,7 @@ type SupplierRow = {
 type SupplierTableProps = {
   filters?: SupplierFilters;
   search?: string;
-  onSearch?: (value: string) => void;
 };
-
-const normalizeText = (value?: string | null) => value?.toLowerCase().trim() ?? "";
 
 const renderStatus = (status?: string) => {
   if (status === "ACTIVE") {
@@ -46,7 +43,7 @@ const renderStatus = (status?: string) => {
   return <Tag color="red">Ngừng hoạt động</Tag>;
 };
 
-function SupplierTable({ filters, search, onSearch }: SupplierTableProps) {
+function SupplierTable({ filters, search }: SupplierTableProps) {
   const [data, setData] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({

@@ -32,6 +32,7 @@ import RequestsManagementPage from "../pages/procurement/RequestsManagementPage"
 import GoodsReceiptsPage from "../pages/procurement/GoodsReceiptsPage"
 import GoodsReceiptCreatePage from "../pages/procurement/GoodsReceiptCreatePage"
 import LandingPage from "../pages/landing/LandingPage"
+import NotFoundPage from "../pages/errors/NotFoundPage"
 
 const ProtectedRoute = ({
   children,
@@ -51,11 +52,19 @@ const ProtectedRoute = ({
     const allowed = allowedRoles.some((role) => userRoles.includes(role))
 
     if (!allowed) {
-      return <Navigate to="/dashboard" replace />
+      return <Navigate to="/not-found" replace />
     }
   }
 
   return children
+}
+
+const DashboardEntry = () => {
+  const roles = getUserRoles()
+  if (roles.includes("ROLE_REQUESTER")) {
+    return <Navigate to="/inventory" replace />
+  }
+  return <DashboardPage />
 }
 
 const AppRouter = () => {
@@ -70,15 +79,15 @@ const AppRouter = () => {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
-              <DashboardPage />
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT", "ROLE_REQUESTER"]}>
+              <DashboardEntry />
             </ProtectedRoute>
           }
         />
         <Route
           path="/inventory"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT", "ROLE_REQUESTER"]}>
               <InventoryPage />
             </ProtectedRoute>
           }
@@ -86,7 +95,7 @@ const AppRouter = () => {
         <Route
           path="/inventory/adjustments/new"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT", "ROLE_REQUESTER"]}>
               <InventoryAdjustmentPage />
             </ProtectedRoute>
           }
@@ -94,7 +103,7 @@ const AppRouter = () => {
         <Route
           path="/medicines"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT", "ROLE_REQUESTER"]}>
               <MedicinePage />
             </ProtectedRoute>
           }
@@ -102,7 +111,7 @@ const AppRouter = () => {
         <Route
           path="/batches"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT", "ROLE_REQUESTER"]}>
               <BatchPage />
             </ProtectedRoute>
           }
@@ -110,17 +119,17 @@ const AppRouter = () => {
         <Route
           path="/issue-request/create"
           element={
-            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT"]}>
-              <CreateIssueRequestPage />
-            </ProtectedRoute>
+          <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT", "ROLE_REQUESTER"]}>
+            <CreateIssueRequestPage />
+          </ProtectedRoute>
           }
         />
         <Route
           path="/issue-request"
           element={
-            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT"]}>
-              <IssueRequestListPage />
-            </ProtectedRoute>
+          <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT", "ROLE_REQUESTER"]}>
+            <IssueRequestListPage />
+          </ProtectedRoute>
           }
         />
         <Route
@@ -142,8 +151,8 @@ const AppRouter = () => {
         <Route
           path="/issue/history"
           element={
-            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT"]}>
-              <IssueHistoryPage />
+          <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT", "ROLE_REQUESTER"]}>
+            <IssueHistoryPage />
             </ProtectedRoute>
           }
         />
@@ -222,7 +231,7 @@ const AppRouter = () => {
         <Route
           path="/users"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
               <UserPage />
             </ProtectedRoute>
           }
@@ -251,11 +260,7 @@ const AppRouter = () => {
           path="/medicine-requests"
           element={
             <ProtectedRoute
-              allowedRoles={[
-                "ROLE_ADMIN",
-                "ROLE_WAREHOUSE_MANAGER",
-                "ROLE_WAREHOUSE_STAFF",
-              ]}
+              allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF"]}
             >
               <MedicineRequestsListPage />
             </ProtectedRoute>
@@ -265,7 +270,11 @@ const AppRouter = () => {
           path="/requests"
           element={
             <ProtectedRoute
-              allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"]}
+              allowedRoles={[
+                "ROLE_ADMIN",
+                "ROLE_WAREHOUSE_MANAGER",
+                "ROLE_WAREHOUSE_STAFF",
+              ]}
             >
               <RequestsManagementPage />
             </ProtectedRoute>
@@ -274,7 +283,7 @@ const AppRouter = () => {
         <Route
           path="/medicine-requests/create"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF"]}>
               <CreateMedicineRequestPage />
             </ProtectedRoute>
           }
@@ -282,7 +291,7 @@ const AppRouter = () => {
         <Route
           path="/requests/new"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF"]}>
               <CreateMedicineRequestPage />
             </ProtectedRoute>
           }
@@ -300,7 +309,7 @@ const AppRouter = () => {
         <Route
           path="/purchase-orders"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF"]}>
               <PurchaseOrdersPage />
             </ProtectedRoute>
           }
@@ -308,7 +317,7 @@ const AppRouter = () => {
         <Route
           path="/purchase-orders/create"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF"]}>
               <CreatePurchaseOrderPage />
             </ProtectedRoute>
           }
@@ -316,7 +325,7 @@ const AppRouter = () => {
         <Route
           path="/purchase-orders/:id/edit"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"]}>
               <CreatePurchaseOrderPage />
             </ProtectedRoute>
           }
@@ -324,7 +333,7 @@ const AppRouter = () => {
         <Route
           path="/purchase-orders/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF"]}>
               <PurchaseOrderDetailPage />
             </ProtectedRoute>
           }
@@ -332,7 +341,7 @@ const AppRouter = () => {
         <Route
           path="/goods-receipts"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF"]}>
               <GoodsReceiptsPage />
             </ProtectedRoute>
           }
@@ -345,6 +354,8 @@ const AppRouter = () => {
             </ProtectedRoute>
           }
         />
+        <Route path="/not-found" element={<NotFoundPage />} />
+        <Route path="*" element={<Navigate to="/not-found" replace />} />
       </Routes>
     </BrowserRouter>
   )

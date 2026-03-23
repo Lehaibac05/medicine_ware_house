@@ -71,7 +71,7 @@ export default function IssueHistoryPage() {
       </Sider>
       <Layout className="lg:ml-[260px]">
         <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="Issue History" subtitle="Issue" />
+          <TopBar />
         </div>
         <Content className="flex flex-col gap-6 p-6 pt-[114px]">
           <BaseFilterCard

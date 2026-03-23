@@ -6,7 +6,7 @@ import { createUser, getUsers } from "../../../services/users";
 import type { User } from "../../../services/types";
 import type { UserFilters } from "../UserPage";
 import UserFormModal, { type UserFormValues } from "./UserFormModal";
-import { getRoles, type Role } from "../../../services/role";
+import { getRoles } from "../../../services/role";
 
 const { Text } = Typography;
 
@@ -53,7 +53,7 @@ const ROLE_LABELS: Record<string, string> = {
   WAREHOUSE_MANAGER: "Quản lý kho",
   WAREHOUSE_STAFF: "Nhân viên kho",
   ACCOUNTANT: "Kế toán",
-  SUPPLIER: "Nhà cung cấp",
+  REQUESTER: "Người yêu cầu cấp thuốc",
 };
 
 const getRoleLabelVN = (role: string) =>

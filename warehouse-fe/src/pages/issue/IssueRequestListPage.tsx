@@ -58,7 +58,7 @@ export default function IssueRequestListPage() {
       </Sider>
       <Layout className="lg:ml-[260px]">
         <div className="fixed left-0 top-0 z-20 w-full lg:pl-[260px]">
-          <TopBar title="My Issue Requests" subtitle="Issue" />
+          <TopBar />
         </div>
         <Content className="p-6 pt-[114px]">
           <BaseTable

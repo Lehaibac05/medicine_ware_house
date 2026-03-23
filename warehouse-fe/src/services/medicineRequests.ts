@@ -71,13 +71,37 @@ const buildMedicineRequestEndpoint = (
   return query ? `${endpoint}?${query}` : endpoint
 }
 
+const normalizePage = <T>(page: PageResponse<T> | T[]): PageResponse<T> => {
+  if (Array.isArray(page)) {
+    const size = page.length
+    return {
+      content: page,
+      totalElements: page.length,
+      totalPages: page.length > 0 ? 1 : 0,
+      size,
+      number: 0,
+    }
+  }
+
+  const content = Array.isArray(page.content) ? page.content : []
+  return {
+    ...page,
+    content,
+    totalElements: page.totalElements ?? content.length,
+    totalPages: page.totalPages ?? (content.length > 0 ? 1 : 0),
+    size: page.size ?? content.length,
+    number: page.number ?? 0,
+  }
+}
+
 const getRequestPage = async (
   endpoint: string,
   params: GetMedicineRequestsParams = {},
 ): Promise<PageResponse<MedicineRequest>> => {
-  return apiFetch<PageResponse<MedicineRequest>>(
+  const response = await apiFetch<PageResponse<MedicineRequest>>(
     buildMedicineRequestEndpoint(endpoint, params),
   )
+  return normalizePage(response)
 }
 
 const getAllRequestPages = async (

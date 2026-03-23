@@ -6,7 +6,6 @@ import {
     Input,
     InputNumber,
     Button,
-    Typography,
     message,
 } from "antd";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
@@ -14,8 +13,6 @@ import { useEffect, useState } from "react";
 import { getAllMedicines } from "../../../services/medicines";
 import { getWarehouses } from "../../../services/warehouses";
 import { createMedicineRequest } from "../../../services/medicineRequests";
-
-const { Text } = Typography;
 
 export default function CreateMedicineRequestModal({
     open,
@@ -29,7 +26,7 @@ export default function CreateMedicineRequestModal({
     const [form] = Form.useForm();
     const [medicines, setMedicines] = useState<any[]>([]);
     const [warehouses, setWarehouses] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [_loading, setLoading] = useState(false);
     const [messageApi, contextHolder] = message.useMessage();
 
     useEffect(() => {
