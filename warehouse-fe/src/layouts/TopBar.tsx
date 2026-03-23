@@ -11,6 +11,17 @@ function TopBar() {
   const userName = getUserName()
   const roleLabel = getRoleLabel(getPrimaryRole());
 
+  const handleMenuClick = ({ key }: { key: string }) => {
+    if (key === "profile") {
+      navigate("/profile")
+      return
+    }
+
+    if (key === "logout") {
+      handleLogout()
+    }
+  }
+
   const handleLogout = () => {
     clearAuthToken();
     navigate("/login", { replace: true });
@@ -39,12 +50,12 @@ function TopBar() {
           arrow
           trigger={["click"]}
           menu={{
+            onClick: handleMenuClick,
             items: [
               { key: "profile", label: "Thông tin cá nhân", icon: <UserOutlined /> },
               {
                 key: "logout",
                 label: "Đăng xuất",
-                onClick: handleLogout,
                 danger: true,
                 icon: <LogoutOutlined />,
               },

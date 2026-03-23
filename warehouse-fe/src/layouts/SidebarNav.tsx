@@ -58,18 +58,10 @@ const baseMenuItems: NonNullable<MenuProps["items"]> = [
     icon: <ShoppingCartOutlined />,
     label: "Đơn hàng & yêu cầu",
     children: [
-      // {
-      //   key: "orders",
-      //   label: <Link to="/orders">Đơn hàng</Link>,
-      // },
       {
         key: "requests",
         label: <Link to="/requests">Yêu cầu</Link>,
       },
-      // {
-      //   key: "medicine-requests",
-      //   label: <Link to="/medicine-requests">Yêu cầu của tôi</Link>,
-      // },
       {
         key: "purchase-orders",
         label: <Link to="/purchase-orders">Đơn mua hàng</Link>,
@@ -87,27 +79,23 @@ const baseMenuItems: NonNullable<MenuProps["items"]> = [
   {
     key: "issue",
     icon: <ExclamationCircleOutlined />,
-    label: "Vấn đề",
+    label: "Quản lí cấp thuốc",
     children: [
       {
         key: "issue-request",
-        label: <Link to="/issue-request">Danh sách yêu cầu vấn đề</Link>,
-      },
-      {
-        key: "issue-create",
-        label: <Link to="/issue-request/create">Tạo yêu cầu vấn đề</Link>,
+        label: <Link to="/issue-request">Yêu cầu cấp thuốc</Link>,
       },
       {
         key: "issue-approval",
-        label: <Link to="/issue-request/approval">Phê duyệt vấn đề</Link>,
+        label: <Link to="/issue-request/approval">Phê duyệt yêu cầu cấp thuốc</Link>,
       },
       {
         key: "issue-execute",
-        label: <Link to="/issue/execute">Thực hiện vấn đề</Link>,
+        label: <Link to="/issue/execute">Thực hiện yêu cầu cấp thuốc</Link>,
       },
       {
         key: "issue-history",
-        label: <Link to="/issue/history">Lịch sử vấn đề</Link>,
+        label: <Link to="/issue/history">Lịch sử yêu cầu cấp thuốc</Link>,
       },
     ],
   },
@@ -196,13 +184,32 @@ const filterMenuItems = (
 
       const nextItem: Exclude<SidebarMenuItem, null> = { ...item };
 
+      const requesterOnly =
+        flags.isRequester
+        && !flags.isAdmin
+        && !flags.isManager
+        && !flags.isStaff
+        && !flags.isAccountant;
+
+      if (
+        requesterOnly
+        && nextItem.key !== "overview"
+        && nextItem.key !== "dashboard"
+        && nextItem.key !== "warehouse"
+        && nextItem.key !== "medicines"
+        && nextItem.key !== "issue"
+        && nextItem.key !== "issue-request"
+      ) {
+        return null;
+      }
+
       // System menu - only ADMIN
       if (nextItem.key === "system" && !flags.isAdmin) {
         return null;
       }
 
-      // Overview - ADMIN, WAREHOUSE_MANAGER
-      if (nextItem.key === "overview" && !flags.isAdmin && !flags.isManager && !flags.isStaff && !flags.isAccountant) {
+      // Overview - ADMIN, WAREHOUSE_MANAGER, REQUESTER
+      if (nextItem.key === "overview" && !flags.isAdmin && !flags.isManager && !flags.isStaff && !flags.isAccountant && !flags.isRequester) {
         return null;
       }
 
@@ -231,7 +238,7 @@ const filterMenuItems = (
       }
 
       // Batches - ADMIN, WAREHOUSE_MANAGER, WAREHOUSE_STAFF, ACCOUNTANT
-      if (nextItem.key === "batches" && !flags.isAdmin && !flags.isManager && !flags.isStaff && !flags.isAccountant && !flags.isRequester) {
+      if (nextItem.key === "batches" && !flags.isAdmin && !flags.isManager && !flags.isStaff && !flags.isAccountant) {
         return null;
       }
 
@@ -287,10 +294,6 @@ const filterMenuItems = (
 
       // Issue related items
       if (nextItem.key === "issue-request" && !flags.canCreateIssueRequest) {
-        return null;
-      }
-
-      if (nextItem.key === "issue-create" && !flags.canCreateIssueRequest) {
         return null;
       }
 
@@ -357,10 +360,18 @@ const findOpenKeys = (
   return [];
 };
 
-function SidebarNav() {
+function SidebarNav({
+  collapsed: collapsedProp,
+  setCollapsed: setCollapsedProp,
+}: {
+  collapsed?: boolean;
+  setCollapsed?: (val: boolean) => void;
+} = {}) {
   const { pathname } = useLocation();
   const roles = getUserRoles();
-  const [collapsed, setCollapsed] = useState(false);
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const collapsed = collapsedProp ?? internalCollapsed;
+  const setCollapsed = setCollapsedProp ?? setInternalCollapsed;
 
   const isAdmin = roles.includes("ROLE_ADMIN");
   const isManager = roles.includes("ROLE_WAREHOUSE_MANAGER");
@@ -378,7 +389,7 @@ function SidebarNav() {
   const canApproveIssue = isAdmin || isManager;
   const canExecuteIssue = isAdmin || isStaff;
   const canViewIssueHistory =
-    isAdmin || isManager || isStaff || isAccountant || isRequester;
+    isAdmin || isManager || isStaff || isAccountant;
 
   const menuItems = filterMenuItems(baseMenuItems, {
     isAdmin,
@@ -404,7 +415,7 @@ function SidebarNav() {
     : pathname.startsWith("/issue-request/approval")
       ? "issue-approval"
     : pathname.startsWith("/issue-request/create")
-      ? "issue-create"
+      ? "issue-request"
     : pathname.startsWith("/issue-request")
       ? "issue-request"
     : pathname.startsWith("/issue/execute")

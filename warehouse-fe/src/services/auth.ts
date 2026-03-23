@@ -1,4 +1,5 @@
 import { setAuthToken } from "./api"
+import type { User } from "./types"
 
 export type LoginRequest = {
   username: string
@@ -7,6 +8,9 @@ export type LoginRequest = {
 
 export type LoginResponse = {
   token: string
+  refreshToken?: string
+  user?: User
+  forceChangePassword?: boolean
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? ""
