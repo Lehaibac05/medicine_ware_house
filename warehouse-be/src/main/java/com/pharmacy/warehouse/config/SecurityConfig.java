@@ -130,8 +130,13 @@ public class SecurityConfig {
                         // System Configurations - ADMIN only
                         .requestMatchers("/system-configurations/**").hasRole("ADMIN")
 
-                        // Users - ADMIN only
-                        .requestMatchers("/users/**").hasRole("ADMIN")
+                        // Users - ADMIN can manage all, users can update their own info
+                        .requestMatchers(HttpMethod.GET, "/users/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/users/change-password").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/users/force-change-password").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/users/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/users/**").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated())

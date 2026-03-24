@@ -57,7 +57,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('ADMIN') or isAuthenticated()")
     public UserResponse updateUser(@PathVariable Long id,
                                    @RequestBody UpdateUserRequest request) {
 
@@ -82,7 +82,7 @@ public class UserController {
     }
 
     @PostMapping("/change-password")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('ADMIN') or isAuthenticated()")
     public ResponseEntity<Map<String, String>> changePassword(@RequestBody ChangePasswordRequest request) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
