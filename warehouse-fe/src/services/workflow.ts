@@ -248,6 +248,10 @@ export const workflowApi = {
     const response = await http.get<any>(url)
     return response.data
   },
+  getGoodsReceiptById: async (id: number) => {
+    const response = await http.get<GoodsReceipt>(`/goods-receipts/${id}`)
+    return response.data
+  },
   approveGoodsReceipt: async (id: number, approved = true, notes?: string) => {
     const response = await http.post<GoodsReceipt>(`/goods-receipts/${id}/approve`, {
       approved,

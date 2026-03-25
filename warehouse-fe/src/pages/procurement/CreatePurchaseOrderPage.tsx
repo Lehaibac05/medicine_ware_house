@@ -1,4 +1,8 @@
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  PlusOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import {
   Button,
   DatePicker,
@@ -9,6 +13,8 @@ import {
   Select,
   Space,
   Typography,
+  Upload,
+  type UploadProps,
   message,
 } from "antd";
 import dayjs from "dayjs";
@@ -65,6 +71,176 @@ export default function CreatePurchaseOrderPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+
+  const normalize = (value: string) => value.trim().toLowerCase();
+
+  const parseCsvLine = (line: string): string[] => {
+    const cols: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if (char === "," && !inQuotes) {
+        cols.push(current.trim());
+        current = "";
+        continue;
+      }
+
+      current += char;
+    }
+
+    cols.push(current.trim());
+    return cols;
+  };
+
+  const parseMedicineId = (
+    rawValue: string,
+    medicineByName: Map<string, Medicine>,
+  ) => {
+    const asNumber = Number(rawValue);
+    if (Number.isFinite(asNumber) && asNumber > 0) {
+      const byId = medicines.find((medicine) => medicine.medicineId === asNumber);
+      if (byId) {
+        return byId.medicineId;
+      }
+    }
+
+    const byName = medicineByName.get(normalize(rawValue));
+    return byName?.medicineId;
+  };
+
+  const parseExpiryDate = (rawValue: string) => {
+    if (!rawValue) {
+      return undefined;
+    }
+
+    const normalized = rawValue.trim();
+    const direct = dayjs(normalized, "YYYY-MM-DD", true);
+    if (direct.isValid()) {
+      return direct;
+    }
+
+    const slash = dayjs(normalized, "DD/MM/YYYY", true);
+    if (slash.isValid()) {
+      return slash;
+    }
+
+    return null;
+  };
+
+  const importCsv: UploadProps["beforeUpload"] = async (file) => {
+    try {
+      if (!medicines.length) {
+        messageApi.error("Chưa tải xong danh mục thuốc");
+        return Upload.LIST_IGNORE;
+      }
+
+      const content = await file.text();
+      const rows = content
+        .replace(/^\uFEFF/, "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      if (!rows.length) {
+        messageApi.error("File CSV rỗng");
+        return Upload.LIST_IGNORE;
+      }
+
+      const medicineByName = new Map<string, Medicine>(
+        medicines.map((medicine) => [normalize(medicine.name), medicine]),
+      );
+
+      const firstCols = parseCsvLine(rows[0]).map((col) => normalize(col));
+      const hasHeader =
+        firstCols.length >= 3 &&
+        (firstCols[0].includes("medicine") ||
+          firstCols[0].includes("thuoc") ||
+          firstCols[1].includes("quantity") ||
+          firstCols[2].includes("price"));
+
+      const dataRows = hasHeader ? rows.slice(1) : rows;
+      const importedItems: Array<{
+        medicineId: number;
+        requestedQuantity: number;
+        unitPrice: number;
+        expectedExpiryDate?: dayjs.Dayjs;
+        notes?: string;
+      }> = [];
+      const errors: string[] = [];
+
+      dataRows.forEach((row, idx) => {
+        const cols = parseCsvLine(row);
+        if (cols.length < 3) {
+          errors.push(`Dòng ${idx + 1}: thiếu cột bắt buộc`);
+          return;
+        }
+
+        const medicineId = parseMedicineId(cols[0], medicineByName);
+        if (!medicineId) {
+          errors.push(`Dòng ${idx + 1}: không tìm thấy thuốc '${cols[0]}'`);
+          return;
+        }
+
+        const requestedQuantity = Number(cols[1]);
+        if (!Number.isFinite(requestedQuantity) || requestedQuantity <= 0) {
+          errors.push(`Dòng ${idx + 1}: số lượng không hợp lệ`);
+          return;
+        }
+
+        const unitPrice = Number(cols[2]);
+        if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+          errors.push(`Dòng ${idx + 1}: đơn giá không hợp lệ`);
+          return;
+        }
+
+        const parsedExpiryDate = parseExpiryDate(cols[3] || "");
+        if (parsedExpiryDate === null) {
+          errors.push(
+            `Dòng ${idx + 1}: hạn dùng không hợp lệ (định dạng YYYY-MM-DD hoặc DD/MM/YYYY)`,
+          );
+          return;
+        }
+
+        importedItems.push({
+          medicineId,
+          requestedQuantity,
+          unitPrice,
+          expectedExpiryDate: parsedExpiryDate || undefined,
+          notes: cols[4] || undefined,
+        });
+      });
+
+      if (!importedItems.length) {
+        messageApi.error(errors[0] || "Không có dữ liệu hợp lệ để import");
+        return Upload.LIST_IGNORE;
+      }
+
+      form.setFieldValue("items", importedItems);
+      if (errors.length) {
+        messageApi.warning(
+          `Đã import ${importedItems.length} dòng hợp lệ, bỏ qua ${errors.length} dòng lỗi`,
+        );
+      } else {
+        messageApi.success(`Đã import ${importedItems.length} dòng từ CSV`);
+      }
+    } catch {
+      messageApi.error("Đọc file CSV thất bại");
+    }
+
+    return Upload.LIST_IGNORE;
+  };
 
   const medicineNameById = useMemo(() => {
     return medicines.reduce<Record<number, string>>((acc, medicine) => {
@@ -375,19 +551,28 @@ export default function CreatePurchaseOrderPage() {
                       </div>
                     ))}
 
-                    <Button
-                      type="dashed"
-                      icon={<PlusOutlined />}
-                      onClick={() =>
-                        add({
-                          medicineId: medicines[0]?.medicineId,
-                          requestedQuantity: 1,
-                          unitPrice: 0,
-                        })
-                      }
-                    >
-                      Thêm sản phẩm
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Upload
+                        accept=".csv,text/csv"
+                        showUploadList={false}
+                        beforeUpload={importCsv}
+                      >
+                        <Button icon={<UploadOutlined />}>Import CSV</Button>
+                      </Upload>
+                      <Button
+                        type="dashed"
+                        icon={<PlusOutlined />}
+                        onClick={() =>
+                          add({
+                            medicineId: medicines[0]?.medicineId,
+                            requestedQuantity: 1,
+                            unitPrice: 0,
+                          })
+                        }
+                      >
+                        Thêm sản phẩm
+                      </Button>
+                    </div>
                   </div>
                 )}
               </Form.List>
