@@ -7,6 +7,7 @@ export const workflowQueryKeys = {
   purchaseOrders: ["workflow", "purchaseOrders"] as const,
   purchaseOrderDetail: (id: number) => ["workflow", "purchaseOrder", id] as const,
   goodsReceipts: ["workflow", "goodsReceipts"] as const,
+  goodsReceiptDetail: (id: number) => ["workflow", "goodsReceipt", id] as const,
   supplierInvoices: ["workflow", "supplierInvoices"] as const,
   supplierInvoiceDetail: (id: number) => ["workflow", "supplierInvoice", id] as const,
 }
@@ -68,6 +69,14 @@ export const useGoodsReceiptsQuery = (params?: { page?: number; size?: number })
   return useQuery({
     queryKey: [...workflowQueryKeys.goodsReceipts, params],
     queryFn: () => workflowApi.getGoodsReceipts(params),
+  })
+}
+
+export const useGoodsReceiptDetailQuery = (id?: number) => {
+  return useQuery({
+    queryKey: id ? workflowQueryKeys.goodsReceiptDetail(id) : ["workflow", "goodsReceipt", "none"],
+    queryFn: () => workflowApi.getGoodsReceiptById(id as number),
+    enabled: Number.isFinite(id) && (id as number) > 0,
   })
 }
 
