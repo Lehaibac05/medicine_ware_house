@@ -52,22 +52,10 @@ function PaymentTable({
       width: 160,
     },
     {
-      title: "Tổng tiền",
-      key: "totalAmount",
-      width: 140,
-      render: (_, record) => formatMoney(record.totalAmount),
-    },
-    {
-      title: "Đã thanh toán",
+      title: "Tổng tiền đã thanh toán",
       key: "paidAmount",
-      width: 140,
+      width: 180,
       render: (_, record) => formatMoney(record.paidAmount),
-    },
-    {
-      title: "Còn lại",
-      key: "remainingAmount",
-      width: 140,
-      render: (_, record) => formatMoney(record.remainingAmount),
     },
     {
       title: "Trạng thái",

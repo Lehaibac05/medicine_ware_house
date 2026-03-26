@@ -236,7 +236,6 @@ export default function GoodsReceiptsPage() {
           size="small"
           column={2}
           className="mb-4"
-          loading={isDetailLoading}
         >
           <Descriptions.Item label="Mã phiếu nhập">
             {receiptDetail?.receiptCode || "-"}
@@ -254,7 +253,7 @@ export default function GoodsReceiptsPage() {
           <Descriptions.Item label="Đơn mua hàng">
             {receiptDetail?.purchaseOrder?.orderCode || "-"}
           </Descriptions.Item>
-          <Descriptions.Item label="Tổng tiền PO">
+          <Descriptions.Item label="Tổng tiền đơn mua hàng">
             {receiptDetail?.purchaseOrder?.totalAmount?.toLocaleString("vi-VN") || "0"}
           </Descriptions.Item>
           <Descriptions.Item label="Người nhận">

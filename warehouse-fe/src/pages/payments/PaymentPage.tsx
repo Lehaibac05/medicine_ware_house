@@ -55,7 +55,6 @@ const statusOptions = [
   { value: "all", label: "Tất cả trạng thái" },
   { value: "PENDING_VERIFICATION", label: "Chờ xác minh" },
   { value: "VERIFIED", label: "Đã xác minh" },
-  { value: "PARTIALLY_PAID", label: "Thanh toán một phần" },
   { value: "PAID", label: "Đã thanh toán" },
   { value: "REJECTED", label: "Đã từ chối" },
 ];
@@ -65,14 +64,6 @@ const methodOptions = [
   { value: "CASH", label: "Tiền mặt" },
   { value: "CREDIT_CARD", label: "Thẻ tín dụng" },
   { value: "E_WALLET", label: "Ví điện tử" },
-];
-
-const paymentTermOptions = [
-  { value: "DUE_ON_RECEIPT", label: "Thanh toán ngay khi nhận hóa đơn" },
-  { value: "NET_7", label: "Thanh toán trong 7 ngày" },
-  { value: "NET_15", label: "Thanh toán trong 15 ngày" },
-  { value: "NET_30", label: "Thanh toán trong 30 ngày" },
-  { value: "CUSTOM", label: "Tùy chỉnh" },
 ];
 
 const PaymentPage = () => {
@@ -87,8 +78,6 @@ const PaymentPage = () => {
     invoiceDate: undefined as string | undefined,
     dueDate: undefined as string | undefined,
     supplierInvoiceAmount: undefined as number | undefined,
-    paymentTerms: "NET_30",
-    customPaymentTerms: "",
     notes: "",
   });
   const [draftItems, setDraftItems] = useState<InvoiceDraftItem[]>([]);
@@ -371,16 +360,6 @@ const PaymentPage = () => {
     }
 
     try {
-      const selectedPaymentTerms =
-        createPayload.paymentTerms === "CUSTOM"
-          ? (
-              createPayload.customPaymentTerms ||
-              "Điều khoản thanh toán tùy chỉnh"
-            ).trim()
-          : paymentTermOptions.find(
-              (item) => item.value === createPayload.paymentTerms,
-            )?.label || createPayload.paymentTerms;
-
       const mergedNotes = [
         createPayload.notes?.trim(),
         `Số tiền phải thanh toán theo nhà cung cấp: ${supplierInvoiceAmount.toLocaleString(
@@ -390,7 +369,7 @@ const PaymentPage = () => {
             maximumFractionDigits: 2,
           },
         )}`,
-        `Điều khoản thanh toán: ${selectedPaymentTerms}`,
+        "Điều khoản thanh toán: Thanh toán ngay khi nhận hóa đơn",
       ]
         .filter((value) => !!value)
         .join(" | ");
@@ -409,8 +388,6 @@ const PaymentPage = () => {
         invoiceDate: undefined,
         dueDate: undefined,
         supplierInvoiceAmount: undefined,
-        paymentTerms: "NET_30",
-        customPaymentTerms: "",
         notes: "",
       });
       setDraftItems([]);
@@ -612,8 +589,6 @@ const PaymentPage = () => {
             invoiceDate: undefined,
             dueDate: undefined,
             supplierInvoiceAmount: undefined,
-            paymentTerms: "NET_30",
-            customPaymentTerms: "",
             notes: "",
           });
           setDraftItems([]);
@@ -699,34 +674,6 @@ const PaymentPage = () => {
               }))
             }
           />
-
-          <Select
-            className="w-full"
-            placeholder="Điều khoản thanh toán"
-            value={createPayload.paymentTerms}
-            options={paymentTermOptions}
-            onChange={(value) =>
-              setCreatePayload((prev) => ({
-                ...prev,
-                paymentTerms: value,
-                customPaymentTerms:
-                  value === "CUSTOM" ? prev.customPaymentTerms : "",
-              }))
-            }
-          />
-
-          {createPayload.paymentTerms === "CUSTOM" && (
-            <Input
-              placeholder="Nhập điều khoản thanh toán tùy chỉnh"
-              value={createPayload.customPaymentTerms}
-              onChange={(e) =>
-                setCreatePayload((prev) => ({
-                  ...prev,
-                  customPaymentTerms: e.target.value,
-                }))
-              }
-            />
-          )}
 
           {invalidDateRange && (
             <Alert
