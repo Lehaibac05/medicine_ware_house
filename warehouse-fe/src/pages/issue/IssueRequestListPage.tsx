@@ -119,32 +119,32 @@ export default function IssueRequestListPage() {
         purpose: values.purpose,
         neededDate: values.neededDate ? values.neededDate.toISOString() : undefined,
       })
-      toast.success("Issue request created successfully")
+      toast.success("Tạo yêu cầu cấp thuốc thành công")
       setCreateOpen(false)
       form.resetFields()
       await loadData()
     } catch (error) {
-      toast.error(error, "Failed to create issue request")
+      toast.error(error, "Tạo yêu cầu cấp thuốc thất bại")
     } finally {
       setSubmitting(false)
     }
   }
 
   const columns: ColumnsType<IssueRequest> = [
-    { title: "Request ID", dataIndex: "orderId", width: 110 },
-    { title: "Medicine", dataIndex: "medicineName" },
-    { title: "Requested", dataIndex: "requestedQuantity", width: 100 },
-    { title: "Approved", dataIndex: "approvedQuantity", width: 100, render: (v?: number) => v ?? "-" },
-    { title: "Department", dataIndex: "department", width: 140 },
-    { title: "Needed Date", dataIndex: "neededDate", width: 170, render: (v?: string) => (v ? new Date(v).toLocaleString() : "-") },
-    { title: "Status", dataIndex: "status", width: 120, render: (v: string) => <IssueStatusTag status={v} /> },
+    { title: "Mã yêu cầu", dataIndex: "orderId", width: 110 },
+    { title: "Thuốc", dataIndex: "medicineName" },
+    { title: "SL yêu cầu", dataIndex: "requestedQuantity", width: 100 },
+    { title: "SL duyệt", dataIndex: "approvedQuantity", width: 100, render: (v?: number) => v ?? "-" },
+    { title: "Khoa/Phòng", dataIndex: "department", width: 140 },
+    { title: "Ngày cần", dataIndex: "neededDate", width: 170, render: (v?: string) => (v ? new Date(v).toLocaleString() : "-") },
+    { title: "Trạng thái", dataIndex: "status", width: 120, render: (v: string) => <IssueStatusTag status={v} /> },
     {
-      title: "Reject Reason",
+      title: "Lý do từ chối",
       dataIndex: "rejectionReason",
       width: 260,
       render: (value?: string, record?: IssueRequest) => {
         if (record?.status !== "REJECTED") return "-"
-        return value?.trim() ? value : "No reason provided"
+        return value?.trim() ? value : "Không có lý do"
       },
     },
   ]
@@ -155,9 +155,9 @@ export default function IssueRequestListPage() {
       <BaseTable
         title={() => (
           <div className="flex items-center justify-between">
-            <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">My issue requests</Text>
+            <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Danh sách yêu cầu cấp thuốc</Text>
             <Button type="primary" onClick={() => setCreateOpen(true)}>
-              Create Request
+              Tạo yêu cầu
             </Button>
           </div>
         )}
@@ -168,7 +168,7 @@ export default function IssueRequestListPage() {
       />
 
       <Modal
-        title="Create Issue Request"
+        title="Tạo yêu cầu cấp thuốc"
         open={createOpen}
         onCancel={() => {
           if (submitting) return
@@ -182,7 +182,7 @@ export default function IssueRequestListPage() {
       >
         <Form<FormValues> form={form} layout="vertical" onFinish={onCreateRequest}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Form.Item label="Medicine" name="medicineId" rules={[{ required: true }]}>
+            <Form.Item label="Thuốc" name="medicineId" rules={[{ required: true }]}>
               <Select
                 showSearch
                 optionFilterProp="label"
@@ -190,30 +190,30 @@ export default function IssueRequestListPage() {
               />
             </Form.Item>
 
-            <Form.Item label="Warehouse" name="warehouseId" rules={[{ required: true }]}>
+            <Form.Item label="Kho" name="warehouseId" rules={[{ required: true }]}>
               <Select
                 options={warehouses.map((warehouse) => ({
                   value: warehouse.warehouseId,
-                  label: warehouse.name || `Warehouse ${warehouse.warehouseId}`,
+                  label: warehouse.name || `Kho ${warehouse.warehouseId}`,
                 }))}
               />
             </Form.Item>
 
-            <Form.Item label="Quantity" name="quantity" rules={[{ required: true }]}>
+            <Form.Item label="Số lượng" name="quantity" rules={[{ required: true }]}>
               <InputNumber min={1} className="w-full" />
             </Form.Item>
 
-            <Form.Item label="Department" name="department" rules={[{ required: true }]}>
-              <Input placeholder="Example: Inpatient, Emergency" />
+            <Form.Item label="Khoa/Phòng" name="department" rules={[{ required: true }]}>
+              <Input placeholder="Ví dụ: Nội trú, Cấp cứu" />
             </Form.Item>
 
-            <Form.Item label="Needed Date" name="neededDate">
+            <Form.Item label="Ngày cần" name="neededDate">
               <DatePicker className="w-full" />
             </Form.Item>
           </div>
 
-          <Form.Item label="Purpose" name="purpose">
-            <Input.TextArea rows={3} placeholder="Issue purpose" />
+          <Form.Item label="Mục đích" name="purpose">
+            <Input.TextArea rows={3} placeholder="Mục đích cấp thuốc" />
           </Form.Item>
 
           {stockInsight && watchedQuantity > 0 ? (
@@ -222,13 +222,13 @@ export default function IssueRequestListPage() {
                 type="warning"
                 showIcon
                 className="mb-4"
-                message={`Only ${stockInsight.availableStockInWarehouse} available in ${stockInsight.warehouseName || "selected warehouse"}`}
+                  message={`Chỉ còn ${stockInsight.availableStockInWarehouse} trong ${stockInsight.warehouseName || "kho đã chọn"}`}
                 description={
                   <div className="space-y-1">
-                    <Text className="block">You requested: {watchedQuantity}</Text>
+                    <Text className="block">Bạn yêu cầu: {watchedQuantity}</Text>
                     <div className="flex flex-wrap items-center gap-2">
                       <Button size="small" onClick={applySuggestedQuantity}>
-                        Use {stockInsight.suggestedAvailableQuantity ?? stockInsight.availableStockInWarehouse}
+                        Dùng {stockInsight.suggestedAvailableQuantity ?? stockInsight.availableStockInWarehouse}
                       </Button>
                       {stockInsight.alternativeWarehouses?.map((option) => (
                         <Button
@@ -237,12 +237,12 @@ export default function IssueRequestListPage() {
                           type="default"
                           onClick={() => switchToWarehouse(option.warehouseId)}
                         >
-                          Switch to {option.warehouseName || `Warehouse ${option.warehouseId}`} ({option.availableQuantity})
+                          Chuyển sang {option.warehouseName || `Kho ${option.warehouseId}`} ({option.availableQuantity})
                         </Button>
                       ))}
                     </div>
                     <Text type="secondary" className="block">
-                      You can still submit this request. Manager will decide approve/reject/partial.
+                      Bạn vẫn có thể gửi yêu cầu. Quản lý sẽ quyết định duyệt, từ chối hoặc duyệt một phần.
                     </Text>
                   </div>
                 }
@@ -252,7 +252,7 @@ export default function IssueRequestListPage() {
                 type="success"
                 showIcon
                 className="mb-4"
-                message={`Current stock (${stockInsight.warehouseName || "Warehouse"}): ${stockInsight.availableStockInWarehouse ?? 0}`}
+                message={`Tồn kho hiện tại (${stockInsight.warehouseName || "Kho"}): ${stockInsight.availableStockInWarehouse ?? 0}`}
               />
             )
           ) : null}
@@ -266,10 +266,10 @@ export default function IssueRequestListPage() {
               }}
               disabled={submitting}
             >
-              Cancel
+              Hủy
             </Button>
             <Button type="primary" htmlType="submit" loading={submitting}>
-              Submit Request
+              Gửi yêu cầu
             </Button>
           </div>
         </Form>

@@ -13,7 +13,7 @@ export default function FilterPanel({
   children,
   onApply,
   onReset,
-  applyText = "Apply",
+  applyText = "Lọc",
   extraActions,
 }: FilterPanelProps) {
   return (
@@ -22,7 +22,7 @@ export default function FilterPanel({
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{children}</div>
         <Space className="justify-end">
           {extraActions}
-          {onReset && <Button onClick={onReset}>Reset</Button>}
+          {onReset && <Button onClick={onReset}>Khôi phục</Button>}
           {onApply && (
             <Button type="primary" onClick={onApply}>
               {applyText}

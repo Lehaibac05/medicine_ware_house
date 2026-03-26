@@ -28,9 +28,9 @@ public class AlertScanService {
     private static final int EXPIRING_SOON_DAYS_HIGH = 30;      // < 30 days → HIGH
     private static final int EXPIRING_SOON_DAYS_MEDIUM = 60;    // < 60 days → MEDIUM
     
-    private static final int LOW_STOCK_CRITICAL = 10;           // < 10 → CRITICAL
-    private static final int LOW_STOCK_HIGH = 20;               // < 20 → HIGH
-    private static final int LOW_STOCK_MEDIUM = 50;             // < 50 → MEDIUM
+    private static final int LOW_STOCK_CRITICAL = 30;           // < 30 → CRITICAL
+    private static final int LOW_STOCK_HIGH = 50;               // < 50 → HIGH
+    private static final int LOW_STOCK_MEDIUM = 70;             // < 70 → MEDIUM
 
     /**
      * Scheduled task - runs every day at 6:00 AM

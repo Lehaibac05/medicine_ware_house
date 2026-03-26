@@ -30,6 +30,9 @@ public class AlertService {
     private final InventoryService inventoryService;
 
     private static final int EXPIRING_SOON_DAYS = 30;
+    private static final int DEFAULT_REORDER_LEVEL = 10;
+    private static final double CRITICAL_RATIO = 0.5;
+    private static final double HIGH_RATIO = 0.8;
 
     @Transactional(readOnly = true)
     public List<AlertResponse> getAllAlerts() {
@@ -267,9 +270,12 @@ public class AlertService {
         Warehouse warehouse = warehouseRepository.findById(inventory.getWarehouseId())
             .orElseThrow(() -> new RuntimeException("Warehouse not found with id: " + inventory.getWarehouseId()));
 
+        int reorderLevel = resolveReorderLevel(medicine.getReorderLevel());
+        String severity = determineLowStockSeverity(inventory.getTotalStock(), reorderLevel);
+
         Alert alert = new Alert();
         alert.setAlertType("LOW_STOCK");
-        alert.setSeverity(inventory.getTotalStock() <= 5 ? "CRITICAL" : "HIGH");
+        alert.setSeverity(severity);
         alert.setStatus("OPEN");
         alert.setMessage("Low stock: " + medicine.getName());
         alert.setDescription("Stock level in warehouse '" + warehouse.getName() + "' is "
@@ -283,6 +289,27 @@ public class AlertService {
         createHistoryEntry(alert, "CREATED", null, "OPEN", "Auto-generated alert", null);
         
         log.info("Created LOW_STOCK alert for medicine {} in warehouse {}", medicine.getMedicineId(), warehouse.getWarehouseId());
+    }
+
+    private int resolveReorderLevel(Integer reorderLevel) {
+        if (reorderLevel == null || reorderLevel <= 0) {
+            return DEFAULT_REORDER_LEVEL;
+        }
+        return reorderLevel;
+    }
+
+    private String determineLowStockSeverity(Long totalStock, int reorderLevel) {
+        long stock = totalStock == null ? 0L : totalStock;
+        double criticalThreshold = reorderLevel * CRITICAL_RATIO;
+        double highThreshold = reorderLevel * HIGH_RATIO;
+
+        if (stock <= criticalThreshold) {
+            return "CRITICAL";
+        }
+        if (stock <= highThreshold) {
+            return "HIGH";
+        }
+        return "MEDIUM";
     }
 
     private void createExpiringSoonAlert(Batch batch) {

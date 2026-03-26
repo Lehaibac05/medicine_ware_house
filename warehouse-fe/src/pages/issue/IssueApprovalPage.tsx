@@ -26,7 +26,7 @@ export default function IssueApprovalPage() {
       const data = await getIssueRequests()
       setRows(data.filter((row) => row.status === "PENDING"))
     } catch (error) {
-      toast.error(error, "Failed to load pending requests")
+      toast.error(error, "Không thể tải danh sách yêu cầu chờ duyệt")
     } finally {
       setLoading(false)
     }
@@ -39,10 +39,10 @@ export default function IssueApprovalPage() {
   const onApprove = async (requestId: number) => {
     try {
       await approveIssueRequest(requestId, { allowPartial })
-      toast.success("Request approved")
+      toast.success("Duyệt yêu cầu thành công")
       await loadData()
     } catch (error) {
-      toast.error(error, "Failed to approve request")
+      toast.error(error, "Duyệt yêu cầu thất bại")
     }
   }
 
@@ -56,59 +56,59 @@ export default function IssueApprovalPage() {
 
     const trimmedReason = rejectReason.trim()
     if (!trimmedReason) {
-      toast.warning("Reject reason is required")
+      toast.warning("Vui lòng nhập lý do từ chối")
       return
     }
 
     try {
       setRejectSubmitting(true)
       await rejectIssueRequest(rejectingRequestId, { reason: trimmedReason })
-      toast.success("Request rejected")
+      toast.success("Từ chối yêu cầu thành công")
       setRejectingRequestId(null)
       setRejectReason("")
       await loadData()
     } catch (error) {
-      toast.error(error, "Failed to reject request")
+      toast.error(error, "Từ chối yêu cầu thất bại")
     } finally {
       setRejectSubmitting(false)
     }
   }
 
   const columns: ColumnsType<IssueRequest> = [
-    { title: "Request ID", dataIndex: "orderId", width: 110 },
-    { title: "Medicine", dataIndex: "medicineName" },
-    { title: "Qty", dataIndex: "requestedQuantity", width: 90 },
+    { title: "Mã yêu cầu", dataIndex: "orderId", width: 110 },
+    { title: "Thuốc", dataIndex: "medicineName" },
+    { title: "Số lượng", dataIndex: "requestedQuantity", width: 90 },
     {
-      title: "Available",
+      title: "Tồn kho",
       dataIndex: "availableStockInWarehouse",
       width: 100,
       render: (v?: number) => v ?? 0,
     },
-    { title: "Department", dataIndex: "department", width: 140 },
-    { title: "Purpose", dataIndex: "purpose", width: 220 },
+    { title: "Khoa/Phòng", dataIndex: "department", width: 140 },
+    { title: "Mục đích", dataIndex: "purpose", width: 220 },
     {
-      title: "Stock Check",
+      title: "Đối chiếu tồn kho",
       width: 230,
       render: (_: unknown, record) => {
         const available = record.availableStockInWarehouse ?? 0
         const requested = record.requestedQuantity ?? 0
         if (available >= requested) {
-          return <Text type="success">Sufficient stock</Text>
+          return <Text type="success">Đủ tồn kho</Text>
         }
-        return <Text type="warning">Insufficient stock ({available}/{requested})</Text>
+        return <Text type="warning">Thiếu tồn kho ({available}/{requested})</Text>
       },
     },
-    { title: "Status", dataIndex: "status", width: 120, render: (v: string) => <IssueStatusTag status={v} /> },
+    { title: "Trạng thái", dataIndex: "status", width: 120, render: (v: string) => <IssueStatusTag status={v} /> },
     {
-      title: "Action",
+      title: "Thao tác",
       width: 220,
       render: (_: unknown, record) => (
         <Space>
           <Button type="primary" size="small" onClick={() => void onApprove(record.orderId)}>
-            Approve
+            Duyệt
           </Button>
           <Button danger size="small" onClick={() => onReject(record.orderId)}>
-            Reject
+            Từ chối
           </Button>
         </Space>
       ),
@@ -127,11 +127,11 @@ export default function IssueApprovalPage() {
         </div>
         <Content className="p-6 pt-[114px] flex flex-col gap-4">
           <div className="rounded-xl bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)] flex items-center gap-3">
-            <Text>Allow partial approval when stock is insufficient</Text>
+            <Text>Cho phép duyệt một phần khi tồn kho không đủ</Text>
             <Switch checked={allowPartial} onChange={setAllowPartial} />
           </div>
           <BaseTable
-            title={() => <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Pending issue requests</Text>}
+            title={() => <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Yêu cầu cấp thuốc chờ duyệt</Text>}
             columns={columns}
             dataSource={rows}
             rowKey="orderId"
@@ -141,7 +141,7 @@ export default function IssueApprovalPage() {
       </Layout>
 
       <Modal
-        title="Reject Request"
+        title="Từ chối yêu cầu"
         open={Boolean(rejectingRequestId)}
         onCancel={() => {
           if (rejectSubmitting) return
@@ -149,16 +149,17 @@ export default function IssueApprovalPage() {
           setRejectReason("")
         }}
         onOk={() => void submitReject()}
-        okText="Reject"
+        okText="Từ chối"
+        cancelText="Hủy"
         okButtonProps={{ danger: true, loading: rejectSubmitting }}
       >
         <div className="space-y-2">
-          <Text className="text-slate-600">Please provide a reason for rejection.</Text>
+          <Text className="text-slate-600">Vui lòng nhập lý do từ chối yêu cầu này.</Text>
           <Input.TextArea
             rows={4}
             value={rejectReason}
             onChange={(event) => setRejectReason(event.target.value)}
-            placeholder="Enter reject reason"
+            placeholder="Nhập lý do từ chối"
             maxLength={500}
             showCount
           />

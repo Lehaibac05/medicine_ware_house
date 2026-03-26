@@ -201,7 +201,7 @@ export default function PurchaseOrdersPage() {
                 })
               }
             >
-              Reset
+              Khôi phục
             </Button>
 
             <Button

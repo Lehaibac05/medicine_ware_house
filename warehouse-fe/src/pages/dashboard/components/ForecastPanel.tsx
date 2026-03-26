@@ -128,7 +128,7 @@ function ForecastPanel() {
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-            AI Forecast
+            Dự báo AI
           </Text>
 
           <Title level={4} className="m-0! mt-1! font-semibold">

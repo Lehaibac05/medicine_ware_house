@@ -23,7 +23,7 @@ export default function IssueExecutionPage() {
       const data = await getIssueRequests()
       setRows(data.filter((row) => row.status === "APPROVED"))
     } catch (error) {
-      toast.error(error, "Failed to load approved requests")
+      toast.error(error, "Không thể tải danh sách yêu cầu đã duyệt")
     } finally {
       setLoading(false)
     }
@@ -37,31 +37,30 @@ export default function IssueExecutionPage() {
     try {
       setExecutingId(requestId)
       await executeIssue(requestId)
-      toast.success("Issue executed successfully")
+      toast.success("Thực hiện cấp thuốc thành công")
       await loadData()
     } catch (error) {
-      toast.error(error, "Failed to execute issue")
+      toast.error(error, "Thực hiện cấp thuốc thất bại")
     } finally {
       setExecutingId(null)
     }
   }
 
   const columns: ColumnsType<IssueRequest> = [
-    { title: "Request ID", dataIndex: "orderId", width: 100 },
-    { title: "Medicine", dataIndex: "medicineName" },
-    { title: "Warehouse", dataIndex: "warehouseName", width: 140 },
-    { title: "Approved Qty", dataIndex: "approvedQuantity", width: 120 },
-    { title: "Available", dataIndex: "availableStockInWarehouse", width: 100, render: (v?: number) => v ?? 0 },
-    { title: "Issued Qty", dataIndex: "issuedQuantity", width: 110, render: (v?: number) => v ?? 0 },
-    { title: "Department", dataIndex: "department", width: 140 },
-    { title: "Status", dataIndex: "status", width: 120, render: (v: string) => <IssueStatusTag status={v} /> },
+    { title: "Mã yêu cầu", dataIndex: "orderId", width: 100 },
+    { title: "Thuốc", dataIndex: "medicineName" },
+    { title: "Kho", dataIndex: "warehouseName", width: 140 },
+    { title: "SL duyệt", dataIndex: "approvedQuantity", width: 120 },
+    { title: "Tồn kho", dataIndex: "availableStockInWarehouse", width: 100, render: (v?: number) => v ?? 0 },
+    { title: "Khoa/Phòng", dataIndex: "department", width: 140 },
+    { title: "Trạng thái", dataIndex: "status", width: 120, render: (v: string) => <IssueStatusTag status={v} /> },
     {
-      title: "Action",
+      title: "Thao tác",
       width: 160,
       render: (_: unknown, record) => (
         <Space>
           <Button type="primary" size="small" loading={executingId === record.orderId} onClick={() => void onExecute(record.orderId)}>
-            Execute Issue
+            Thực hiện cấp
           </Button>
         </Space>
       ),
@@ -80,7 +79,7 @@ export default function IssueExecutionPage() {
         </div>
         <Content className="p-6 pt-[114px]">
           <BaseTable
-            title={() => <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Approved requests</Text>}
+            title={() => <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Yêu cầu cấp thuốc đã duyệt</Text>}
             columns={columns}
             dataSource={rows}
             rowKey="orderId"
