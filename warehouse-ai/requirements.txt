@@ -3,3 +3,7 @@ numpy
 scikit-learn
 matplotlib
 pymysql
+xgboost
+flask
+flask-cors
+requests

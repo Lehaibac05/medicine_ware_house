@@ -131,8 +131,8 @@ export default function IssueRequestListPage() {
   }
 
   const columns: ColumnsType<IssueRequest> = [
-    { title: "Request ID", dataIndex: "orderId", width: 110 },
-    { title: "Medicine", dataIndex: "medicineName" },
+    { title: "Mã yêu cầu", dataIndex: "orderId", width: 110 },
+    { title: "Thuốc", dataIndex: "medicineName" },
     { title: "Requested", dataIndex: "requestedQuantity", width: 100 },
     { title: "Approved", dataIndex: "approvedQuantity", width: 100, render: (v?: number) => v ?? "-" },
     { title: "Department", dataIndex: "department", width: 140 },
