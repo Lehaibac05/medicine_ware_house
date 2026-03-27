@@ -47,23 +47,22 @@ import { Button, Card, Col, Row, Typography } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { useEffect, useMemo, useState } from "react";
-import { forecastApi, type ForecastPoint } from "../../../services/forecast";
+import { forecastApi } from "../../../services/forecast";
 
 const { Text, Title } = Typography;
+
+type ForecastPoint = {
+  date: string;
+  predicted: number;
+  lower: number;
+  upper: number;
+};
 
 function ForecastPanel() {
   const [chartData, setChartData] = useState<ForecastPoint[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [usingMockData, setUsingMockData] = useState(false);
 
-  const computedMetrics = useMemo(() => {    if (error) {
-      return [
-        { label: "Tuần này", value: "Lỗi", color: "text-red-600", bg: "bg-red-100" },
-        { label: "Mức rủi ro", value: "Lỗi", color: "text-red-600", bg: "bg-red-100" },
-        { label: "Đề xuất nhập", value: "Lỗi", color: "text-red-600", bg: "bg-red-100" },
-      ];
-    }
+  const computedMetrics = useMemo(() => {
     if (!chartData.length) {
       return [
         { label: "Tuần này", value: "0%", color: "text-slate-500", bg: "bg-slate-100" },
@@ -106,24 +105,15 @@ function ForecastPanel() {
         bg: toRestock > 0 ? "bg-[#fffbeb]" : "bg-[#f0fdf4]",
       },
     ];
-  }, [chartData, error]);
+  }, [chartData]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        setError(null);
-        setUsingMockData(false);
         const data = await forecastApi.get30DayForecast();
-        
-        // Check if this is mock data (has consistent pattern)
-        const isMock = data.some(item => item.isFallback);
-        setUsingMockData(isMock);
-        
         setChartData(data);
       } catch (error) {
         console.error('Error loading forecast:', error);
-        setError('Không thể tải dữ liệu dự báo AI');
-        setChartData([]);
       } finally {
         setLoading(false);
       }
@@ -138,11 +128,11 @@ function ForecastPanel() {
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-            AI Forecast
+            Dự báo AI
           </Text>
 
           <Title level={4} className="m-0! mt-1! font-semibold">
-            Dự báo nhu cầu 30 ngày {usingMockData && <span className="text-amber-500 text-sm">(Demo)</span>}
+            Dự báo nhu cầu 30 ngày
           </Title>
         </div>
 
@@ -159,11 +149,7 @@ function ForecastPanel() {
       <div className="mb-5 rounded-xl border border-emerald-100 bg-linear-to-br from-[#f0fdf4] to-[#f8fafc] p-4">
         {loading ? (
           <div className="flex h-[220px] items-center justify-center text-slate-400">
-            <span>Đang tải dữ liệu AI...</span>
-          </div>
-        ) : error ? (
-          <div className="flex h-[220px] items-center justify-center text-red-400">
-            <span>{error}</span>
+            <span>Đang tải dữ liệu...</span>
           </div>
         ) : chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={220}>
@@ -182,7 +168,7 @@ function ForecastPanel() {
                 dataKey="predicted" 
                 stroke="#10b981" 
                 strokeWidth={3}
-                name="Dự báo AI" 
+                name="Dự báo" 
                 dot={{ fill: '#10b981', r: 4 }}
                 activeDot={{ r: 6 }}
               />
@@ -208,7 +194,7 @@ function ForecastPanel() {
           </ResponsiveContainer>
         ) : (
           <div className="flex h-[220px] items-center justify-center text-slate-400">
-            <span>Chưa có dữ liệu dự báo AI. Vui lòng setup backend và AI service.</span>
+            <span>Không có dữ liệu</span>
           </div>
         )}
       </div>

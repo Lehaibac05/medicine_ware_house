@@ -33,7 +33,7 @@ export default function IssueHistoryPage() {
       })
       setRows(data)
     } catch {
-      messageApi.error("Failed to load issue history")
+      messageApi.error("Không thể tải lịch sử cấp thuốc")
     } finally {
       setLoading(false)
     }
@@ -44,7 +44,7 @@ export default function IssueHistoryPage() {
       try {
         setMedicines(await getAllMedicines())
       } catch {
-        messageApi.error("Failed to load medicine options")
+        messageApi.error("Không thể tải danh sách thuốc")
       }
     }
     void loadMedicines()
@@ -52,15 +52,15 @@ export default function IssueHistoryPage() {
   }, [])
 
   const columns: ColumnsType<IssueExecutionItem> = [
-    { title: "Request ID", dataIndex: "orderId", width: 100 },
-    { title: "Medicine", dataIndex: "medicineName" },
-    { title: "Batch", dataIndex: "lotNumber", width: 140 },
-    { title: "Expiry", dataIndex: "expiryDate", width: 120, render: (v?: string) => (v ? new Date(v).toLocaleDateString() : "-") },
-    { title: "Qty", dataIndex: "quantity", width: 80 },
-    { title: "Department", dataIndex: "department", width: 140 },
-    { title: "Warehouse", dataIndex: "warehouseName", width: 150 },
-    { title: "Issued By", dataIndex: "issuedByName", width: 150 },
-    { title: "Issued At", dataIndex: "issuedAt", width: 170, render: (v?: string) => (v ? new Date(v).toLocaleString() : "-") },
+    { title: "Mã yêu cầu", dataIndex: "orderId", width: 100 },
+    { title: "Thuốc", dataIndex: "medicineName" },
+    { title: "Số lô", dataIndex: "lotNumber", width: 140 },
+    { title: "Hạn dùng", dataIndex: "expiryDate", width: 120, render: (v?: string) => (v ? new Date(v).toLocaleDateString() : "-") },
+    { title: "Số lượng", dataIndex: "quantity", width: 80 },
+    { title: "Khoa/Phòng", dataIndex: "department", width: 140 },
+    { title: "Kho", dataIndex: "warehouseName", width: 150 },
+    { title: "Người cấp", dataIndex: "issuedByName", width: 150 },
+    { title: "Thời điểm cấp", dataIndex: "issuedAt", width: 170, render: (v?: string) => (v ? new Date(v).toLocaleString() : "-") },
   ]
 
   return (
@@ -75,24 +75,24 @@ export default function IssueHistoryPage() {
         </div>
         <Content className="flex flex-col gap-6 p-6 pt-[114px]">
           <BaseFilterCard
-            actions={<Button type="primary" onClick={() => void loadData()}>Apply filters</Button>}
+            actions={<Button type="primary" onClick={() => void loadData()}>Áp dụng lọc</Button>}
           >
             <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Medicine</Text>
+              <Text className="text-xs text-slate-500">Thuốc</Text>
               <Select
                 allowClear
-                placeholder="All medicines"
+                placeholder="Tất cả thuốc"
                 value={medicineId}
                 options={medicines.map((medicine) => ({ value: medicine.medicineId, label: medicine.name }))}
                 onChange={(value) => setMedicineId(value)}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Department</Text>
-              <Input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Department" />
+              <Text className="text-xs text-slate-500">Khoa/Phòng</Text>
+              <Input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="Nhập khoa/phòng" />
             </div>
             <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Issued Date</Text>
+              <Text className="text-xs text-slate-500">Ngày cấp</Text>
               <DatePicker.RangePicker
                 className="w-full"
                 value={dateRange}
@@ -102,7 +102,7 @@ export default function IssueHistoryPage() {
           </BaseFilterCard>
 
           <BaseTable
-            title={() => <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Issue execution history</Text>}
+            title={() => <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Lịch sử cấp thuốc</Text>}
             columns={columns}
             dataSource={rows}
             rowKey={(row) => `${row.orderItemId}`}

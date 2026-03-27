@@ -1,4 +1,5 @@
 import { apiFetch } from "./api"
+import { http } from "./http"
 import type { PageResponse, User } from "./types"
 
 export type GetUsersParams = {
@@ -122,4 +123,54 @@ export const forceChangePassword = async (
     method: "POST",
     body: JSON.stringify(payload),
   })
+}
+
+export type BulkUserImportRowResult = {
+  rowNumber: number
+  username: string
+  fullName: string
+  email: string
+  status: string
+  roleInput: string
+  valid: boolean
+  errors: string[]
+  createdUserId?: number
+}
+
+export type BulkUserImportResponse = {
+  dryRun: boolean
+  totalRows: number
+  validRows: number
+  invalidRows: number
+  createdRows: number
+  message: string
+  rows: BulkUserImportRowResult[]
+}
+
+const postImportFile = async (
+  endpoint: string,
+  file: File,
+): Promise<BulkUserImportResponse> => {
+  const formData = new FormData()
+  formData.append("file", file)
+
+  const response = await http.post<BulkUserImportResponse>(endpoint, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  })
+
+  return response.data
+}
+
+export const previewImportUsers = async (
+  file: File,
+): Promise<BulkUserImportResponse> => {
+  return postImportFile("/users/import", file)
+}
+
+export const commitImportUsers = async (
+  file: File,
+): Promise<BulkUserImportResponse> => {
+  return postImportFile("/users/import/commit", file)
 }

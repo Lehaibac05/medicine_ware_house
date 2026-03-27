@@ -2,7 +2,6 @@ package com.pharmacy.warehouse.controller;
 
 import com.pharmacy.warehouse.dto.*;
 import com.pharmacy.warehouse.service.AlertService;
-import com.pharmacy.warehouse.service.AlertScanService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -20,11 +19,11 @@ import java.util.Map;
 public class AlertController {
 
     private final AlertService alertService;
-    private final AlertScanService alertScanService;
 
     @GetMapping
     public ResponseEntity<List<AlertResponse>> getAllAlerts() {
         log.info("GET /alerts - Fetching all alerts");
+        alertService.checkAndGenerateAlerts();
         List<AlertResponse> alerts = alertService.getAllAlerts();
         return ResponseEntity.ok(alerts);
     }
@@ -32,6 +31,7 @@ public class AlertController {
     @GetMapping("/active")
     public ResponseEntity<List<AlertResponse>> getActiveAlerts() {
         log.info("GET /alerts/active - Fetching active alerts");
+        alertService.checkAndGenerateAlerts();
         List<AlertResponse> alerts = alertService.getActiveAlerts();
         return ResponseEntity.ok(alerts);
     }
@@ -67,6 +67,7 @@ public class AlertController {
     @GetMapping("/stats")
     public ResponseEntity<AlertStatsResponse> getAlertStats() {
         log.info("GET /alerts/stats - Fetching alert statistics");
+        alertService.checkAndGenerateAlerts();
         AlertStatsResponse stats = alertService.getAlertStats();
         return ResponseEntity.ok(stats);
     }
@@ -108,7 +109,10 @@ public class AlertController {
     @PostMapping("/scan")
     public ResponseEntity<Map<String, Object>> triggerAlertScan() {
         log.info("POST /alerts/scan - Manually triggering alert scan");
-        int alertsGenerated = alertScanService.scanAllAlerts();
+        int beforeActiveCount = alertService.getActiveAlerts().size();
+        alertService.checkAndGenerateAlerts();
+        int afterActiveCount = alertService.getActiveAlerts().size();
+        int alertsGenerated = Math.max(afterActiveCount - beforeActiveCount, 0);
         
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Alert scan completed successfully");

@@ -135,7 +135,7 @@ const RequesterDashboardPage = () => {
     <MainLayout>
       <div>
         <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-          Requester Dashboard
+          Bảng điều khiển người yêu cầu
         </Text>
         <Title level={4} className="!mt-1 !mb-0 font-semibold">
           Tổng quan yêu cầu cấp thuốc của tôi
@@ -160,7 +160,7 @@ const RequesterDashboardPage = () => {
 
       <Card className="!rounded-2xl !border-0 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
         <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-          Recent Requests
+          Yêu cầu gần đây
         </Text>
         <Title level={4} className="!mt-1 !mb-4 font-semibold">
           Yêu cầu gần đây
