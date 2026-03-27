@@ -1,6 +1,7 @@
 package com.pharmacy.warehouse.controller;
 
 import com.pharmacy.warehouse.dto.ChangePasswordRequest;
+import com.pharmacy.warehouse.dto.BulkUserImportResponse;
 import com.pharmacy.warehouse.dto.CreateUserRequest;
 import com.pharmacy.warehouse.dto.ForceChangePasswordRequest;
 import com.pharmacy.warehouse.dto.UpdateUserRequest;
@@ -52,8 +53,14 @@ public class UserController {
 
     @PostMapping("/import")
     @PreAuthorize("hasRole('ADMIN')")
-    public List<UserResponse> importUsers(@RequestParam("file") MultipartFile file) {
-        return userService.importUsersFromCsv(file);
+    public BulkUserImportResponse importUsersPreview(@RequestParam("file") MultipartFile file) {
+        return userService.previewBulkUsersFromCsv(file);
+    }
+
+    @PostMapping("/import/commit")
+    @PreAuthorize("hasRole('ADMIN')")
+    public BulkUserImportResponse importUsersCommit(@RequestParam("file") MultipartFile file) {
+        return userService.executeBulkUsersFromCsv(file);
     }
 
     @PutMapping("/{id}")

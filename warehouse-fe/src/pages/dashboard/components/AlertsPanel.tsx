@@ -15,10 +15,6 @@ import {
   getActiveAlerts,
   type Alert,
 } from "../../../services/alerts";
-import {
-  getLowStockInventory,
-  type InventoryRow,
-} from "../../../services/inventory";
 import { getUserRoles } from "../../../utils/auth";
 
 const { Text, Title } = Typography;
@@ -29,6 +25,56 @@ const toBadgeStatus = (severity?: string): BadgeProps["status"] => {
   if (normalized === "HIGH") return "warning";
   if (normalized === "MEDIUM") return "processing";
   return "default";
+};
+
+const toSeverityLabel = (severity?: string) => {
+  const normalized = severity?.toUpperCase();
+  if (normalized === "CRITICAL") return "Nghiêm trọng";
+  if (normalized === "HIGH") return "Cao";
+  if (normalized === "MEDIUM") return "Trung bình";
+  if (normalized === "LOW") return "Thấp";
+  return severity || "Không xác định";
+};
+
+const toAlertTypeLabel = (alertType?: string) => {
+  const normalized = alertType?.toUpperCase();
+  if (normalized === "LOW_STOCK") return "Tồn kho thấp";
+  if (normalized === "EXPIRING_SOON") return "Sắp hết hạn";
+  if (normalized === "EXPIRED") return "Đã hết hạn";
+  if (normalized === "BATCH_EXPIRED") return "Lô đã hết hạn";
+  return alertType || "Cảnh báo";
+};
+
+const translateAlertMessage = (message?: string, alertType?: string) => {
+  if (!message?.trim()) {
+    return toAlertTypeLabel(alertType);
+  }
+
+  const normalized = message.trim().toUpperCase();
+  if (normalized === "LOW STOCK ALERT") return "Cảnh báo tồn kho thấp";
+  if (normalized === "EXPIRING SOON") return "Sắp hết hạn";
+  if (normalized === "EXPIRED") return "Đã hết hạn";
+  if (normalized === "BATCH EXPIRED") return "Lô đã hết hạn";
+
+  return message
+    .replace(/batch expired/gi, "lô đã hết hạn")
+    .replace(/expired/gi, "đã hết hạn")
+    .replace(/critical/gi, "nghiêm trọng")
+    .replace(/low stock/gi, "tồn kho thấp")
+    .replace(/expiring soon/gi, "sắp hết hạn");
+};
+
+const translateAlertDescription = (description?: string) => {
+  if (!description?.trim()) {
+    return "-";
+  }
+
+  return description
+    .replace(/batch expired on/gi, "Lô đã hết hạn vào")
+    .replace(/expired on/gi, "Đã hết hạn vào")
+    .replace(/batch expired/gi, "Lô đã hết hạn")
+    .replace(/expired/gi, "đã hết hạn")
+    .replace(/critical/gi, "nghiêm trọng");
 };
 
 const canCreateRequest = (alert: Alert) => {
@@ -48,44 +94,8 @@ const severityRank = (severity?: string) => {
   return 0;
 };
 
-const lowStockSeverity = (quantity: number) => {
-  if (quantity < 10) return "CRITICAL";
-  if (quantity < 20) return "HIGH";
-  return "MEDIUM";
-};
-
-const buildSyntheticLowStockAlerts = (
-  inventoryRows: InventoryRow[],
-): Alert[] => {
-  const now = new Date().toISOString();
-
-  return inventoryRows
-    .filter((row) => row.status === "LOW_STOCK")
-    .map((row, idx) => ({
-      alertId: -(idx + 1),
-      alertType: "LOW_STOCK",
-      severity: lowStockSeverity(row.totalStock),
-      status: "OPEN",
-      message: "Low Stock Alert",
-      description: `${row.medicineName} tại ${row.warehouseName} còn ${row.totalStock} đơn vị`,
-      createdAt: now,
-      medicineId: row.medicineId,
-      medicineName: row.medicineName,
-      warehouseId: row.warehouseId,
-      warehouseName: row.warehouseName,
-    }));
-};
-
-const normalizeDashboardAlerts = (
-  activeAlerts: Alert[],
-  lowStockRows: InventoryRow[],
-) => {
-  const syntheticLowStock = buildSyntheticLowStockAlerts(lowStockRows);
-  const nonLowStockAlerts = activeAlerts.filter(
-    (alert) => alert.alertType?.toUpperCase() !== "LOW_STOCK",
-  );
-
-  const merged = [...nonLowStockAlerts, ...syntheticLowStock].sort((a, b) => {
+const normalizeDashboardAlerts = (activeAlerts: Alert[]) => {
+  const sorted = [...activeAlerts].sort((a, b) => {
     const severityDiff = severityRank(b.severity) - severityRank(a.severity);
     if (severityDiff !== 0) return severityDiff;
 
@@ -94,37 +104,12 @@ const normalizeDashboardAlerts = (
     return timeB - timeA;
   });
 
-  const topAlerts = merged.slice(0, 6);
-  const hasLowStock = topAlerts.some(
-    (alert) => alert.alertType?.toUpperCase() === "LOW_STOCK",
-  );
-
-  if (hasLowStock) return topAlerts;
-
-  const firstLowStock = merged.find(
-    (alert) => alert.alertType?.toUpperCase() === "LOW_STOCK",
-  );
-  if (!firstLowStock) return topAlerts;
-
-  if (topAlerts.length < 6) return [...topAlerts, firstLowStock];
-
-  const replaced = [...topAlerts];
-  replaced[replaced.length - 1] = firstLowStock;
-  return replaced;
+  return sorted.slice(0, 6);
 };
 
-const loadAlertsAndLowStock = async () => {
-  const [activeResult, lowStockResult] = await Promise.allSettled([
-    getActiveAlerts(),
-    getLowStockInventory(),
-  ]);
-
-  const activeAlerts =
-    activeResult.status === "fulfilled" ? activeResult.value : [];
-  const lowStockRows =
-    lowStockResult.status === "fulfilled" ? lowStockResult.value : [];
-
-  return { activeAlerts, lowStockRows };
+const loadActiveAlerts = async () => {
+  const activeResult = await getActiveAlerts();
+  return activeResult;
 };
 
 function AlertsPanel() {
@@ -151,10 +136,10 @@ function AlertsPanel() {
       }
 
       try {
-        const { activeAlerts, lowStockRows } = await loadAlertsAndLowStock();
-        setAlerts(normalizeDashboardAlerts(activeAlerts, lowStockRows));
+        const activeAlerts = await loadActiveAlerts();
+        setAlerts(normalizeDashboardAlerts(activeAlerts));
       } catch {
-        messageApi.error("Failed to load alerts");
+        messageApi.error("Không thể tải cảnh báo");
       } finally {
         setLoading(false);
       }
@@ -175,10 +160,6 @@ function AlertsPanel() {
       {/* Header */}
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-            System Alerts
-          </Text>
-
           <Title level={4} className="!m-0 !mt-1 font-semibold">
             Cảnh báo hệ thống
           </Title>
@@ -211,7 +192,7 @@ function AlertsPanel() {
                   <Badge status={toBadgeStatus(item.severity)} />
 
                   <Text strong className="text-slate-900">
-                    {item.message || item.alertType}
+                    {translateAlertMessage(item.message, item.alertType)}
                   </Text>
                 </div>
 
@@ -224,13 +205,13 @@ function AlertsPanel() {
                         : "bg-slate-100 text-slate-600"
                     }`}
                 >
-                  {item.severity}
+                  {toSeverityLabel(item.severity)}
                 </span>
               </div>
 
               {/* Description */}
               <Text className="mt-2 block text-[13px] text-slate-500 leading-relaxed">
-                {item.description || "-"}
+                {translateAlertDescription(item.description)}
               </Text>
 
               {/* Action */}

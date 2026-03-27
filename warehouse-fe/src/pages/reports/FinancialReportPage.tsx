@@ -232,7 +232,6 @@ export default function FinancialReportPage() {
             value={status}
             options={[
               { value: "PAID", label: "Đã thanh toán" },
-              { value: "PARTIAL", label: "Thanh toán một phần" },
               { value: "UNPAID", label: "Chưa thanh toán" },
             ]}
             onChange={(value) => {

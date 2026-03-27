@@ -106,7 +106,7 @@ function InventoryTable({
       dataIndex: "status",
       key: "status",
       render: (value: InventoryRow["status"]) => {
-        if (value === "Low") return <Tag color="red">SẮP HẾT</Tag>;
+        if (value === "Low") return <Tag color="red">TỒN KHO THẤP</Tag>;
         if (value === "Expiring soon")
           return <Tag color="orange">SẮP HẾT HẠN</Tag>;
         return <Tag color="green">CÒN HÀNG</Tag>;

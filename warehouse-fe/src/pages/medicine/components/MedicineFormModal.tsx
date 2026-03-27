@@ -1,6 +1,8 @@
-import { Form, Input } from "antd";
-import { useEffect } from "react";
+import { Form, Input, Select } from "antd";
+import { useEffect, useMemo, useState } from "react";
 import BaseModal from "../../../components/base/BaseModal";
+import { getActiveSuppliers } from "../../../services/suppliers";
+import type { Supplier } from "../../../services/types";
 
 export type MedicineFormValues = {
   name: string;
@@ -34,14 +36,51 @@ function MedicineFormModal({
   onSubmit,
 }: MedicineFormModalProps) {
   const [form] = Form.useForm<MedicineFormValues>();
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierLoading, setSupplierLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+
+    const loadSuppliers = async () => {
+      setSupplierLoading(true);
+      try {
+        const data = await getActiveSuppliers();
+        setSuppliers(data);
+      } catch {
+        setSuppliers([]);
+      } finally {
+        setSupplierLoading(false);
+      }
+    };
+
+    void loadSuppliers();
+
     form.setFieldsValue({
       ...defaultValues,
       ...initialValues,
     });
   }, [open, form, initialValues]);
+
+  const supplierOptions = useMemo(() => {
+    const options = suppliers.map((supplier) => ({
+      value: supplier.supplierName,
+      label: supplier.supplierName,
+    }));
+
+    const currentSupplier = form.getFieldValue("manufacturer");
+    if (
+      currentSupplier &&
+      !options.some((option) => option.value === currentSupplier)
+    ) {
+      options.unshift({
+        value: currentSupplier,
+        label: `${currentSupplier} (không hoạt động)`,
+      });
+    }
+
+    return options;
+  }, [suppliers, form]);
 
   const handleOk = async () => {
     const values = await form.validateFields();
@@ -74,11 +113,18 @@ function MedicineFormModal({
           name="manufacturer"
           label="Nhà cung cấp"
           rules={[
-            { required: true, message: "Please enter manufacturer" },
-            { max: 255, message: "Manufacturer is too long" },
+            { required: true, message: "Vui lòng chọn nhà cung cấp." },
+            { max: 255, message: "Tên nhà cung cấp quá dài." },
           ]}
         >
-          <Input placeholder="e.g. DHG Pharma" />
+          <Select
+            showSearch
+            optionFilterProp="label"
+            loading={supplierLoading}
+            options={supplierOptions}
+            placeholder="Chọn nhà cung cấp"
+            notFoundContent="Không có nhà cung cấp phù hợp"
+          />
         </Form.Item>
 
         <Form.Item

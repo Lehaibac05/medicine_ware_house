@@ -1,10 +1,9 @@
-import { Button, Select, Typography, message } from "antd";
+import { Button, Select, Typography } from "antd";
 import {
   LineChartOutlined,
   WarningOutlined,
   CheckCircleOutlined,
   ShoppingCartOutlined,
-  RobotOutlined,
 } from "@ant-design/icons";
 import { useEffect, useState } from "react";
 
@@ -14,7 +13,6 @@ import BaseStatsGrid from "../../components/base/BaseStatsGrid";
 import ForecastPanel from "../dashboard/components/ForecastPanel";
 import MainLayout from "../../layouts/MainLayout";
 import { forecastApi } from "../../services/forecast";
-import { getAllMedicines } from "../../services/medicines";
 
 const { Text } = Typography;
 
@@ -85,10 +83,6 @@ const ForecastPage = () => {
     },
   ]);
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [messageApi, contextHolder] = message.useMessage();
-  const [refreshKey, setRefreshKey] = useState(0);
-
   const loadForecastStats = async () => {
     try {
       const forecasts = await forecastApi.getAllForecasts();
@@ -149,92 +143,19 @@ const ForecastPage = () => {
     }
   };
 
-  const refreshAIPredictions = async () => {
-    try {
-      setRefreshing(true);
-      messageApi.info("Đang cập nhật dự đoán AI...");
-
-      const medicines = await getAllMedicines();
-      const predictions = [];
-
-      for (const medicine of medicines.slice(0, 10)) { // Limit to first 10 medicines
-        try {
-          const prediction = await forecastApi.predictDemand({
-            medicineId: medicine.medicineId,
-            medicineName: medicine.name,
-            temperature: 28,
-            fluSeason: false,
-            rain: false,
-            currentInventory: 50,
-            salesLag1: 45,
-            salesLag7: 48,
-            salesLag30: 45,
-            storageCondition: "Room temperature",
-          });
-
-          predictions.push({
-            medicineId: medicine.medicineId,
-            predictedQuantity: prediction.predictedQuantity,
-            period: "2026-Q1",
-            confidenceLevel: prediction.confidenceLevel,
-            model: {
-              modelId: 1,
-              modelName: "DemandPredictor",
-              version: "1.0",
-              accuracy: prediction.confidenceLevel,
-            },
-          });
-        } catch (error) {
-          console.error(`Error predicting for ${medicine.name}:`, error);
-        }
-      }
-
-      // Create forecasts in database
-      for (const pred of predictions) {
-        try {
-          await forecastApi.createForecast(pred);
-        } catch (error) {
-          console.error("Error creating forecast:", error);
-        }
-      }
-
-      messageApi.success(`Đã cập nhật dự đoán cho ${predictions.length} loại thuốc`);
-      loadForecastStats(); // Reload stats
-      setRefreshKey(prev => prev + 1); // Trigger table reload
-
-    } catch (error) {
-      console.error("Error refreshing AI predictions:", error);
-      messageApi.error("Lỗi khi cập nhật dự đoán AI");
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
   useEffect(() => {
     loadForecastStats();
   }, []);
 
   return (
     <MainLayout>
-      {contextHolder}
       <BaseStatsGrid stats={forecastStats} />
       <ForecastPanel />
       <BaseFilterCard
         actions={
-          <>
-            <Button
-              type="primary"
-              icon={<RobotOutlined />}
-              loading={refreshing}
-              onClick={refreshAIPredictions}
-              className="mr-2"
-            >
-              Cập nhật AI
-            </Button>
-            <Button type="primary" className="h-[40px]">
-              Áp dụng
-            </Button>
-          </>
+          <Button type="primary" className="h-[40px]">
+            Áp dụng
+          </Button>
         }
       >
         <div className="flex flex-col gap-2">
@@ -253,7 +174,7 @@ const ForecastPage = () => {
         </div>
       </BaseFilterCard>
 
-      <ForecastTable key={refreshKey} />
+      <ForecastTable />
     </MainLayout>
   );
 };

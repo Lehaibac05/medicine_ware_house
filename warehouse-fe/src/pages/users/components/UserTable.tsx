@@ -6,6 +6,7 @@ import { createUser, getUsers, updateUser } from "../../../services/users";
 import type { User } from "../../../services/types";
 import type { UserFilters } from "../UserPage";
 import UserFormModal, { type UserFormValues } from "./UserFormModal";
+import UserImportModal from "./UserImportModal";
 import { getRoles } from "../../../services/role";
 
 const { Text } = Typography;
@@ -67,6 +68,7 @@ function UserTable({ filters, search, onSearch }: UserTableProps) {
   const [totalItems, setTotalItems] = useState(0);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [statusUpdatingUserId, setStatusUpdatingUserId] = useState<number | null>(null);
@@ -178,6 +180,14 @@ function UserTable({ filters, search, onSearch }: UserTableProps) {
 
   const openCreateModal = () => {
     setCreateModalOpen(true);
+  };
+
+  const openImportModal = () => {
+    setImportModalOpen(true);
+  };
+
+  const closeImportModal = () => {
+    setImportModalOpen(false);
   };
 
   const closeModal = () => {
@@ -363,6 +373,7 @@ function UserTable({ filters, search, onSearch }: UserTableProps) {
             onChange={(event) => onSearch?.(event.target.value)}
             allowClear
           />
+          <Button onClick={openImportModal}>Import user</Button>
           <Button type="primary" onClick={openCreateModal}>
             Tạo người dùng
           </Button>
@@ -417,6 +428,12 @@ function UserTable({ filters, search, onSearch }: UserTableProps) {
         }}
         onCancel={closeEditModal}
         onSubmit={handleEditUser}
+      />
+
+      <UserImportModal
+        open={importModalOpen}
+        onCancel={closeImportModal}
+        onImported={loadUsers}
       />
     </>
   );

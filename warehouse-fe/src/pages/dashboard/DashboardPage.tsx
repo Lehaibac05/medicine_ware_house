@@ -7,7 +7,16 @@ import AlertsPanel from "./components/AlertsPanel";
 import InventoryTable from "../inventory/components/InventoryTable";
 import MainLayout from "../../layouts/MainLayout";
 
-const { Text, Title } = Typography;
+const { Title } = Typography;
+
+const formatInvoiceStatusLabel = (status?: string) => {
+  const normalized = status?.toUpperCase();
+  if (normalized === "PAID") return "Đã thanh toán";
+  if (normalized === "UNPAID") return "Chưa thanh toán";
+  if (normalized === "PARTIALLY_PAID") return "Thanh toán một phần";
+  if (normalized === "OVERDUE") return "Quá hạn";
+  return status || "Không xác định";
+};
 
 const DashboardPage = () => {
   const { data } = useDashboardSummaryQuery();
@@ -22,11 +31,8 @@ const DashboardPage = () => {
         <AlertsPanel />
       </div>
 
-      {/* Inventory */}
+      {/* Tồn kho */}
       <Card className="!rounded-2xl !border-0 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-        <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
-          Inventory
-        </Text>
 
         <Title level={4} className="!mt-1 !mb-4 font-semibold">
           Tồn kho hiện tại
@@ -38,16 +44,16 @@ const DashboardPage = () => {
       {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
         <ChartWidget
-          title="Invoice Status"
+          title="Trạng thái hóa đơn"
           type="pie"
           data={(data?.invoiceStatusDistribution || []).map((item) => ({
-            label: item.status,
+            label: formatInvoiceStatusLabel(item.status),
             value: Number(item.value || 0),
           }))}
         />
 
         <ChartWidget
-          title="Monthly Spending"
+          title="Chi tiêu theo tháng"
           type="line"
           data={(data?.monthlySpending || []).map((item) => ({
             label: item.month,

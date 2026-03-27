@@ -1,4 +1,4 @@
-import { Button, Space, Typography, message } from "antd";
+import { Button, Descriptions, Modal, Space, Table, Tag, Typography, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { AxiosError } from "axios";
 import React from "react";
@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import StatusTag from "../../components/common/StatusTag";
 import {
   useApproveGoodsReceiptMutation,
+  useGoodsReceiptDetailQuery,
   useGoodsReceiptsQuery,
 } from "../../hooks/useWorkflow";
 import { clearAuthToken } from "../../utils/auth";
@@ -36,6 +37,8 @@ const formatDateTime = (value?: string) =>
 export default function GoodsReceiptsPage() {
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
+  const [selectedReceiptId, setSelectedReceiptId] = React.useState<number>();
+  const [isDetailOpen, setIsDetailOpen] = React.useState(false);
   const [pagination, setPagination] = React.useState({
     current: 1,
     pageSize: 10,
@@ -46,6 +49,9 @@ export default function GoodsReceiptsPage() {
     size: pagination.pageSize,
   });
   const reviewMutation = useApproveGoodsReceiptMutation();
+  const { data: receiptDetail, isLoading: isDetailLoading } = useGoodsReceiptDetailQuery(
+    isDetailOpen ? selectedReceiptId : undefined,
+  );
 
   React.useEffect(() => {
     if (data && 'totalElements' in data) {
@@ -143,7 +149,7 @@ export default function GoodsReceiptsPage() {
     },
     {
       title: "Hành động",
-      width: 240,
+      width: 320,
       render: (_: unknown, record: ReceiptRow) => {
         const isPending = record.status === "PENDING_APPROVAL";
         const isCurrentRowPending =
@@ -152,6 +158,15 @@ export default function GoodsReceiptsPage() {
 
         return (
           <Space>
+            <Button
+              size="small"
+              onClick={() => {
+                setSelectedReceiptId(record.receiptId);
+                setIsDetailOpen(true);
+              }}
+            >
+              Xem
+            </Button>
             <Button
               size="small"
               onClick={() => void onReview(record, true)}
@@ -208,6 +223,109 @@ export default function GoodsReceiptsPage() {
           </Text>
         )}
       />
+
+      <Modal
+        title="Chi tiết phiếu nhập"
+        open={isDetailOpen}
+        onCancel={() => setIsDetailOpen(false)}
+        footer={null}
+        width={980}
+      >
+        <Descriptions
+          bordered
+          size="small"
+          column={2}
+          className="mb-4"
+        >
+          <Descriptions.Item label="Mã phiếu nhập">
+            {receiptDetail?.receiptCode || "-"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Trạng thái">
+            {receiptDetail?.status ? (
+              <StatusTag
+                domain="goodsReceipt"
+                status={normalizeReceiptStatus(receiptDetail.status)}
+              />
+            ) : (
+              "-"
+            )}
+          </Descriptions.Item>
+          <Descriptions.Item label="Đơn mua hàng">
+            {receiptDetail?.purchaseOrder?.orderCode || "-"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Tổng tiền đơn mua hàng">
+            {receiptDetail?.purchaseOrder?.totalAmount?.toLocaleString("vi-VN") || "0"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Người nhận">
+            {receiptDetail?.receivedBy?.fullName || receiptDetail?.receivedBy?.username || "-"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Người duyệt">
+            {receiptDetail?.approvedBy?.fullName || receiptDetail?.approvedBy?.username || "-"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Thời điểm nhận">
+            {formatDateTime(receiptDetail?.receivedAt)}
+          </Descriptions.Item>
+          <Descriptions.Item label="Thời điểm duyệt">
+            {formatDateTime(receiptDetail?.approvedAt)}
+          </Descriptions.Item>
+          <Descriptions.Item label="Ghi chú kiểm tra" span={2}>
+            {receiptDetail?.qualityCheckNotes || "-"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Kiểm tra chất lượng" span={2}>
+            {receiptDetail?.qualityPassed === undefined ? (
+              "-"
+            ) : receiptDetail.qualityPassed ? (
+              <Tag color="green">Đạt</Tag>
+            ) : (
+              <Tag color="red">Không đạt</Tag>
+            )}
+          </Descriptions.Item>
+        </Descriptions>
+
+        <Table
+          size="small"
+          loading={isDetailLoading}
+          dataSource={receiptDetail?.purchaseOrder?.items || []}
+          rowKey={(item) => String(item.itemId)}
+          pagination={false}
+          columns={[
+            {
+              title: "Thuốc",
+              dataIndex: ["medicine", "medicineName"],
+              render: (_: unknown, row: any) =>
+                row?.medicine?.medicineName || `#${row?.medicine?.medicineId || "-"}`,
+            },
+            {
+              title: "SL đặt",
+              dataIndex: "requestedQuantity",
+              width: 90,
+            },
+            {
+              title: "SL nhận",
+              dataIndex: "receivedQuantity",
+              width: 90,
+              render: (value?: number) => value ?? "-",
+            },
+            {
+              title: "Đơn giá",
+              dataIndex: "unitPrice",
+              width: 120,
+              render: (value?: number) => (value ?? 0).toLocaleString("vi-VN"),
+            },
+            {
+              title: "Hạn dùng",
+              dataIndex: "expectedExpiryDate",
+              width: 130,
+              render: (value?: string) => value || "-",
+            },
+            {
+              title: "Ghi chú",
+              dataIndex: "notes",
+              render: (value?: string) => value || "-",
+            },
+          ]}
+        />
+      </Modal>
     </MainLayout>
   );
 }

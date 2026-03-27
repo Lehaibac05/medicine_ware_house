@@ -226,9 +226,9 @@ function MedicineTable({
                 allowClear
               />
 
-              <Button type="primary" onClick={openCreateModal}>
-                Thêm thuốc
-              </Button>
+                 <Button type="primary" onClick={openCreateModal}>
+                  Thêm thuốc
+                </Button> 
             </div>
           </div>
         )}
