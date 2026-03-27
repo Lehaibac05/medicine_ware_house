@@ -1,4 +1,4 @@
-// import { apiFetch } from './api';
+import { apiFetch } from './api';
 
 export interface Forecast {
   forecastId: number;
@@ -23,115 +23,150 @@ export interface ForecastPrediction {
   period: string;
   lowerBound: number;
   upperBound: number;
+  recommendedOrder?: number;
+  warning?: string;
+  isFallback?: boolean;
 }
 
-const mock30DayData = [
-  { date: '2026-03-21', predicted: 65, lower: 52, upper: 78, confidence: 0.89 },
-  { date: '2026-03-22', predicted: 70, lower: 56, upper: 84, confidence: 0.87 },
-  { date: '2026-03-23', predicted: 68, lower: 54, upper: 82, confidence: 0.88 },
-  { date: '2026-03-24', predicted: 75, lower: 60, upper: 90, confidence: 0.85 },
-  { date: '2026-03-25', predicted: 80, lower: 64, upper: 96, confidence: 0.83 },
-  { date: '2026-03-26', predicted: 72, lower: 57, upper: 87, confidence: 0.86 },
-  { date: '2026-03-27', predicted: 85, lower: 68, upper: 102, confidence: 0.82 },
-  { date: '2026-03-28', predicted: 78, lower: 62, upper: 94, confidence: 0.84 },
-  { date: '2026-03-29', predicted: 82, lower: 65, upper: 99, confidence: 0.81 },
-  { date: '2026-03-30', predicted: 76, lower: 61, upper: 91, confidence: 0.86 },
-];
+export interface ForecastPoint {
+  date: string;
+  predicted: number;
+  lower: number;
+  upper: number;
+  confidence: number;
+  isFallback?: boolean;
+}
+
+// Mock 30-day data for demo
+const getMock30DayData = (): ForecastPoint[] => {
+  const data: ForecastPoint[] = [];
+  const today = new Date();
+  
+  for (let i = 0; i < 30; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    
+    // Generate realistic prediction with some variation
+    const basePrediction = 45 + Math.sin(i / 5) * 10 + Math.random() * 5;
+    const predicted = Math.max(0, Math.round(basePrediction));
+    const lower = Math.round(predicted * 0.8);
+    const upper = Math.round(predicted * 1.2);
+    const confidence = 0.75 + Math.random() * 0.2; // 0.75-0.95
+    
+    data.push({
+      date: date.toISOString().split('T')[0],
+      predicted,
+      lower,
+      upper,
+      confidence: Math.round(confidence * 100) / 100,
+      isFallback: true,
+    });
+  }
+  
+  return data;
+};
 
 export const forecastApi = {
-  // Get all forecasts
+  // Get all forecasts from backend
   getAllForecasts: async (): Promise<Forecast[]> => {
-    // return apiFetch<Forecast[]>('/forecast');
-    return [
-      {
-        forecastId: 1,
-        medicineId: 1,
-        predictedQuantity: 65,
-        period: '2026-Q1',
-        confidenceLevel: 0.89,
-        model: { modelId: 1, modelName: 'Random Forest', version: '1.0', accuracy: 0.89 }
-      },
-      {
-        forecastId: 2,
-        medicineId: 2,
-        predictedQuantity: 48,
-        period: '2026-Q1',
-        confidenceLevel: 0.91,
-        model: { modelId: 1, modelName: 'Random Forest', version: '1.0', accuracy: 0.89 }
-      },
-      {
-        forecastId: 3,
-        medicineId: 3,
-        predictedQuantity: 55,
-        period: '2026-Q1',
-        confidenceLevel: 0.87,
-        model: { modelId: 1, modelName: 'Random Forest', version: '1.0', accuracy: 0.89 }
-      },
-    ];
+    return apiFetch<Forecast[]>('/api/forecast');
   },
 
-  // Get 30-day forecast data
-  get30DayForecast: async (): Promise<any[]> => {
-    return mock30DayData;
+  // Get 30-day forecast data from AI
+  get30DayForecast: async (): Promise<ForecastPoint[]> => {
+    try {
+      // Get first medicine as default for 30-day forecast
+      let medicines: { medicineId: number; name: string }[] = [];
+      try {
+        medicines = await apiFetch<{ medicineId: number; name: string }[]>('/api/medicines');
+      } catch (error) {
+        console.warn('Medicines API not available, using fallback data', error);
+        medicines = [{ medicineId: 1, name: 'Paracetamol 500mg' }];
+      }
+
+      if (medicines && medicines.length > 0) {
+        const defaultMedicineId = medicines[0].medicineId;
+        try {
+          return await apiFetch<ForecastPoint[]>(`/api/forecast/30-day?medicineId=${defaultMedicineId}`);
+        } catch (error) {
+          console.error('30-day forecast API failed:', error);
+          // Return mock data for demo purposes
+          console.warn('Using mock data for 30-day forecast');
+          return getMock30DayData();
+        }
+      }
+      // Return empty array if no medicines available
+      return [];
+    } catch (error) {
+      console.error('Error in get30DayForecast:', error);
+      return getMock30DayData();
+    }
   },
 
-  // Get forecast by ID
-  getForecastById: async (_id: number): Promise<Forecast> => {
-    // return apiFetch<Forecast>(`/forecast/${id}`);
-    throw new Error('Not implemented');
+  // Get forecast by ID (backend)
+  getForecastById: async (id: number): Promise<Forecast> => {
+    return apiFetch<Forecast>(`/api/forecast/${id}`);
   },
 
   // Predict demand for a medicine
   predictDemand: async (request: {
     medicineId: number;
+    medicineName?: string;
+    region?: string;
     temperature?: number;
     fluSeason?: boolean;
     rain?: boolean;
-    // Add other features as needed
+    currentInventory?: number;
+    salesLag1?: number;
+    salesLag7?: number;
+    salesLag30?: number;
+    storageCondition?: string;
   }): Promise<ForecastPrediction> => {
-    // return apiFetch<ForecastPrediction>('/forecast/predict', {
-    //   method: 'POST',
-    //   body: JSON.stringify(request),
-    // });
-    return {
+    const payload = {
       medicineId: request.medicineId,
-      predictedQuantity: 45.5,
-      confidenceLevel: 0.89,
-      period: '2026-Q1',
-      lowerBound: 35.0,
-      upperBound: 56.0,
+      medicineName: request.medicineName ?? '',
+      region: request.region ?? 'Bắc',
+      temperature: request.temperature ?? 28,
+      fluSeason: request.fluSeason ? 1 : 0,
+      rain: request.rain ? 1 : 0,
+      currentInventory: request.currentInventory ?? 50,
+      salesLag1: request.salesLag1 ?? 0,
+      salesLag7: request.salesLag7 ?? 0,
+      salesLag30: request.salesLag30 ?? 0,
+      storageCondition: request.storageCondition ?? 'Room temperature',
     };
+
+    return apiFetch<ForecastPrediction>('/api/forecast/predict', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 
   // Create new forecast
-  createForecast: async (_forecast: Omit<Forecast, 'forecastId'>): Promise<Forecast> => {
-    // return apiFetch<Forecast>('/forecast', {
-    //   method: 'POST',
-    //   body: JSON.stringify(forecast),
-    // });
-    throw new Error('Not implemented');
+  createForecast: async (forecast: Omit<Forecast, 'forecastId'>): Promise<Forecast> => {
+    return apiFetch<Forecast>('/forecast', {
+      method: 'POST',
+      body: JSON.stringify(forecast),
+    });
   },
 
   // Update forecast
-  updateForecast: async (_id: number, _forecast: Partial<Forecast>): Promise<Forecast> => {
-    // return apiFetch<Forecast>(`/forecast/${id}`, {
-    //   method: 'PUT',
-    //   body: JSON.stringify(forecast),
-    // });
-    throw new Error('Not implemented');
+  updateForecast: async (id: number, forecast: Partial<Forecast>): Promise<Forecast> => {
+    return apiFetch<Forecast>(`/forecast/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(forecast),
+    });
   },
 
   // Delete forecast
-  deleteForecast: async (_id: number): Promise<void> => {
-    // return apiFetch<void>(`/forecast/${id}`, {
-    //   method: 'DELETE',
-    // });
-    throw new Error('Not implemented');
+  deleteForecast: async (id: number): Promise<void> => {
+    return apiFetch<void>(`/forecast/${id}`, {
+      method: 'DELETE',
+    });
   },
 
   // Get forecasts by medicine
-  getForecastsByMedicine: async (_medicineId: number): Promise<Forecast[]> => {
-    // return apiFetch<Forecast[]>(`/forecast/medicine/${medicineId}`);
-    return [];
+  getForecastsByMedicine: async (medicineId: number): Promise<Forecast[]> => {
+    return apiFetch<Forecast[]>(`/api/forecast/medicine/${medicineId}`);
   },
 };
