@@ -218,11 +218,12 @@ const filterMenuItems = (
         return null;
       }
 
-      // Suppliers - ADMIN, WAREHOUSE_MANAGER
+      // Suppliers - ADMIN, WAREHOUSE_MANAGER, ACCOUNTANT (view)
       if (
         nextItem.key === "suppliers"
         && !flags.isAdmin
         && !flags.isManager
+        && !flags.isAccountant
       ) {
         return null;
       }

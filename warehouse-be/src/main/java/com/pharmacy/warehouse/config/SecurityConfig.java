@@ -60,10 +60,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/warehouses/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         .requestMatchers(HttpMethod.DELETE, "/warehouses/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
 
-                        // Suppliers - ADMIN, WAREHOUSE_MANAGER (view and update)
-                        .requestMatchers(HttpMethod.GET, "/suppliers/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "REQUESTER")
+                        // Suppliers - ADMIN, WAREHOUSE_MANAGER, ACCOUNTANT (view)
+                        .requestMatchers(HttpMethod.GET, "/suppliers/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "REQUESTER", "ACCOUNTANT")
                         .requestMatchers(HttpMethod.POST, "/suppliers/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/suppliers/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                        .requestMatchers(HttpMethod.PATCH, "/suppliers/*/qr").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "ACCOUNTANT")
                         .requestMatchers(HttpMethod.DELETE, "/suppliers/**").hasRole("ADMIN")
 
                         // Batches - ADMIN, WAREHOUSE_MANAGER, WAREHOUSE_STAFF, ACCOUNTANT (view), WAREHOUSE_STAFF (create)

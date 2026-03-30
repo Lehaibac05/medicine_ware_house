@@ -65,6 +65,7 @@ public class SupplierService {
         supplier.setEmail(request.getEmail());
         supplier.setAddress(request.getAddress());
         supplier.setTaxCode(request.getTaxCode());
+        supplier.setQrBankTransferLink(request.getQrBankTransferLink());
         supplier.setStatus(
                 request.getStatus() != null ? SupplierStatus.valueOf(request.getStatus()) : SupplierStatus.ACTIVE);
 
@@ -81,12 +82,28 @@ public class SupplierService {
         Supplier supplier = supplierRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Supplier not found with id: " + id));
 
-        supplier.setSupplierName(request.getSupplierName());
-        supplier.setContactPerson(request.getContactPerson());
-        supplier.setPhoneNumber(request.getPhoneNumber());
-        supplier.setEmail(request.getEmail());
-        supplier.setAddress(request.getAddress());
-        supplier.setTaxCode(request.getTaxCode());
+        // Update fields only if they are provided (non-null) to support partial updates from frontend.
+        if (request.getSupplierName() != null) {
+            supplier.setSupplierName(request.getSupplierName());
+        }
+        if (request.getContactPerson() != null) {
+            supplier.setContactPerson(request.getContactPerson());
+        }
+        if (request.getPhoneNumber() != null) {
+            supplier.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getEmail() != null) {
+            supplier.setEmail(request.getEmail());
+        }
+        if (request.getAddress() != null) {
+            supplier.setAddress(request.getAddress());
+        }
+        if (request.getTaxCode() != null) {
+            supplier.setTaxCode(request.getTaxCode());
+        }
+        if (request.getQrBankTransferLink() != null) {
+            supplier.setQrBankTransferLink(request.getQrBankTransferLink());
+        }
         if (request.getStatus() != null) {
             supplier.setStatus(SupplierStatus.valueOf(request.getStatus()));
         }
@@ -95,6 +112,27 @@ public class SupplierService {
         log.info("Supplier updated successfully");
 
         return convertToResponse(updatedSupplier);
+    }
+
+    @Transactional
+    public SupplierResponse updateSupplierQr(Long id, String qrBankTransferLink) {
+        if (qrBankTransferLink == null) {
+            throw new IllegalArgumentException("qrBankTransferLink is required");
+        }
+
+        log.info("Updating supplier QR with id: {}", id);
+
+        Supplier supplier = supplierRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Supplier not found with id: " + id));
+
+        supplier.setQrBankTransferLink(qrBankTransferLink);
+
+        // saveAndFlush + reload để đảm bảo DB thực sự lưu giá trị mới.
+        supplierRepository.saveAndFlush(supplier);
+        Supplier reloaded = supplierRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Supplier not found after update with id: " + id));
+
+        return convertToResponse(reloaded);
     }
 
     @Transactional
@@ -120,6 +158,7 @@ public class SupplierService {
                 .email(supplier.getEmail())
                 .address(supplier.getAddress())
                 .taxCode(supplier.getTaxCode())
+                .qrBankTransferLink(supplier.getQrBankTransferLink())
                 .status(supplier.getStatus().name())
                 .createdAt(supplier.getCreatedAt())
                 .updatedAt(supplier.getUpdatedAt())

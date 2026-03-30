@@ -48,6 +48,7 @@ export type PurchaseOrder = {
   supplier?: {
     supplierId: number
     supplierName: string
+    qrBankTransferLink?: string
     email?: string
   }
   warehouse?: {
@@ -108,6 +109,7 @@ export type SupplierInvoice = {
   supplier?: {
     supplierId: number
     supplierName: string
+    qrBankTransferLink?: string
   }
   goodsReceipt?: {
     receiptId: number

@@ -260,7 +260,7 @@ const AppRouter = () => {
           path="/suppliers"
           element={
             <ProtectedRoute
-              allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"]}
+              allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_ACCOUNTANT"]}
             >
               <SupplierPage />
             </ProtectedRoute>

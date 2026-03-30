@@ -35,7 +35,11 @@ export default function MedicineRequestApprovalPage() {
 
       setRequests(requestData.filter((request) => request.status === "PENDING"))
 
-      const stockMap = inventoryData.reduce<Record<number, number>>((acc, row) => {
+      const inventoryRows = Array.isArray(inventoryData)
+        ? inventoryData
+        : inventoryData.content
+
+      const stockMap = inventoryRows.reduce<Record<number, number>>((acc, row) => {
         acc[row.medicineId] = (acc[row.medicineId] ?? 0) + row.totalStock
         return acc
       }, {})

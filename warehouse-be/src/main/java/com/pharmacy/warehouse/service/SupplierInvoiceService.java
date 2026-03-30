@@ -409,6 +409,7 @@ public class SupplierInvoiceService {
                 .email(supplier.getEmail())
                 .address(supplier.getAddress())
                 .taxCode(supplier.getTaxCode())
+                .qrBankTransferLink(supplier.getQrBankTransferLink())
                 .status(supplier.getStatus() != null ? supplier.getStatus().name() : null)
                 .createdAt(supplier.getCreatedAt())
                 .updatedAt(supplier.getUpdatedAt())

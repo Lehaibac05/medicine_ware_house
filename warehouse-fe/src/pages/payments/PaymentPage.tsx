@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
@@ -19,6 +19,7 @@ import {
   CheckCircleOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
+import { QRCodeSVG } from "@rc-component/qrcode";
 import dayjs from "dayjs";
 import { AxiosError } from "axios";
 import BaseFilterCard from "../../components/base/BaseFilterCard";
@@ -31,6 +32,7 @@ import {
   usePaySupplierInvoiceMutation,
   useRejectSupplierInvoiceMutation,
   useSupplierInvoicesQuery,
+  useSupplierInvoiceDetailQuery,
   useVerifySupplierInvoiceMutation,
 } from "../../hooks/useWorkflow";
 import type { GoodsReceipt, SupplierInvoice } from "../../services/workflow";
@@ -106,6 +108,9 @@ const PaymentPage = () => {
   };
   const { data: invoices = [], isLoading } = useSupplierInvoicesQuery();
   const { data: goodsReceipts = [] } = useGoodsReceiptsQuery();
+  const {
+    data: payTargetDetail,
+  } = useSupplierInvoiceDetailQuery(payTarget?.invoiceId ?? 0);
   const createMutation = useCreateSupplierInvoiceMutation();
   const verifyMutation = useVerifySupplierInvoiceMutation();
   const rejectMutation = useRejectSupplierInvoiceMutation();
@@ -134,6 +139,21 @@ const PaymentPage = () => {
         );
       });
   }, [invoices, search, status, range]);
+
+  // Đồng bộ hóa payTarget với dữ liệu hóa đơn mới nhất (để QR đổi ngay sau khi cập nhật supplier).
+  useEffect(() => {
+    if (!payTarget) return;
+
+    const latest = invoices.find((i) => i.invoiceId === payTarget.invoiceId);
+    if (!latest) return;
+
+    const latestQr = latest.supplier?.qrBankTransferLink;
+    const currentQr = payTarget.supplier?.qrBankTransferLink;
+
+    if (latestQr !== currentQr) {
+      setPayTarget(latest);
+    }
+  }, [invoices, payTarget?.invoiceId, payTarget?.supplier?.qrBankTransferLink]);
 
   const paymentStats = useMemo(() => {
     const totalInvoices = invoices.length;
@@ -467,6 +487,24 @@ const PaymentPage = () => {
       messageApi.error("Không thể xử lý thanh toán");
     }
   };
+
+  const qrValue =
+    payTargetDetail?.supplier?.qrBankTransferLink?.trim() ||
+    payTarget?.supplier?.qrBankTransferLink?.trim() ||
+    "";
+  const isLikelyImageLink =
+    qrValue.startsWith("data:image/") ||
+    (() => {
+      try {
+        const url = new URL(qrValue);
+        return (
+          /^https?:\/\//i.test(url.toString()) &&
+          /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url.pathname)
+        );
+      } catch {
+        return false;
+      }
+    })();
 
   return (
     <MainLayout>
@@ -910,6 +948,40 @@ const PaymentPage = () => {
         confirmLoading={payMutation.isPending}
       >
         <div className="grid gap-3">
+          {payMethod === "BANK_TRANSFER" && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <Text className="block text-xs text-slate-500">
+                Mã QR chuyển khoản
+              </Text>
+
+              {!qrValue ? (
+                <Alert
+                  type="warning"
+                  showIcon
+                  className="mt-2"
+                  message="Chưa cấu hình mã QR cho nhà cung cấp này"
+                />
+              ) : (
+                <div className="mt-3 flex flex-col items-start gap-2">
+                  {isLikelyImageLink ? (
+                    <img
+                      key={`qr-img-${qrValue}`}
+                      src={qrValue}
+                      alt="QR"
+                      className="h-[180px] w-[180px] object-contain rounded border border-slate-200 bg-white"
+                    />
+                  ) : (
+                    <QRCodeSVG key={`qr-${qrValue}`} value={qrValue} size={180} level="M" />
+                  )}
+                  <Text className="text-xs text-slate-500">
+                    {isLikelyImageLink
+                      ? "Hiển thị ảnh QR từ link"
+                      : "Sinh QR từ chuỗi nội dung"}
+                  </Text>
+                </div>
+              )}
+            </div>
+          )}
           <InputNumber
             className="w-full"
             min={0.01}

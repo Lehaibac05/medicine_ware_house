@@ -115,6 +115,10 @@ export const useSupplierInvoicesQuery = () => {
   return useQuery({
     queryKey: workflowQueryKeys.supplierInvoices,
     queryFn: workflowApi.getSupplierInvoices,
+    // Luôn lấy dữ liệu mới nhất cho màn thanh toán/hiển thị QR.
+    // Tránh trường hợp cache khiến supplier QR không đổi dù đã cập nhật.
+    staleTime: 0,
+    refetchOnMount: "always",
   })
 }
 
@@ -123,6 +127,8 @@ export const useSupplierInvoiceDetailQuery = (id: number) => {
     queryKey: workflowQueryKeys.supplierInvoiceDetail(id),
     queryFn: () => workflowApi.getSupplierInvoiceById(id),
     enabled: Number.isFinite(id) && id > 0,
+    staleTime: 0,
+    refetchOnMount: "always",
   })
 }
 

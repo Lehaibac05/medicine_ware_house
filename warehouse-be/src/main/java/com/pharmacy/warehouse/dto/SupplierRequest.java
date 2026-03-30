@@ -14,5 +14,6 @@ public class SupplierRequest {
     private String email;
     private String address;
     private String taxCode;
+    private String qrBankTransferLink;
     private String status;
 }

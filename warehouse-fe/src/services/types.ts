@@ -30,6 +30,7 @@ export type Supplier = {
   email?: string
   address?: string
   taxCode?: string
+  qrBankTransferLink?: string
   status?: string
   createdAt?: string
   updatedAt?: string

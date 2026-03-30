@@ -24,6 +24,13 @@ public class Supplier {
     private String email;
     private String address;
     private String taxCode;
+
+    /**
+     * Link hoặc chuỗi nội dung để hiển thị/sinh QR chuyển khoản.
+     * Frontend sẽ tự quyết định hiển thị dưới dạng ảnh hay sinh QR từ chuỗi.
+     */
+    @Column(name = "qr_bank_transfer_link", length = 2000)
+    private String qrBankTransferLink;
     
     @Enumerated(EnumType.STRING)
     private SupplierStatus status; // ACTIVE, INACTIVE, SUSPENDED
