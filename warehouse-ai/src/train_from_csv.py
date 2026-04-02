@@ -1,87 +1,101 @@
 import pandas as pd
 import sys
+import os
+from pathlib import Path
 from demand_model import DemandPredictor
 import config
 
-def train_from_csv(file_path):
+def train_from_csv(file_path=None):
     """
-    Huấn luyện AI từ dữ liệu CSV, sử dụng luồng chuẩn hóa chung từ config.py
+    Huấn luyện mô hình AI từ file CSV và hiển thị đánh giá chi tiết.
     """
-    print(f"🚀 Đang nạp dữ liệu từ: {file_path}")
+    # 1. XỬ LÝ ĐƯỜNG DẪN FILE
+    if file_path is None:
+        # Tự động tìm file trong thư mục data (cùng cấp hoặc cấp trên)
+        base_path = Path(__file__).resolve().parent.parent
+        file_path = base_path / 'data' / 'pharmacy_training_final.csv'
+    else:
+        file_path = Path(file_path)
+
+    print(f"\n🚀 Đang nạp dữ liệu từ: {file_path}")
     
-    # 1. Đọc dữ liệu thô
+    # 2. ĐỌC DỮ LIỆU THÔ
     try:
         raw_data = pd.read_csv(file_path)
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Không tìm thấy file '{file_path}'. Vui lòng kiểm tra lại!")
+        print(f"📊 Đã tải thành công {len(raw_data)} dòng dữ liệu.")
+    except Exception as e:
+        print(f"❌ Lỗi không thể đọc file: {e}")
+        return None, None
 
-    # 2. Chuẩn hóa dữ liệu qua config (áp dụng nguyên lý DRY)
-    print("⚙️ Đang xử lý và chuẩn hóa dữ liệu...")
-    data = config.standardize_data(raw_data)
+    # 3. CHUẨN HÓA DỮ LIỆU (Sử dụng hàm từ config.py)
+    print("⚙️ Đang xử lý và chuẩn hóa dữ liệu theo cấu trúc hệ thống...")
+    try:
+        # Đảm bảo file config.py của bạn có hàm clean_and_prepare_data hoặc standardize_data
+        if hasattr(config, 'clean_and_prepare_data'):
+            data = config.clean_and_prepare_data(raw_data)
+        else:
+            data = config.standardize_data(raw_data)
+    except Exception as e:
+        print(f"❌ Lỗi khi chuẩn hóa dữ liệu: {e}")
+        return None, None
     
-    # 3. Khởi tạo và huấn luyện Model
-    print("🧠 Đang huấn luyện mô hình AI...")
+    # 4. KHỞI TẠO VÀ HUẤN LUYỆN MODEL
     predictor = DemandPredictor()
+    print("🧠 Đang huấn luyện mô hình Hybrid (Random Forest + XGBoost)...")
     metrics = predictor.train(data)
     
-    print("\n✅ Huấn luyện hoàn tất!")
+    # 5. HIỂN THỊ BÁO CÁO KẾT QUẢ
+    print("\n" + "="*45)
+    print(f"{'✅ HUẤN LUYỆN HOÀN TẤT':^45}")
+    print("="*45)
     
-    # Dùng .get() để tránh lỗi nếu key trả về từ metrics bị khác tên
-    mae = metrics.get('mae', metrics.get('test_mae', 0))
-    r2 = metrics.get('r2', metrics.get('test_r2', 0))
+    # Lấy các chỉ số an toàn từ dictionary metrics
+    mae = metrics.get('mae', 0)
+    rmse = metrics.get('rmse', 0)
+    r2 = metrics.get('r2', 0)
     
-    print(f"🔹 Sai số MAE     : {mae:.2f}")
-    print(f"🔹 Độ chính xác R²: {r2:.2f}")
+    print(f"🔹 Sai số MAE (Trung bình)  : {mae:.2f}")
+    print(f"🔹 Sai số RMSE (Độ lệch)    : {rmse:.2f}")
+    print(f"🔹 Độ chính xác R² (0 -> 1): {r2:.4f}")
+    print("="*45)
     
     return predictor, metrics
 
 if __name__ == "__main__":
-    # Lấy tên file từ command line hoặc dùng mặc định
-    if len(sys.argv) > 1:
-        csv_file = sys.argv[1]
-    else:
-        # Bạn có thể đổi tên file này khớp với file thực tế bạn đang có
-        csv_file = "pharmacy_training_final.csv" 
+    # Nhận đường dẫn file từ dòng lệnh nếu có (ví dụ: python train_from_csv.py my_data.csv)
+    csv_file = sys.argv[1] if len(sys.argv) > 1 else None
 
     try:
         predictor, results = train_from_csv(csv_file)
 
-        # --- CHẠY THỬ DỰ BÁO (TEST PREDICTION) ---
-        print("\n" + "="*45)
-        print("🧪 CHẠY THỬ DỰ BÁO CHO 1 SẢN PHẨM")
-        print("="*45)
-        
-        # Giả lập dữ liệu nhập vào
-        # Nhờ có config.standardize_data, nếu thiếu cột nào nó sẽ tự điền 0
-        test_features = {
-            'temperature': 30,
-            'flu_season': 1,
-            'rain': 0,
-            'sales_lag_1': 50,
-            'sales_lag_7': 45,
-            'sales_lag_30': 40
-        }
-
-        # Gọi hàm predict
-        # Sử dụng try-except để tự động thích ứng với cả model cũ (chưa có region) và mới (đã có region)
-        try:
-            # Nếu model của bạn đã được cập nhật để nhận thêm 'region'
-            prediction = predictor.predict('Paracetamol 500mg', 'Bắc', test_features)
-            print("Khu vực: Bắc")
-        except TypeError:
-            # Nếu model vẫn dùng cấu trúc cũ
-            prediction = predictor.predict('Paracetamol 500mg', test_features)
-        
-        print(f"Thuốc: Paracetamol 500mg")
-        
-        # Lấy an toàn các giá trị từ dictionary kết quả
-        pred_val = prediction.get('prediction', 0)
-        lower = prediction.get('lower_bound', 0)
-        upper = prediction.get('upper_bound', 0)
-        
-        print(f"Số lượng dự báo: {pred_val:.1f} đơn vị")
-        if lower and upper:
-            print(f"Khoảng tin cậy : [{lower:.1f} - {upper:.1f}]")
+        if predictor:
+            print("\n🧪 CHẠY THỬ DỰ BÁO KIỂM TRA (Dữ liệu giả lập):")
+            
+            # ĐÂY LÀ PHẦN QUAN TRỌNG: Truyền đầy đủ các tính năng để tránh lỗi Index
+            test_features = {
+                'storage_condition': 'Room temperature', # Điều kiện bảo quản
+                'temperature': 30.5,                    # Nhiệt độ
+                'flu_season': 1,                        # Đang mùa dịch
+                'rain': 0,                              # Không mưa
+                'is_holiday': 0,                        # Không phải ngày lễ
+                'is_weekend': 1,                        # Là cuối tuần
+                'sales_lag_1': 50,                      # Doanh số hôm qua
+                'sales_lag_7': 320,                     # Doanh số 7 ngày trước
+                'sales_lag_30': 1200                    # Doanh số tháng trước
+            }
+            
+            # Thực hiện dự báo
+            med_name = 'Paracetamol 500mg'
+            region = 'Bắc'
+            
+            res = predictor.predict(med_name, region, test_features)
+            
+            print(f"📍 Đối tượng: {med_name} | Khu vực: {region}")
+            print(f"📈 Kết quả dự báo: {res['prediction']:.1f} đơn vị")
+            print(f"🛡️ Khoảng an toàn: [{res['lower_bound']:.1f} - {res['upper_bound']:.1f}]")
+            print("\n✅ Hệ thống sẵn sàng hoạt động!")
 
     except Exception as e:
-        print(f"\n❌ Lỗi hệ thống: {e}")
+        print(f"\n❌ Lỗi thực thi hệ thống: {e}")
+        import traceback
+        traceback.print_exc()
