@@ -45,7 +45,7 @@
 
 import { Button, Card, Col, Row, Typography } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 import { useEffect, useMemo, useState } from "react";
 import { forecastApi, type ForecastPoint } from "../../../services/forecast";
 
@@ -57,7 +57,8 @@ function ForecastPanel() {
   const [error, setError] = useState<string | null>(null);
   const [usingMockData, setUsingMockData] = useState(false);
 
-  const computedMetrics = useMemo(() => {    if (error) {
+  const computedMetrics = useMemo(() => {    
+    if (error) {
       return [
         { label: "Tuần này", value: "Lỗi", color: "text-red-600", bg: "bg-red-100" },
         { label: "Mức rủi ro", value: "Lỗi", color: "text-red-600", bg: "bg-red-100" },
@@ -76,15 +77,15 @@ function ForecastPanel() {
     const threshold = 70;
     const recent = chartData.slice(-7);
 
-    const weekStart = recent[0]?.predicted ?? lastPoint.predicted;
+    const weekStart = recent[0]?.predicted || lastPoint.predicted;
     const weekEnd = lastPoint.predicted;
     const trend = weekStart > 0 ? ((weekEnd - weekStart) / weekStart) * 100 : 0;
 
-    const riskLevel = chartData.some((item) => item.predicted < threshold)
+    const riskLevel = chartData.some((item) => (item.predicted || item.forecast || 0) < threshold)
       ? "Cao"
       : "Thấp";
 
-    const toRestock = chartData.filter((item) => item.predicted < threshold).length;
+    const toRestock = chartData.filter((item) => (item.predicted || item.forecast || 0) < threshold).length;
 
     return [
       {
@@ -119,6 +120,7 @@ function ForecastPanel() {
         const isMock = data.some(item => item.isFallback);
         setUsingMockData(isMock);
         
+        // Data is already processed in forecast.ts, just set it
         setChartData(data);
       } catch (error) {
         console.error('Error loading forecast:', error);
@@ -158,15 +160,15 @@ function ForecastPanel() {
       {/* Chart */}
       <div className="mb-5 rounded-xl border border-emerald-100 bg-linear-to-br from-[#f0fdf4] to-[#f8fafc] p-4">
         {loading ? (
-          <div className="flex h-[220px] items-center justify-center text-slate-400">
+          <div className="flex h-[350px] items-center justify-center text-slate-400">
             <span>Đang tải dữ liệu AI...</span>
           </div>
         ) : error ? (
-          <div className="flex h-[220px] items-center justify-center text-red-400">
+          <div className="flex h-[350px] items-center justify-center text-red-400">
             <span>{error}</span>
           </div>
         ) : chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={350}>
             <LineChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} />
@@ -177,14 +179,27 @@ function ForecastPanel() {
                 labelStyle={{ color: '#000' }}
               />
               <Legend />
+              {/* History line - blue */}
               <Line 
                 type="monotone" 
                 dataKey="predicted" 
+                stroke="#3b82f6" 
+                strokeWidth={3}
+                name="Dữ liệu lịch sử" 
+                dot={{ fill: '#3b82f6', r: 4 }}
+                activeDot={{ r: 6 }}
+                connectNulls={false}
+              />
+              {/* Forecast line - green */}
+              <Line 
+                type="monotone" 
+                dataKey="forecast" 
                 stroke="#10b981" 
                 strokeWidth={3}
                 name="Dự báo AI" 
                 dot={{ fill: '#10b981', r: 4 }}
                 activeDot={{ r: 6 }}
+                connectNulls={false}
               />
               <Line 
                 type="monotone" 
@@ -204,10 +219,18 @@ function ForecastPanel() {
                 name="Khoảng dưới" 
                 dot={false}
               />
+              {/* Today divider line */}
+              <ReferenceLine 
+                x={new Date().toISOString().split('T')[0]} 
+                stroke="#ef4444" 
+                strokeWidth={2}
+                strokeDasharray="8 4"
+                label="Hôm nay"
+              />
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex h-[220px] items-center justify-center text-slate-400">
+          <div className="flex h-[350px] items-center justify-center text-slate-400">
             <span>Chưa có dữ liệu dự báo AI. Vui lòng setup backend và AI service.</span>
           </div>
         )}
