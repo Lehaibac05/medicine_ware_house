@@ -3,10 +3,7 @@ numpy
 scikit-learn
 matplotlib
 pymysql
-<<<<<<< HEAD
 xgboost
 flask
 flask-cors
 requests
-=======
->>>>>>> defcca434c52cf7cfdd12286946700b6ff424e36

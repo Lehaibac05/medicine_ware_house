@@ -37,6 +37,30 @@ export interface ForecastPoint {
   isFallback?: boolean;
 }
 
+export interface ModelInfo {
+  modelName: string;
+  version: string;
+  accuracy: number;
+  lastUpdated: string;
+  predictions: string[];
+  trainingStatus?: string;
+}
+
+export type Forecast30DayParams = {
+  medicineId?: number;
+  medicineName?: string;
+  region?: string;
+  temperature?: number;
+  fluSeason?: number | boolean;
+  rain?: number | boolean;
+  currentInventory?: number;
+  salesLag1?: number;
+  salesLag7?: number;
+  salesLag30?: number;
+  storageCondition?: string;
+  days?: number;
+};
+
 // Mock 30-day data for demo
 const getMock30DayData = (): ForecastPoint[] => {
   const data: ForecastPoint[] = [];
@@ -73,32 +97,52 @@ export const forecastApi = {
   },
 
   // Get 30-day forecast data from AI
-  get30DayForecast: async (): Promise<ForecastPoint[]> => {
-    try {
-      // Get first medicine as default for 30-day forecast
-      let medicines: { medicineId: number; name: string }[] = [];
+  get30DayForecast: async (params: Forecast30DayParams = {}): Promise<ForecastPoint[]> => {
+    const buildQuery = (queryParams: Forecast30DayParams) => {
+      const searchParams = new URLSearchParams();
+      Object.entries(queryParams).forEach(([key, value]) => {
+        if (value === undefined || value === null) {
+          return;
+        }
+        if (typeof value === 'boolean') {
+          searchParams.set(key, value ? '1' : '0');
+          return;
+        }
+        searchParams.set(key, String(value));
+      });
+      const query = searchParams.toString();
+      return query ? `/api/forecast/30-day?${query}` : "/api/forecast/30-day";
+    };
+
+    const fetchFromApi = async (queryParams: Forecast30DayParams) => {
       try {
-        medicines = await apiFetch<{ medicineId: number; name: string }[]>('/api/medicines');
+        return await apiFetch<ForecastPoint[]>(buildQuery(queryParams));
       } catch (error) {
-        console.warn('Medicines API not available, using fallback data', error);
-        medicines = [{ medicineId: 1, name: 'Paracetamol 500mg' }];
+        console.error("30-day forecast API failed:", error);
+        console.warn("Using mock data for 30-day forecast");
+        return getMock30DayData();
+      }
+    };
+
+    if (params.medicineId && !Number.isNaN(params.medicineId)) {
+      return fetchFromApi(params);
+    }
+
+    try {
+      const medicines = await apiFetch<{ medicineId: number; name: string }[]>("/api/medicines");
+
+      if (medicines.length > 0) {
+        const defaultMedicine = medicines[0];
+        return fetchFromApi({
+          ...params,
+          medicineId: defaultMedicine.medicineId,
+          medicineName: params.medicineName ?? defaultMedicine.name,
+        });
       }
 
-      if (medicines && medicines.length > 0) {
-        const defaultMedicineId = medicines[0].medicineId;
-        try {
-          return await apiFetch<ForecastPoint[]>(`/api/forecast/30-day?medicineId=${defaultMedicineId}`);
-        } catch (error) {
-          console.error('30-day forecast API failed:', error);
-          // Return mock data for demo purposes
-          console.warn('Using mock data for 30-day forecast');
-          return getMock30DayData();
-        }
-      }
-      // Return empty array if no medicines available
       return [];
     } catch (error) {
-      console.error('Error in get30DayForecast:', error);
+      console.error("Error in get30DayForecast:", error);
       return getMock30DayData();
     }
   },
@@ -140,6 +184,10 @@ export const forecastApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  },
+
+  getModelInfo: async (): Promise<ModelInfo> => {
+    return apiFetch<ModelInfo>('/api/model/info');
   },
 
   // Create new forecast

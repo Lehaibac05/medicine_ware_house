@@ -13,6 +13,9 @@ import BaseStatsGrid from "../../components/base/BaseStatsGrid";
 import ForecastPanel from "../dashboard/components/ForecastPanel";
 import MainLayout from "../../layouts/MainLayout";
 import { forecastApi } from "../../services/forecast";
+import MedicineForecastCharts from "./components/MedicineForecastCharts";
+import { getAllMedicines } from "../../services/medicines";
+import type { Medicine } from "../../services/types";
 
 const { Text } = Typography;
 
@@ -31,12 +34,8 @@ const periodOptions = [
   { value: "q4-2026", label: "Q4 2026" },
 ];
 
-const medicineOptions = [
+const medicineOptionsFallback = [
   { value: "all", label: "Tất cả thuốc" },
-  { value: "paracetamol", label: "Paracetamol 500mg" },
-  { value: "amoxicillin", label: "Amoxicillin 250mg" },
-  { value: "insulin", label: "Insulin Glargine" },
-  { value: "vitamin-c", label: "Vitamin C 500mg" },
 ];
 
 const ForecastPage = () => {
@@ -82,6 +81,10 @@ const ForecastPage = () => {
       bg: "bg-[#fffbeb]",
     },
   ]);
+
+  const [medicineOptions, setMedicineOptions] = useState(medicineOptionsFallback);
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [medicineLoadError, setMedicineLoadError] = useState<string | null>(null);
 
   const loadForecastStats = async () => {
     try {
@@ -147,10 +150,43 @@ const ForecastPage = () => {
     loadForecastStats();
   }, []);
 
+  useEffect(() => {
+    const loadMedicines = async () => {
+      try {
+        const list = await getAllMedicines();
+        setMedicines(list);
+      } catch (error) {
+        console.error("Error loading medicines:", error);
+        setMedicineLoadError("Không thể tải danh sách thuốc, dùng dữ liệu mặc định.");
+        setMedicines([]);
+      }
+    };
+
+    loadMedicines();
+  }, []);
+
+  useEffect(() => {
+    const options = [
+      { value: "all", label: "Tất cả thuốc" },
+      ...medicines.map((medicine) => ({
+        value: medicine.medicineId.toString(),
+        label: medicine.name,
+      })),
+    ];
+
+    setMedicineOptions(options);
+  }, [medicines]);
+
+  const chartMedicines = medicines.map((medicine) => ({
+    medicineId: medicine.medicineId,
+    label: medicine.name,
+  }));
+
   return (
     <MainLayout>
       <BaseStatsGrid stats={forecastStats} />
       <ForecastPanel />
+      <MedicineForecastCharts medicines={chartMedicines} />
       <BaseFilterCard
         actions={
           <Button type="primary" className="h-[40px]">
@@ -173,6 +209,10 @@ const ForecastPage = () => {
           <Select options={periodOptions} defaultValue="all" />
         </div>
       </BaseFilterCard>
+
+      {medicineLoadError && (
+        <Text className="text-sm text-red-500">{medicineLoadError}</Text>
+      )}
 
       <ForecastTable />
     </MainLayout>

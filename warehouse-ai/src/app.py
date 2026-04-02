@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import traceback
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import sys
 import os
 
@@ -51,6 +51,66 @@ def check_models():
     """Kiểm tra mô hình trước mỗi request"""
     if predictor is None or agent is None:
         init_models()
+
+
+def _parse_float(param: str, default: float) -> float:
+    value = request.args.get(param)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        return default
+
+
+def _parse_int(param: str, default: int) -> int:
+    value = request.args.get(param)
+    if value is None:
+        return default
+    try:
+        return int(float(value))
+    except ValueError:
+        return default
+
+
+def _parse_bool(param: str, default: bool) -> bool:
+    value = request.args.get(param)
+    if value is None:
+        return default
+    return value.lower() in ("1", "true", "yes", "y")
+
+
+def _safe_str(param: str, default: str) -> str:
+    value = request.args.get(param)
+    return value if value else default
+
+
+def _build_day_features(base_features: dict, forecast_date: datetime):
+    features = base_features.copy()
+    features['is_weekend'] = 1 if forecast_date.weekday() >= 5 else 0
+    features['is_holiday'] = features.get('is_holiday', 0)
+    features['forecastDate'] = forecast_date.isoformat()
+    return features
+
+
+def _make_fallback_forecast(medicine_name: str, days: int) -> list[dict]:
+    data = []
+    today = datetime.now().date()
+    base_prediction = 50
+    for i in range(days):
+        forecast_date = today + timedelta(days=i)
+        variation = (np.random.rand() - 0.5) * 15
+        predicted = max(0, round(base_prediction + variation))
+        data.append({
+            "date": forecast_date.isoformat(),
+            "predicted": int(predicted),
+            "lower": int(predicted * 0.8),
+            "upper": int(predicted * 1.2),
+            "confidence": 0.7,
+            "isFallback": True,
+        })
+    return data
+
 
 # ==================== ENDPOINTS ====================
 
@@ -241,6 +301,62 @@ def predict_batch():
     except Exception as e:
         logger.error(f"❌ Lỗi batch prediction: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/forecast/30-day', methods=['GET'])
+def forecast_30_day():
+    """Dự báo nhu cầu 30 ngày từ mô hình AI."""
+    try:
+        medicine_name = _safe_str('medicineName', 'Paracetamol 500mg')
+        region = _safe_str('region', 'Bắc')
+        days_to_forecast = max(1, _parse_int('days', 30))
+        temperature = _parse_float('temperature', 28.0)
+        flu_season = 1 if _parse_bool('fluSeason', False) else 0
+        rain = 1 if _parse_bool('rain', False) else 0
+        sales_lag_1 = _parse_float('salesLag1', 45.0)
+        sales_lag_7 = _parse_float('salesLag7', 45.0)
+        sales_lag_30 = _parse_float('salesLag30', 45.0)
+        storage_condition = _safe_str('storageCondition', 'Room temperature')
+
+        base_features = {
+            'temperature': temperature,
+            'flu_season': flu_season,
+            'rain': rain,
+            'storage_condition': storage_condition,
+            'sales_lag_1': sales_lag_1,
+            'sales_lag_7': sales_lag_7,
+            'sales_lag_30': sales_lag_30,
+            'is_holiday': 0,
+        }
+
+        logger.info("🧠 Chuẩn bị trả về dự báo 30 ngày cho %s", medicine_name)
+        forecast_points = []
+        today = datetime.now().date()
+
+        for i in range(days_to_forecast):
+            forecast_date = today + timedelta(days=i)
+            features = _build_day_features(base_features, forecast_date)
+            prediction_result = predictor.predict(medicine_name, region, features)
+            predicted_qty = prediction_result.get('prediction', 0)
+            lower_bound = prediction_result.get('lower_bound', predicted_qty * 0.8)
+            upper_bound = prediction_result.get('upper_bound', predicted_qty * 1.2)
+            confidence_score = prediction_result.get('confidence_score')
+
+            forecast_points.append({
+                "date": forecast_date.isoformat(),
+                "predicted": int(round(predicted_qty)),
+                "lower": int(round(lower_bound)),
+                "upper": int(round(upper_bound)),
+                "confidence": round(confidence_score if confidence_score is not None else 0.0, 2),
+                "isFallback": confidence_score is None,
+            })
+
+        logger.info("✅ Trả về %d điểm dự báo 30 ngày cho %s", len(forecast_points), medicine_name)
+        return jsonify(forecast_points), 200
+    except Exception as exc:
+        logger.error("✖️ Lỗi lấy dự báo 30 ngày: %s", exc, exc_info=True)
+        fallback_days = days_to_forecast if 'days_to_forecast' in locals() else 30
+        fallback = _make_fallback_forecast(medicine_name, fallback_days)
+        return jsonify(fallback), 200
 
 @app.route('/api/train', methods=['POST'])
 def train_model():

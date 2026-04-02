@@ -86,7 +86,7 @@ function ForecastTable() {
             key: `pred-${medicine.medicineId}`,
             medicine_name: medicine.name,
             forecast_period: prediction.period || "2026-Q1",
-            predicted_quantity: prediction.predictedQuantity.toFixed(1),
+            predicted_quantity: Math.round(prediction.predictedQuantity).toString(),
             confidence_level: prediction.confidenceLevel.toFixed(2),
             risk_level:
               prediction.predictedQuantity < 50
@@ -129,7 +129,7 @@ function ForecastTable() {
             key: forecast.forecastId.toString(),
             medicine_name: medicineMapData[forecast.medicineId],
             forecast_period: forecast.period,
-            predicted_quantity: forecast.predictedQuantity.toString(),
+            predicted_quantity: Math.round(forecast.predictedQuantity).toString(),
             confidence_level: forecast.confidenceLevel.toString(),
             risk_level:
               forecast.predictedQuantity < 50
