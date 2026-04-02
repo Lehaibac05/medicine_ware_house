@@ -35,6 +35,8 @@ export interface ForecastPoint {
   upper: number;
   confidence: number;
   isFallback?: boolean;
+  forecast?: number; // For forecast data (green line)
+  isHistory?: boolean; // To distinguish history vs forecast
 }
 
 // Mock 30-day data for demo
@@ -69,7 +71,12 @@ const getMock30DayData = (): ForecastPoint[] => {
 export const forecastApi = {
   // Get all forecasts from backend
   getAllForecasts: async (): Promise<Forecast[]> => {
-    return apiFetch<Forecast[]>('/api/forecast');
+    try {
+      return await apiFetch<Forecast[]>('/api/inventory/forecast');
+    } catch (error) {
+      console.error('Error fetching forecasts:', error);
+      return [];
+    }
   },
 
   // Get 30-day forecast data from AI
@@ -81,15 +88,51 @@ export const forecastApi = {
         medicines = await apiFetch<{ medicineId: number; name: string }[]>('/api/medicines');
       } catch (error) {
         console.warn('Medicines API not available, using fallback data', error);
-        medicines = [{ medicineId: 1, name: 'Paracetamol 500mg' }];
+        medicines = [{ medicineId: 1, name: 'Acetylcysteine syrup' }];
       }
 
       if (medicines && medicines.length > 0) {
-        const defaultMedicineId = medicines[0].medicineId;
+        const defaultMedicine = medicines[0];
         try {
-          return await apiFetch<ForecastPoint[]>(`/api/forecast/30-day?medicineId=${defaultMedicineId}`);
+          // Call the correct backend endpoint for chart data
+          const chartData = await apiFetch<{
+            data: Array<{
+              date: string;
+              quantity: number;
+              type: string;
+              lowerBound?: number;
+              upperBound?: number;
+            }>;
+            medicineName: string;
+            region: string;
+            splitDate: string;
+          }>(`/api/analysis/chart`, {
+            method: 'POST',
+            body: JSON.stringify({
+              medicineName: defaultMedicine.name,
+              region: 'Bắc',
+              dataPath: 'data/pharmacy_training_final.csv'
+            }),
+          });
+
+          // Transform chart data to ForecastPoint format
+          console.log('Raw chart data:', chartData);
+          const transformedData = chartData.data.map(item => ({
+            date: item.date,
+            predicted: item.type === 'history' ? item.quantity : 0, // History data in blue line
+            forecast: item.type === 'forecast' ? item.quantity : 0, // Forecast data in green line
+            lower: item.lowerBound || item.quantity * 0.8,
+            upper: item.upperBound || item.quantity * 1.2,
+            confidence: 0.85, // Default confidence
+            isFallback: false,
+            isHistory: item.type === 'history',
+          }));
+          console.log('Transformed data:', transformedData);
+          console.log('History points:', transformedData.filter(d => d.isHistory).length);
+          console.log('Forecast points:', transformedData.filter(d => !d.isHistory).length);
+          return transformedData;
         } catch (error) {
-          console.error('30-day forecast API failed:', error);
+          console.error('Chart API failed:', error);
           // Return mock data for demo purposes
           console.warn('Using mock data for 30-day forecast');
           return getMock30DayData();
@@ -136,9 +179,22 @@ export const forecastApi = {
       storageCondition: request.storageCondition ?? 'Room temperature',
     };
 
-    return apiFetch<ForecastPrediction>('/api/forecast/predict', {
+    return apiFetch<ForecastPrediction>('/api/predict', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        medicineName: payload.medicineName,
+        region: payload.region,
+        temperature: payload.temperature,
+        fluSeason: payload.fluSeason,
+        rain: payload.rain,
+        isHoliday: 0, // Default value
+        isWeekend: 0, // Default value
+        salesLag1: payload.salesLag1,
+        salesLag7: payload.salesLag7,
+        salesLag30: payload.salesLag30,
+        storageCondition: payload.storageCondition,
+        currentInventory: payload.currentInventory,
+      }),
     });
   },
 
