@@ -69,46 +69,6 @@ function ForecastTable() {
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
 
-  const generatePredictions = useCallback(async (medicinesData: Medicine[]) => {
-    try {
-      const predictions = [];
-
-      for (const medicine of medicinesData.slice(0, 5)) {
-        try {
-          const prediction = await forecastApi.predictDemand({
-            medicineId: medicine.medicineId,
-            temperature: 30,
-            fluSeason: Math.random() > 0.8,
-            rain: Math.random() > 0.7,
-          });
-
-          predictions.push({
-            key: `pred-${medicine.medicineId}`,
-            medicine_name: medicine.name,
-            forecast_period: prediction.period || "2026-Q1",
-            predicted_quantity: prediction.predictedQuantity.toFixed(1),
-            confidence_level: prediction.confidenceLevel.toFixed(2),
-            risk_level:
-              prediction.predictedQuantity < 50
-                ? "HIGH"
-                : prediction.predictedQuantity < 100
-                  ? "MEDIUM"
-                  : "LOW",
-            suggested_action:
-              prediction.predictedQuantity < 50 ? "Đặt hàng ngay" : "Theo dõi",
-          });
-        } catch (error) {
-          console.error(`Error predicting for medicine ${medicine.name}:`, error);
-        }
-      }
-
-      setForecasts(predictions);
-    } catch (error) {
-      console.error("Error generating predictions:", error);
-      messageApi.error("Lỗi khi tạo dự báo");
-    }
-  }, [messageApi]);
-
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -121,35 +81,36 @@ function ForecastTable() {
       const forecastsData = await forecastApi.getAllForecasts();
 
       if (forecastsData.length === 0) {
-        await generatePredictions(medicinesData);
-      } else {
-        const tableData = forecastsData
-          .filter((forecast) => medicineMapData[forecast.medicineId] !== undefined)
-          .map((forecast) => ({
-            key: forecast.forecastId.toString(),
-            medicine_name: medicineMapData[forecast.medicineId],
-            forecast_period: forecast.period,
-            predicted_quantity: forecast.predictedQuantity.toString(),
-            confidence_level: forecast.confidenceLevel.toString(),
-            risk_level:
-              forecast.predictedQuantity < 50
-                ? "HIGH"
-                : forecast.predictedQuantity < 100
-                  ? "MEDIUM"
-                  : "LOW",
-            suggested_action:
-              forecast.predictedQuantity < 50 ? "Đặt hàng ngay" : "Theo dõi",
-          }));
-
-        setForecasts(tableData);
+        setForecasts([]);
+        return;
       }
+
+      const tableData = forecastsData
+        .filter((forecast) => medicineMapData[forecast.medicineId] !== undefined)
+        .map((forecast) => ({
+          key: forecast.forecastId.toString(),
+          medicine_name: medicineMapData[forecast.medicineId],
+          forecast_period: forecast.period,
+          predicted_quantity: forecast.predictedQuantity.toString(),
+          confidence_level: forecast.confidenceLevel.toString(),
+          risk_level:
+            forecast.predictedQuantity < 50
+              ? "HIGH"
+              : forecast.predictedQuantity < 100
+                ? "MEDIUM"
+                : "LOW",
+          suggested_action:
+            forecast.predictedQuantity < 50 ? "Đặt hàng ngay" : "Theo dõi",
+        }));
+
+      setForecasts(tableData);
     } catch (error) {
       console.error("Error loading forecast data:", error);
       messageApi.error("Lỗi khi tải dữ liệu dự báo");
     } finally {
       setLoading(false);
     }
-  }, [generatePredictions, messageApi]); 
+  }, [messageApi]);
   useEffect(() => {
     loadData();
   }, [loadData]);

@@ -10,11 +10,12 @@ logger = logging.getLogger(__name__)
 class InventoryAgent:
     def __init__(self, model_path=None):
         if model_path is None:
-            base_dir = os.path.dirname(os.path.abspath(__file__))  # Đường dẫn đến thư mục src
-            model_path = os.path.join(base_dir, 'models', 'inventory_q_table.pkl')
+            # Đường dẫn đến thư mục warehouse-ai (lên 3 cấp từ src/model/)
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            model_path = os.path.join(base_dir, 'model-ai', 'inventory_q_table.pkl')
         elif not os.path.isabs(model_path):
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            model_path = os.path.join(base_dir, model_path)
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            model_path = os.path.join(base_dir, 'model-ai', model_path)
 
         # 1. Cấu hình Trạng thái và Hành động
         self.max_stock = 200
@@ -47,12 +48,12 @@ class InventoryAgent:
                 # Kiểm tra kích thước q-table
                 expected_shape = (self.states, len(self.actions))
                 if self.q_table.shape != expected_shape:
-                    logger.warning(f"⚠️ Q-table shape {self.q_table.shape} != expected {expected_shape}. Đang khởi tạo lại.")
+                    logger.warning(f"Q-table shape {self.q_table.shape} != expected {expected_shape}. Đang khởi tạo lại.")
                     self.q_table = np.zeros(expected_shape)
                 else:
-                    logger.info(f"✅ Đã nạp thành công bộ não Agent từ {self.model_path}")
+                    logger.info(f"Đã nạp thành công bộ não Agent từ {self.model_path}")
             except Exception as e:
-                logger.error(f"❌ Lỗi nạp Q-table: {e}. Đang khởi tạo bảng mới.")
+                logger.error(f"Lỗi nạp Q-table: {e}. Đang khởi tạo bảng mới.")
                 self.q_table = np.zeros((self.states, len(self.actions)))
         else:
             self.q_table = np.zeros((self.states, len(self.actions)))
@@ -61,15 +62,15 @@ class InventoryAgent:
         """Lưu lại kết quả huấn luyện"""
         try:
             joblib.dump(self.q_table, self.model_path)
-            logger.info(f"💾 Đã lưu Q-table tại {self.model_path}")
+            logger.info(f"Đã lưu Q-table tại {self.model_path}")
         except Exception as e:
-            logger.error(f"❌ Không thể lưu file model: {e}")
+            logger.error(f"Không thể lưu file model: {e}")
 
     def train(self, demand_history, episodes=2000):
         """
         Huấn luyện Agent dựa trên dữ liệu lịch sử bán hàng
         """
-        logger.info(f"🧠 Bắt đầu huấn luyện RL Agent ({episodes} episodes)...")
+        logger.info(f"Bắt đầu huấn luyện RL Agent ({episodes} episodes)...")
         
         if not demand_history or len(demand_history) == 0:
             demand_history = [np.random.randint(10, 50) for _ in range(100)]
@@ -89,7 +90,7 @@ class InventoryAgent:
                 order_qty = self.actions[action_idx]
 
                 # Lấy nhu cầu ngẫu nhiên từ thực tế lịch sử
-                daily_demand = np.random.choice(demand_history)
+                daily_demand = int(np.random.choice(demand_history))
                 
                 # Cập nhật kho sau nhập hàng
                 stock_after_order = min(current_stock + order_qty, self.max_stock)
@@ -109,7 +110,7 @@ class InventoryAgent:
                 
                 # Cập nhật giá trị Q (Công thức Bellman) - Đảm bảo bounds
                 safe_current_stock = min(max(0, current_stock), self.max_stock)
-                safe_next_stock = min(max(0, next_stock), self.max_stock)
+                safe_next_stock = int(min(max(0, next_stock), self.max_stock))
                 
                 # Kiểm tra thêm bounds cho action_idx
                 safe_action_idx = min(max(0, action_idx), len(self.actions) - 1)
@@ -144,12 +145,12 @@ class InventoryAgent:
                 for a in self.actions:
                     if (safe_stock + a) >= predicted_demand:
                         recommended_order = a
-                        logger.info(f"🚀 Tăng lượng nhập lên {a} để đáp ứng dự báo {predicted_demand:.1f}")
+                        logger.info(f"Tăng lượng nhập lên {a} để đáp ứng dự báo {predicted_demand:.1f}")
                         break
             
             # TÌNH HUỐNG 2: Nếu AI dự báo nhu cầu THẤP, giảm nhập để tránh tồn kho quá nhiều
             elif predicted_demand < (safe_stock * 0.5) and recommended_order > 0:
                 recommended_order = 0
-                logger.info(f"📉 Giảm lượng nhập về 0 vì tồn kho hiện tại đủ cho dự báo thấp ({predicted_demand:.1f})")
+                logger.info(f"Giảm lượng nhập về 0 vì tồn kho hiện tại đủ cho dự báo thấp ({predicted_demand:.1f})")
 
         return int(recommended_order)

@@ -14,6 +14,8 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     
     List<OrderItem> findByBatchBatchId(Long batchId);
 
+    List<OrderItem> findByMedicine_MedicineIdAndIssuedAtBetween(Long medicineId, LocalDateTime start, LocalDateTime end);
+
         @Query("""
                         SELECT oi FROM OrderItem oi
                         JOIN FETCH oi.order o

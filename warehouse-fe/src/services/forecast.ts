@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { getMedicines } from './medicines';
 
 export interface Forecast {
   forecastId: number;
@@ -30,49 +31,61 @@ export interface ForecastPrediction {
 
 export interface ForecastPoint {
   date: string;
-  predicted: number;
-  lower: number;
-  upper: number;
-  confidence: number;
+  predicted?: number | null;
+  lower?: number | null;
+  upper?: number | null;
+  confidence?: number | null;
   isFallback?: boolean;
-  forecast?: number; // For forecast data (green line)
+  forecast?: number | null; // For forecast data (green line)
   isHistory?: boolean; // To distinguish history vs forecast
+  dataSource?: string;
 }
 
-// Mock 30-day data for demo
-const getMock30DayData = (): ForecastPoint[] => {
-  const data: ForecastPoint[] = [];
-  const today = new Date();
-  
-  for (let i = 0; i < 30; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    
-    // Generate realistic prediction with some variation
-    const basePrediction = 45 + Math.sin(i / 5) * 10 + Math.random() * 5;
-    const predicted = Math.max(0, Math.round(basePrediction));
-    const lower = Math.round(predicted * 0.8);
-    const upper = Math.round(predicted * 1.2);
-    const confidence = 0.75 + Math.random() * 0.2; // 0.75-0.95
-    
-    data.push({
-      date: date.toISOString().split('T')[0],
-      predicted,
-      lower,
-      upper,
-      confidence: Math.round(confidence * 100) / 100,
-      isFallback: true,
-    });
+interface AnalysisChartItem {
+  date: string;
+  type?: 'history' | 'forecast' | string;
+  quantity?: number;
+  predicted?: number;
+  forecast?: number;
+  lowerBound?: number;
+  lower?: number;
+  upperBound?: number;
+  upper?: number;
+  confidence?: number;
+  confidenceLevel?: number;
+  isFallback?: boolean;
+}
+
+const AI_API_BASE_URL = import.meta.env.VITE_AI_API_URL ?? 'http://localhost:5000';
+
+const aiFetch = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  const response = await fetch(`${AI_API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(`AI API Error: ${response.statusText}`);
   }
-  
-  return data;
+
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    return null as T;
+  }
+
+  return (await response.json()) as T;
 };
 
 export const forecastApi = {
   // Get all forecasts from backend
   getAllForecasts: async (): Promise<Forecast[]> => {
     try {
-      return await apiFetch<Forecast[]>('/api/inventory/forecast');
+      return await apiFetch<Forecast[]>('/api/forecast');
     } catch (error) {
       console.error('Error fetching forecasts:', error);
       return [];
@@ -80,69 +93,97 @@ export const forecastApi = {
   },
 
   // Get 30-day forecast data from AI
-  get30DayForecast: async (): Promise<ForecastPoint[]> => {
+  get30DayForecast: async (medicineId?: number, region?: string): Promise<ForecastPoint[]> => {
     try {
-      // Get first medicine as default for 30-day forecast
-      let medicines: { medicineId: number; name: string }[] = [];
-      try {
-        medicines = await apiFetch<{ medicineId: number; name: string }[]>('/api/medicines');
-      } catch (error) {
-        console.warn('Medicines API not available, using fallback data', error);
-        medicines = [{ medicineId: 1, name: 'Acetylcysteine syrup' }];
-      }
-
-      if (medicines && medicines.length > 0) {
-        const defaultMedicine = medicines[0];
-        try {
-          // Call the correct backend endpoint for chart data
-          const chartData = await apiFetch<{
-            data: Array<{
-              date: string;
-              quantity: number;
-              type: string;
-              lowerBound?: number;
-              upperBound?: number;
-            }>;
-            medicineName: string;
-            region: string;
-            splitDate: string;
-          }>(`/api/analysis/chart`, {
-            method: 'POST',
-            body: JSON.stringify({
-              medicineName: defaultMedicine.name,
-              region: 'Bắc',
-              dataPath: 'data/pharmacy_training_final.csv'
-            }),
-          });
-
-          // Transform chart data to ForecastPoint format
-          console.log('Raw chart data:', chartData);
-          const transformedData = chartData.data.map(item => ({
-            date: item.date,
-            predicted: item.type === 'history' ? item.quantity : 0, // History data in blue line
-            forecast: item.type === 'forecast' ? item.quantity : 0, // Forecast data in green line
-            lower: item.lowerBound || item.quantity * 0.8,
-            upper: item.upperBound || item.quantity * 1.2,
-            confidence: 0.85, // Default confidence
-            isFallback: false,
-            isHistory: item.type === 'history',
-          }));
-          console.log('Transformed data:', transformedData);
-          console.log('History points:', transformedData.filter(d => d.isHistory).length);
-          console.log('Forecast points:', transformedData.filter(d => !d.isHistory).length);
-          return transformedData;
-        } catch (error) {
-          console.error('Chart API failed:', error);
-          // Return mock data for demo purposes
-          console.warn('Using mock data for 30-day forecast');
-          return getMock30DayData();
+      let selectedMedicine;
+      
+      if (medicineId) {
+        // Get specific medicine by ID
+        const medicinePage = await getMedicines({
+          page: 0,
+          size: 100, // Get more to find the specific one
+          sortBy: 'name',
+          sortDir: 'asc',
+        });
+        selectedMedicine = medicinePage.content.find(m => m.medicineId === medicineId);
+        if (!selectedMedicine) {
+          throw new Error(`Medicine with ID ${medicineId} not found`);
         }
+      } else {
+        // Get first medicine as default
+        const medicinePage = await getMedicines({
+          page: 0,
+          size: 1,
+          sortBy: 'name',
+          sortDir: 'asc',
+        });
+        selectedMedicine = medicinePage.content[0];
       }
-      // Return empty array if no medicines available
-      return [];
+
+      if (!selectedMedicine) {
+        throw new Error('No medicines available for 30-day forecast');
+      }
+      const chartResponse = await aiFetch<{
+        medicineName: string;
+        region: string;
+        splitDate: string;
+        data: AnalysisChartItem[];
+      }>('/api/analysis/chart', {
+        method: 'POST',
+        body: JSON.stringify({
+          medicineName: selectedMedicine.name,
+          region: region || 'Bắc',
+        }),
+      });
+
+      const chartData = chartResponse?.data ?? [];
+      if (!chartData.length) {
+        throw new Error('No chart data returned from AI analysis');
+      }
+
+      const parsedData = chartData.map((item) => {
+        const isForecast = item.type === 'forecast';
+        const quantity = Number(item.quantity ?? item.predicted ?? item.forecast ?? 0);
+        return {
+          date: item.date,
+          predicted: isForecast ? null : quantity,
+          forecast: isForecast ? quantity : null,
+          lower: isForecast ? Number(item.lowerBound ?? item.lower ?? 0) : null,
+          upper: isForecast ? Number(item.upperBound ?? item.upper ?? 0) : null,
+          confidence: Number(item.confidence ?? item.confidenceLevel ?? 0),
+          isFallback: Boolean(item.isFallback),
+          isHistory: item.type === 'history',
+          dataSource: item.type === 'history' ? 'history' : 'forecast',
+        };
+      });
+
+      const historyPoints = parsedData.filter((point) => point.isHistory);
+      const forecastPoints = parsedData.filter((point) => !point.isHistory);
+      const trimmedHistoryPoints = historyPoints.slice(-30);
+
+      return [...trimmedHistoryPoints, ...forecastPoints].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      );
     } catch (error) {
-      console.error('Error in get30DayForecast:', error);
-      return getMock30DayData();
+      console.warn('AI analysis chart unavailable, falling back to backend 30-day forecast', error);
+      try {
+        const medicinePage = await getMedicines({
+          page: 0,
+          size: 100,
+          sortBy: 'name',
+          sortDir: 'asc',
+        });
+        const fallbackMedicine = medicinePage.content.find(m => m.medicineId === medicineId) || medicinePage.content[0];
+        const chartData = await apiFetch<ForecastPoint[]>(`/api/forecast/30-day?medicineId=${fallbackMedicine.medicineId}`);
+        return chartData.map(item => ({
+          ...item,
+          dataSource: item.dataSource ?? 'unknown',
+          forecast: item.forecast ?? item.predicted,
+        }));
+      } catch (fallbackError) {
+        console.error('Error in get30DayForecast fallback:', fallbackError);
+        throw fallbackError;
+      }
     }
   },
 
@@ -179,9 +220,10 @@ export const forecastApi = {
       storageCondition: request.storageCondition ?? 'Room temperature',
     };
 
-    return apiFetch<ForecastPrediction>('/api/predict', {
+    return apiFetch<ForecastPrediction>('/api/forecast/predict', {
       method: 'POST',
       body: JSON.stringify({
+        medicineId: payload.medicineId,
         medicineName: payload.medicineName,
         region: payload.region,
         temperature: payload.temperature,
@@ -200,7 +242,7 @@ export const forecastApi = {
 
   // Create new forecast
   createForecast: async (forecast: Omit<Forecast, 'forecastId'>): Promise<Forecast> => {
-    return apiFetch<Forecast>('/forecast', {
+    return apiFetch<Forecast>('/api/forecast', {
       method: 'POST',
       body: JSON.stringify(forecast),
     });
@@ -208,7 +250,7 @@ export const forecastApi = {
 
   // Update forecast
   updateForecast: async (id: number, forecast: Partial<Forecast>): Promise<Forecast> => {
-    return apiFetch<Forecast>(`/forecast/${id}`, {
+    return apiFetch<Forecast>(`/api/forecast/${id}`, {
       method: 'PUT',
       body: JSON.stringify(forecast),
     });
@@ -216,7 +258,7 @@ export const forecastApi = {
 
   // Delete forecast
   deleteForecast: async (id: number): Promise<void> => {
-    return apiFetch<void>(`/forecast/${id}`, {
+    return apiFetch<void>(`/api/forecast/${id}`, {
       method: 'DELETE',
     });
   },

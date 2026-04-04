@@ -218,7 +218,10 @@ const ForecastPage = () => {
     <MainLayout>
       {contextHolder}
       <BaseStatsGrid stats={forecastStats} />
-      
+
+      {/* AI Forecast Panel with increased height */}
+      <ForecastPanel />
+
       {/* Filter section moved up */}
       <BaseFilterCard
         actions={
@@ -253,9 +256,6 @@ const ForecastPage = () => {
           <Select options={periodOptions} defaultValue="all" />
         </div>
       </BaseFilterCard>
-
-      {/* AI Forecast Panel with increased height */}
-      <ForecastPanel />
 
       <ForecastTable key={refreshKey} />
     </MainLayout>

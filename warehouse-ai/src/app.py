@@ -6,8 +6,11 @@ import logging
 import os
 from datetime import datetime, timedelta
 
-from demand_model import DemandPredictor
-from inventory_rl import InventoryAgent
+from model.demand_model import DemandPredictor
+from model.inventory_rl import InventoryAgent
+from services.data_service import clean_and_prepare_data, extract_historical_demand
+from services.weather_service import get_weather_by_region
+from main import get_real_lag_data
 
 app = Flask(__name__)
 CORS(app)
@@ -18,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Đường dẫn đến thư mục src
 DEFAULT_DATA_PATH = os.path.join(os.path.dirname(BASE_DIR), 'data', 'pharmacy_training_final.csv')
-DEFAULT_DEMAND_MODEL_PATH = os.path.join(BASE_DIR, 'models', 'demand_hybrid_model.pkl')
-DEFAULT_INVENTORY_MODEL_PATH = os.path.join(BASE_DIR, 'models', 'inventory_q_table.pkl')
+DEFAULT_DEMAND_MODEL_PATH = os.path.join(os.path.dirname(BASE_DIR), 'model-ai', 'demand_hybrid_model.pkl')
+DEFAULT_INVENTORY_MODEL_PATH = os.path.join(os.path.dirname(BASE_DIR), 'model-ai', 'inventory_q_table.pkl')
 
 predictor = None
 agent = None
@@ -37,36 +40,75 @@ def ensure_models():
 
 @app.route('/api/predict', methods=['POST'])
 def predict_demand():
-    """Dự báo đơn lẻ và đưa ra khuyến nghị nhập hàng"""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
+
+        # VALIDATE
+        if 'medicineName' not in data or 'region' not in data:
+            return jsonify({"error": "Missing medicineName or region"}), 400
+
+        weather = get_weather_by_region(data['region'])
+
+      # LẤY LAG THẬT
+        lags = get_real_lag_data(data['medicineName'], data['region'])
+
+        if lags:
+            lag1 = lags['sales_lag_1']
+            lag7 = lags['sales_lag_7']
+            lag30 = lags['sales_lag_30']
+        else:
+            # fallback nếu DB lỗi
+            lag1 = float(data.get('salesLag1', 50))
+            lag7 = float(data.get('salesLag7', 50))
+            lag30 = float(data.get('salesLag30', 50))
+
         features = {
-            'temperature': float(data.get('temperature', 25)),
+            'temperature': weather['temperature'] if weather else 25,
+            'rain': weather['rain'] if weather else 0,
             'flu_season': int(data.get('fluSeason', 0)),
-            'rain': int(data.get('rain', 0)),
             'is_holiday': int(data.get('isHoliday', 0)),
             'is_weekend': int(data.get('isWeekend', 0)),
-            'sales_lag_1': float(data.get('salesLag1', 50)),
-            'sales_lag_7': float(data.get('salesLag7', 50)),
-            'sales_lag_30': float(data.get('salesLag30', 50)),
+            'sales_lag_1': lag1,
+            'sales_lag_7': lag7,
+            'sales_lag_30': lag30,
             'storage_condition': data.get('storageCondition', 'Room temperature')
         }
-        
+
+        logger.info(f"FINAL FEATURES → {features}")
+
+        logger.info(f"Predict request: {data}")
+
         res = predictor.predict(data['medicineName'], data['region'], features)
-        predicted_qty = res['prediction']
-        
-        # Cập nhật: Truyền predicted_demand vào Agent để tối ưu
+
+        logger.info(f"Predict result: {res}")
+
+        predicted_qty = res.get('prediction', 0)
+
+        # FALLBACK nếu model trả 0
+        if predicted_qty <= 0:
+            predicted_qty = (
+                features['sales_lag_1'] * 0.5 +
+                features['sales_lag_7'] * 0.3 +
+                features['sales_lag_30'] * 0.2
+            )
+            res['prediction'] = predicted_qty
+            res['lower_bound'] = predicted_qty * 0.7
+            res['upper_bound'] = predicted_qty * 1.3
+            res['note'] = "fallback heuristic applied"
+
         recommended = agent.get_best_action(
             data.get('currentInventory', 50),
             predicted_demand=predicted_qty
         )
-        
+
         return jsonify({
             **res,
             "recommendedOrder": int(recommended),
             "timestamp": datetime.now().isoformat()
         }), 200
+
     except Exception as e:
+        logger.error(f"Predict error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/analysis/chart', methods=['POST'])
@@ -92,21 +134,30 @@ def get_combined_chart():
 
         # 1. Xử lý dữ liệu Quá khứ
         df = pd.read_csv(csv_path)
-        # Đảm bảo cột date tồn tại
-        if 'sale_date' in df.columns:
-            df['date'] = pd.to_datetime(df['sale_date'])
-        elif 'date' in df.columns:
-            df['date'] = pd.to_datetime(df['date'])
+        df = clean_and_prepare_data(df)
+
+        # Filter by medicine name and region if region column exists
+        if 'region' in df.columns:
+            hist_df = df[(df['medicine_name'] == med_name) & (df['region'] == region)]
         else:
-            return jsonify({"error": "Không tìm thấy cột ngày tháng trong dữ liệu"}), 400
-        hist_df = df[(df['medicine_name'] == med_name) & (df['region'] == region)]
+            hist_df = df[df['medicine_name'] == med_name]
+        
         logger.info(f"Found {len(hist_df)} records for {med_name} in {region}")
+
+        # Ensure we have 'date' column (either 'date' or 'sale_date')
+        if 'date' not in hist_df.columns and 'sale_date' in hist_df.columns:
+            hist_df = hist_df.copy()
+            hist_df['date'] = hist_df['sale_date']
+        
         hist_df = hist_df.sort_values('date').tail(365) # Lấy 1 năm gần nhất
 
         chart_data = []
         for _, row in hist_df.iterrows():
+            date_val = row['date']
+            if not isinstance(date_val, str):
+                date_val = pd.to_datetime(date_val).strftime('%Y-%m-%d')
             chart_data.append({
-                "date": row['date'].strftime('%Y-%m-%d'),
+                "date": date_val,
                 "quantity": float(row['quantity_sold']),
                 "type": "history"
             })
@@ -116,30 +167,53 @@ def get_combined_chart():
             return jsonify({"error": "Không có dữ liệu cho thuốc/vùng này"}), 404
 
         last_date = pd.to_datetime(chart_data[-1]['date'])
-        last_qty = chart_data[-1]['quantity']
-        
+        history_values = [float(row['quantity_sold']) for _, row in hist_df.iterrows()]
+        history_values = history_values[-30:]
+
+        storage_condition = hist_df['storage_condition'].iloc[-1] if 'storage_condition' in hist_df.columns else 'Room temperature'
+        weather = get_weather_by_region(region)
+
+        holiday_dates = {
+            (1, 1), (1, 30), (4, 30), (5, 1), (9, 2),
+            (2, 10), (3, 8), (11, 20)
+        }
+
         for i in range(1, 31):
             future_date = last_date + timedelta(days=i)
-            # Giả lập features cho tương lai dựa trên ngày tháng
+
+            sales_lag_1 = history_values[-1] if len(history_values) >= 1 else float(chart_data[-1]['quantity'])
+            sales_lag_7 = history_values[-7] if len(history_values) >= 7 else sales_lag_1
+            sales_lag_30 = history_values[-30] if len(history_values) >= 30 else sales_lag_1
+
+            future_temp = weather['temperature'] if weather and 'temperature' in weather else (28.0 if future_date.month in [5, 6, 7, 8] else 20.0)
+            future_rain = weather['rain'] if weather and 'rain' in weather else int(future_date.month in [6, 7, 8])
+
             future_features = {
-                'temperature': 28.0 if future_date.month in [5,6,7,8] else 20.0,
-                'flu_season': 1 if future_date.month in [1, 2, 11, 12] else 0,
-                'rain': 0, 'is_holiday': 0,
-                'is_weekend': 1 if future_date.weekday() >= 5 else 0,
-                'sales_lag_1': last_qty,
-                'sales_lag_7': last_qty * 0.98,
-                'sales_lag_30': last_qty * 1.02,
-                'storage_condition': 'Room temperature'
+                'temperature': float(future_temp),
+                'rain': int(future_rain),
+                'flu_season': int(future_date.month in [1, 2, 11, 12]),
+                'is_holiday': int((future_date.month, future_date.day) in holiday_dates),
+                'is_weekend': int(future_date.weekday() >= 5),
+                'sales_lag_1': float(sales_lag_1),
+                'sales_lag_7': float(sales_lag_7),
+                'sales_lag_30': float(sales_lag_30),
+                'storage_condition': storage_condition
             }
-            
+
+            logger.info(f"Future features for {future_date.strftime('%Y-%m-%d')}: {future_features}")
+
             pred_res = predictor.predict(med_name, region, future_features)
-            last_qty = pred_res['prediction'] # Dùng kết quả này làm lag cho ngày mai
-            
+            predicted_qty = float(pred_res.get('prediction', 0.0))
+
+            history_values.append(predicted_qty)
+            if len(history_values) > 30:
+                history_values.pop(0)
+
             chart_data.append({
                 "date": future_date.strftime('%Y-%m-%d'),
-                "quantity": round(last_qty, 2),
-                "lowerBound": round(pred_res['lower_bound'], 2),
-                "upperBound": round(pred_res['upper_bound'], 2),
+                "quantity": round(predicted_qty, 2),
+                "lowerBound": round(pred_res.get('lower_bound', 0.0), 2),
+                "upperBound": round(pred_res.get('upper_bound', 0.0), 2),
                 "type": "forecast"
             })
 
@@ -156,43 +230,37 @@ def get_combined_chart():
 
 @app.route('/api/train', methods=['POST'])
 def train_route():
-    """Huấn luyện lại mô hình"""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
+
         path = data.get('dataPath', DEFAULT_DATA_PATH)
-        
-        # Nếu path là relative path, chuyển thành absolute path
+
+        # FIX PATH CHUẨN
         if not os.path.isabs(path):
-            # Xử lý cả trường hợp path có bắt đầu bằng "data/" hoặc không
-            if path.startswith('data/'):
-                path = os.path.join(os.path.dirname(BASE_DIR), path)  # Lên 1 cấp từ src để vào data
-            else:
-                path = os.path.join(os.path.dirname(BASE_DIR), 'data', path)  # Lên 1 cấp từ src rồi vào data
+            path = os.path.abspath(os.path.join(os.path.dirname(BASE_DIR), path))
 
-        logger.info(f"Checking data path: {path}")
-        
+        logger.info(f"Training with data path: {path}")
+
         if not os.path.exists(path):
-            return jsonify({"error": f"No such file or directory: '{path}'"}), 404
+            return jsonify({"error": f"No such file: {path}"}), 404
 
-        # Load dữ liệu
         df = pd.read_csv(path)
-        logger.info(f"Loaded {len(df)} records from {path}")
-        
-        # Huấn luyện demand model
-        logger.info("Training demand model...")
-        demand_success = predictor.train(df)
-        logger.info(f"Demand model training result: {demand_success}")
-        
-        # Huấn luyện inventory model
-        logger.info("Training inventory model...")
+        df = clean_and_prepare_data(df)
+        logger.info(f"Loaded and cleaned {len(df)} records")
+
+        # TRAIN
+        predictor.train(df)
         agent.train(df['quantity_sold'].tolist(), episodes=500)
-        logger.info("Inventory model training completed")
-        
+
+        # QUAN TRỌNG: reload model
+        init_models()
+
         return jsonify({
-            "status": "success", 
+            "status": "success",
             "message": "Models trained successfully",
             "records_processed": len(df)
         }), 200
+
     except Exception as e:
         logger.error(f"Training error: {e}")
         return jsonify({"error": str(e)}), 500
