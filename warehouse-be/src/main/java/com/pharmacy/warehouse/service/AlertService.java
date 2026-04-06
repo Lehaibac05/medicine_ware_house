@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,11 +29,15 @@ public class AlertService {
     private final MedicineRepository medicineRepository;
     private final WarehouseRepository warehouseRepository;
     private final InventoryService inventoryService;
+    private final SettingsService settingsService;
+    private final EmailService emailService;
 
-    private static final int EXPIRING_SOON_DAYS = 30;
-    private static final int DEFAULT_REORDER_LEVEL = 10;
     private static final double CRITICAL_RATIO = 0.5;
     private static final double HIGH_RATIO = 0.8;
+    private static final String ROLE_ADMIN = "ADMIN";
+    private static final String ROLE_WAREHOUSE_MANAGER = "WAREHOUSE_MANAGER";
+    private static final String ROLE_WAREHOUSE_STAFF = "WAREHOUSE_STAFF";
+    private static final String ROLE_ACCOUNTANT = "ACCOUNTANT";
 
     @Transactional(readOnly = true)
     public List<AlertResponse> getAllAlerts() {
@@ -227,7 +232,7 @@ public class AlertService {
     @Transactional
     public void checkExpiringBatches() {
         LocalDate today = LocalDate.now();
-        LocalDate expiryThreshold = today.plusDays(EXPIRING_SOON_DAYS);
+        LocalDate expiryThreshold = today.plusDays(settingsService.getExpiryAlertDays());
         
         List<Batch> batches = batchRepository.findAll();
         
@@ -235,7 +240,7 @@ public class AlertService {
             if (batch.getExpiryDate() != null) {
                 LocalDate expiryDate = batch.getExpiryDate();
                 
-                if (expiryDate.isAfter(today) && expiryDate.isBefore(expiryThreshold)) {
+                if (!expiryDate.isBefore(today) && !expiryDate.isAfter(expiryThreshold)) {
                     List<Alert> existing = alertRepository.findActiveAlertByBatchAndType(
                             batch.getBatchId(), "EXPIRING_SOON");
                     
@@ -287,13 +292,14 @@ public class AlertService {
         
         alertRepository.save(alert);
         createHistoryEntry(alert, "CREATED", null, "OPEN", "Auto-generated alert", null);
+        sendAlertNotificationEmail(alert);
         
         log.info("Created LOW_STOCK alert for medicine {} in warehouse {}", medicine.getMedicineId(), warehouse.getWarehouseId());
     }
 
     private int resolveReorderLevel(Integer reorderLevel) {
         if (reorderLevel == null || reorderLevel <= 0) {
-            return DEFAULT_REORDER_LEVEL;
+            return settingsService.getDefaultReorderLevel();
         }
         return reorderLevel;
     }
@@ -326,6 +332,7 @@ public class AlertService {
         
         alertRepository.save(alert);
         createHistoryEntry(alert, "CREATED", null, "OPEN", "Auto-generated alert", null);
+        sendAlertNotificationEmail(alert);
         
         log.info("Created EXPIRING_SOON alert for batch {}", batch.getBatchId());
     }
@@ -344,6 +351,7 @@ public class AlertService {
         
         alertRepository.save(alert);
         createHistoryEntry(alert, "CREATED", null, "OPEN", "Auto-generated alert", null);
+        sendAlertNotificationEmail(alert);
         
         log.info("Created EXPIRED alert for batch {}", batch.getBatchId());
     }
@@ -360,6 +368,94 @@ public class AlertService {
         history.setUser(user);
         
         alertHistoryRepository.save(history);
+    }
+
+    private void sendAlertNotificationEmail(Alert alert) {
+        if (!settingsService.isEmailNotificationsEnabled() || !isAlertTypeEmailEnabled(alert.getAlertType())) {
+            return;
+        }
+
+        Set<String> recipients = resolveRecipientsByAlertType(alert.getAlertType());
+        if (recipients.isEmpty()) {
+            return;
+        }
+
+        String subject = "[Cảnh báo kho thuốc] "
+            + toVietnameseAlertType(alert.getAlertType())
+            + " - "
+            + toVietnameseSeverity(alert.getSeverity());
+        String body = "Loại cảnh báo: " + toVietnameseAlertType(alert.getAlertType()) + "\n"
+            + "Mức độ: " + toVietnameseSeverity(alert.getSeverity()) + "\n"
+            + "Nội dung: " + safe(alert.getMessage()) + "\n"
+            + "Chi tiết: " + safe(alert.getDescription()) + "\n"
+            + "Thời gian tạo: " + alert.getCreatedAt() + "\n"
+            + "Trạng thái: " + toVietnameseStatus(alert.getStatus());
+
+        for (String recipient : recipients) {
+            emailService.sendSimpleMessage(recipient, subject, body);
+        }
+    }
+
+    private Set<String> resolveRecipientsByAlertType(String alertType) {
+        Set<String> roleNames = new LinkedHashSet<>();
+        roleNames.add(ROLE_ADMIN);
+        roleNames.add(ROLE_WAREHOUSE_MANAGER);
+        roleNames.add(ROLE_WAREHOUSE_STAFF);
+
+        // Accountant receives only expired alerts by default to reduce noise.
+        if ("EXPIRED".equals(alertType)) {
+            roleNames.add(ROLE_ACCOUNTANT);
+        }
+
+        List<User> users = userRepository.findByStatusIgnoreCaseAndRole_RoleNameIn("ACTIVE", roleNames);
+        return users.stream()
+                .map(User::getEmail)
+                .filter(email -> email != null && !email.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private boolean isAlertTypeEmailEnabled(String alertType) {
+        if ("LOW_STOCK".equals(alertType)) {
+            return settingsService.isLowStockEmailEnabled();
+        }
+        if ("EXPIRING_SOON".equals(alertType) || "EXPIRED".equals(alertType)) {
+            return settingsService.isExpiryEmailEnabled();
+        }
+        return true;
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
+    }
+
+    private String toVietnameseAlertType(String alertType) {
+        return switch (alertType) {
+            case "LOW_STOCK" -> "Tồn kho thấp";
+            case "EXPIRING_SOON" -> "Sắp hết hạn";
+            case "EXPIRED" -> "Đã hết hạn";
+            case "SYSTEM" -> "Hệ thống";
+            default -> safe(alertType);
+        };
+    }
+
+    private String toVietnameseSeverity(String severity) {
+        return switch (severity) {
+            case "CRITICAL" -> "Nghiêm trọng";
+            case "HIGH" -> "Cao";
+            case "MEDIUM" -> "Trung bình";
+            case "LOW" -> "Thấp";
+            default -> safe(severity);
+        };
+    }
+
+    private String toVietnameseStatus(String status) {
+        return switch (status) {
+            case "OPEN" -> "Mở";
+            case "IN_PROGRESS" -> "Đang xử lý";
+            case "RESOLVED" -> "Đã xử lý";
+            default -> safe(status);
+        };
     }
 
     private AlertResponse convertToResponse(Alert alert) {

@@ -1,6 +1,7 @@
 import { Layout } from "antd";
 import SidebarNav from "./SidebarNav";
 import TopBar from "./TopBar";
+import ChatbotWidget from "../components/common/ChatbotWidget";
 const { Content, Sider } = Layout;
 
 function MainLayout({ children }: { children: React.ReactNode }) {
@@ -22,6 +23,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
           {children}
         </Content>
       </Layout>
+      <ChatbotWidget />
     </Layout>
   );
 }

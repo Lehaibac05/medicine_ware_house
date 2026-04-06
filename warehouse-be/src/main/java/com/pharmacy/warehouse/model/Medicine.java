@@ -34,7 +34,6 @@ public class Medicine {
     @Size(max = 255, message = "Storage condition must not exceed 255 characters")
     private String storageCondition;
 
-    @NotBlank(message = "Description is required")
     @Size(max = 1000, message = "Description must not exceed 1000 characters")
     private String description;
     private Integer reorderLevel;
@@ -47,6 +46,16 @@ public class Medicine {
     public void onCreate() {
         if (reorderLevel == null || reorderLevel < 0) {
             reorderLevel = 10;
+        }
+        if (description == null) {
+            description = "";
+        }
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        if (description == null) {
+            description = "";
         }
     }
 }

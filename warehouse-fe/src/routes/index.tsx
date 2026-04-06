@@ -193,7 +193,7 @@ const AppRouter = () => {
         <Route
           path="/alerts"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT"]}>
               <AlertsPage />
             </ProtectedRoute>
           }
@@ -201,7 +201,7 @@ const AppRouter = () => {
         <Route
           path="/settings"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
               <SettingsPage />
             </ProtectedRoute>
           }

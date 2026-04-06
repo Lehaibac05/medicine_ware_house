@@ -31,6 +31,7 @@ import {
   updateSecuritySettings,
   updateSystemSettings,
 } from "../../services/settings";
+import { ApiError } from "../../services/api";
 
 const { Text, Title } = Typography;
 
@@ -121,11 +122,10 @@ const SettingsPage = () => {
     "123 Health Ave, Medical District, City State",
   );
   const [phoneNumber, setPhoneNumber] = useState("+1 (555) 012-3456");
-  const [lowStockThreshold, setLowStockThreshold] = useState(50);
   const [expiryAlertDays, setExpiryAlertDays] = useState(30);
   const [enableAIForecast, setEnableAIForecast] = useState(true);
   const [autoOrderEnabled, setAutoOrderEnabled] = useState(false);
-  const [reorderPoint, setReorderPoint] = useState(20);
+  const [reorderPoint, setReorderPoint] = useState(10);
   const [passwordPolicy, setPasswordPolicy] = useState("medium");
   const [sessionTimeout, setSessionTimeout] = useState(15);
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
@@ -139,6 +139,18 @@ const SettingsPage = () => {
   const [timezone, setTimezone] = useState("UTC+7");
   const [dateFormat, setDateFormat] = useState("DD/MM/YYYY");
 
+  const resolveSettingsErrorMessage = (error: unknown): string => {
+    if (error instanceof ApiError) {
+      if (error.status === 401) {
+        return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+      }
+      if (error.status === 403) {
+        return "Bạn không có quyền thao tác phần cài đặt.";
+      }
+    }
+    return "Failed to save settings";
+  };
+
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -148,11 +160,12 @@ const SettingsPage = () => {
         setContactEmail(settings.general.contactEmail);
         setAddress(settings.general.address);
         setPhoneNumber(settings.general.phoneNumber);
-        setLowStockThreshold(settings.inventory.lowStockThreshold);
+        const resolvedDefaultReorder =
+          settings.inventory.reorderPoint ?? settings.inventory.lowStockThreshold;
         setExpiryAlertDays(settings.inventory.expiryAlertDays);
         setEnableAIForecast(settings.inventory.enableAIForecast);
         setAutoOrderEnabled(settings.inventory.autoOrderEnabled);
-        setReorderPoint(settings.inventory.reorderPoint);
+        setReorderPoint(resolvedDefaultReorder);
         setPasswordPolicy(settings.security.passwordPolicy);
         setSessionTimeout(settings.security.sessionTimeout);
         setTwoFactorAuth(settings.security.twoFactorAuth);
@@ -167,7 +180,11 @@ const SettingsPage = () => {
         setDateFormat(settings.system.dateFormat);
       } catch (error) {
         console.error("Failed to load settings:", error);
-        messageApi.warning("Using default settings");
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          messageApi.error(resolveSettingsErrorMessage(error));
+        } else {
+          messageApi.warning("Using default settings");
+        }
       } finally {
         setLoading(false);
       }
@@ -184,8 +201,8 @@ const SettingsPage = () => {
       setSaving(true);
       await action();
       messageApi.success(successText);
-    } catch {
-      messageApi.error("Failed to save settings");
+    } catch (error) {
+      messageApi.error(resolveSettingsErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -380,20 +397,6 @@ const SettingsPage = () => {
                 color="bg-cyan-100 text-cyan-700"
               />
               <div className="mt-6 grid gap-4">
-                <Field
-                  label="Ngưỡng tồn kho thấp"
-                  hint="Cảnh báo khi thuốc xuống dưới mức này."
-                >
-                  <InputNumber
-                    value={lowStockThreshold}
-                    onChange={(v) => setLowStockThreshold(v || 50)}
-                    min={0}
-                    max={1000}
-                    className="w-full"
-                    size="large"
-                    addonAfter="đơn vị"
-                  />
-                </Field>
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Cảnh báo hết hạn">
                     <InputNumber
@@ -406,12 +409,15 @@ const SettingsPage = () => {
                       addonAfter="ngày"
                     />
                   </Field>
-                  <Field label="Điểm tái nhập">
+                  <Field
+                    label="Ngưỡng tồn kho thấp mặc định"
+                    hint="Áp dụng toàn hệ thống cho các thuốc chưa có reorder level riêng."
+                  >
                     <InputNumber
                       value={reorderPoint}
-                      onChange={(v) => setReorderPoint(v || 20)}
+                      onChange={(v) => setReorderPoint(typeof v === "number" ? Math.max(0, Math.floor(v)) : 0)}
                       min={0}
-                      max={1000}
+                      step={1}
                       className="w-full"
                       size="large"
                       addonAfter="đơn vị"
@@ -443,7 +449,7 @@ const SettingsPage = () => {
                     withSaving(
                       () =>
                         updateInventorySettings({
-                          lowStockThreshold,
+                          lowStockThreshold: reorderPoint,
                           expiryAlertDays,
                           enableAIForecast,
                           autoOrderEnabled,

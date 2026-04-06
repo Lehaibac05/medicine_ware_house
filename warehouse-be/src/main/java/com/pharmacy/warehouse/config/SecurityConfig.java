@@ -128,7 +128,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/alerts/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         .requestMatchers(HttpMethod.PATCH, "/alerts/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
 
+                        // Chatbot - authenticated business roles
+                        .requestMatchers("/chat/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT", "REQUESTER")
+
                         // System Configurations - ADMIN only
+                        .requestMatchers("/settings/**").hasRole("ADMIN")
                         .requestMatchers("/system-configurations/**").hasRole("ADMIN")
 
                         // Users - ADMIN can manage all, users can update their own info

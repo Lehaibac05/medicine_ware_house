@@ -4,7 +4,8 @@ export type Medicine = {
   name: string
   manufacturer: string
   storageCondition: string
-  description: string
+  description?: string
+  reorderLevel?: number
 }
 
 export type PageResponse<T> = {

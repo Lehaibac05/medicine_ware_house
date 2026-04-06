@@ -1,10 +1,12 @@
 import { Button, Space, Tag, Typography, message, Flex, Input } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState, useMemo } from 'react'
+import { ReloadOutlined } from '@ant-design/icons'
 import BaseTable from '../../../components/base/BaseTable'
 import { type Alert, getAllAlerts, resolveAlert, checkAndGenerateAlerts } from '../../../services/alerts'
 import type { AlertFilters } from '../AlertsPage'
 import dayjs from 'dayjs'
+import { hasAnyRole } from '../../../utils/auth'
 
 const { Text } = Typography;
 
@@ -53,6 +55,22 @@ function AlertsTable({ filters, onSearch }: AlertsTableProps) {
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [resolvingId, setResolvingId] = useState<number | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const canTriggerScan = hasAnyRole(["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"]);
+
+  async function handleScanAlerts() {
+    try {
+      setScanning(true);
+      const result = await checkAndGenerateAlerts();
+      messageApi.success(result?.message || "Quét cảnh báo thành công");
+      await loadAlerts();
+    } catch (error) {
+      console.error("Scan alerts error:", error);
+      messageApi.error("Không thể quét cảnh báo");
+    } finally {
+      setScanning(false);
+    }
+  }
 
   const tableHeader = (
     <Flex justify="space-between" align="center">
@@ -61,7 +79,16 @@ function AlertsTable({ filters, onSearch }: AlertsTableProps) {
           Danh sách cảnh báo
         </Text>
       </div>
-      <div className="w-[200px]">
+      <div className="flex items-center gap-2">
+        {canTriggerScan && (
+          <Button
+            icon={<ReloadOutlined />}
+            loading={scanning}
+            onClick={handleScanAlerts}
+          >
+            Scan cảnh báo
+          </Button>
+        )}
         <Input.Search
           placeholder="Tìm theo mã cảnh báo..."
           className="w-[320px]"
@@ -80,16 +107,6 @@ function AlertsTable({ filters, onSearch }: AlertsTableProps) {
     try {
       setLoading(true);
 
-      // Auto-scan batches to generate/update alerts from real batch data
-      console.log("🔍 Auto-scanning batches for alerts...");
-      try {
-        const scanResult = await checkAndGenerateAlerts();
-        console.log("✅ Scan completed:", scanResult);
-      } catch (scanError) {
-        console.warn("⚠️ Scan failed, loading existing alerts:", scanError);
-      }
-
-      // Then load the alerts to display
       await loadAlerts();
     } catch (error) {
       console.error("❌ Initialize alerts error:", error);

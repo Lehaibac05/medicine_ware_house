@@ -215,7 +215,7 @@ function UserImportModal({ open, onCancel, onImported }: UserImportModalProps) {
               loading={commitLoading}
               disabled={!preview || preview.invalidRows > 0}
             >
-              Commit import
+            Xác nhận
             </Button>
           </Space>
         }

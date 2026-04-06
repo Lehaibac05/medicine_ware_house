@@ -1,4 +1,4 @@
-import { Form, Input, Select } from "antd";
+import { Form, Input, InputNumber, Select } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import BaseModal from "../../../components/base/BaseModal";
 import { getActiveSuppliers } from "../../../services/suppliers";
@@ -9,6 +9,7 @@ export type MedicineFormValues = {
   manufacturer: string;
   storageCondition: string;
   description: string;
+  reorderLevel: number;
 };
 
 type MedicineFormModalProps = {
@@ -25,6 +26,7 @@ const defaultValues: MedicineFormValues = {
   manufacturer: "",
   storageCondition: "",
   description: "",
+  reorderLevel: 10,
 };
 
 function MedicineFormModal({
@@ -136,6 +138,22 @@ function MedicineFormModal({
           ]}
         >
           <Input placeholder="e.g. Nhiệt độ phòng..." />
+        </Form.Item>
+
+        <Form.Item
+          name="reorderLevel"
+          label="Ngưỡng cảnh báo tồn kho (Reorder Level)"
+          rules={[
+            { required: true, message: "Vui lòng nhập reorder level." },
+            { type: "number", min: 0, message: "Reorder level phải >= 0." },
+          ]}
+        >
+          <InputNumber
+            min={0}
+            step={1}
+            className="w-full"
+            placeholder="Nhập ngưỡng tồn kho thấp"
+          />
         </Form.Item>
 
         <Form.Item

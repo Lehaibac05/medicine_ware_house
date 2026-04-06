@@ -1,4 +1,4 @@
-import { apiFetch } from './api'
+import { ApiError, apiFetch } from './api'
 
 export interface GeneralSettings {
   pharmacyName: string
@@ -51,6 +51,9 @@ export const getSettings = async (): Promise<Settings> => {
       method: 'GET',
     })
   } catch (error) {
+    if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+      throw error
+    }
     console.error('Failed to fetch settings:', error)
     // Return default settings if API fails
     return getDefaultSettings()
@@ -121,7 +124,7 @@ export const getDefaultSettings = (): Settings => {
       expiryAlertDays: 30,
       enableAIForecast: true,
       autoOrderEnabled: false,
-      reorderPoint: 20,
+      reorderPoint: 10,
     },
     security: {
       passwordPolicy: 'medium',
