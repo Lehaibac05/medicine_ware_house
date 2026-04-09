@@ -3,6 +3,7 @@ package com.pharmacy.warehouse.controller;
 import java.time.LocalDateTime;
 
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,7 @@ import com.pharmacy.warehouse.model.MedicineRequest.RequestStatus;
 import com.pharmacy.warehouse.model.User;
 import com.pharmacy.warehouse.repository.UserRepository;
 import com.pharmacy.warehouse.service.MedicineRequestService;
+import com.pharmacy.warehouse.service.UserActivityLogService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,7 @@ public class MedicineRequestController {
 
     private final MedicineRequestService medicineRequestService;
     private final UserRepository userRepository;
+    private final UserActivityLogService userActivityLogService;
 
     @GetMapping
     public ResponseEntity<Page<MedicineRequestResponse>> getAllRequests(
@@ -68,25 +71,34 @@ public class MedicineRequestController {
     @PostMapping
     public ResponseEntity<MedicineRequestResponse> createRequest(
             @Valid @RequestBody CreateMedicineRequestRequest request,
-            Authentication authentication) {
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
         log.info("POST /medicine-requests - Creating request by user: {}",
                 authentication != null ? authentication.getName() : "unknown");
 
         User user = userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return ResponseEntity.ok(medicineRequestService.createRequest(request, user.getUserId()));
+        MedicineRequestResponse created = medicineRequestService.createRequest(request, user.getUserId());
+        userActivityLogService.log(user.getUsername(), "CREATE_MEDICINE_REQUEST", "medicine-requests/" + created.getRequestId(), httpRequest.getRemoteAddr());
+        return ResponseEntity.ok(created);
     }
 
     @PostMapping("/{id}/approve")
-    public ResponseEntity<MedicineRequestResponse> approveRequest(@PathVariable Long id) {
+    public ResponseEntity<MedicineRequestResponse> approveRequest(@PathVariable Long id, Authentication authentication, HttpServletRequest httpRequest) {
         log.info("POST /medicine-requests/{}/approve - Approving request", id);
-        return ResponseEntity.ok(medicineRequestService.approveRequest(id));
+        MedicineRequestResponse updated = medicineRequestService.approveRequest(id);
+        String username = authentication != null ? authentication.getName() : "system";
+        userActivityLogService.log(username, "APPROVE_MEDICINE_REQUEST", "medicine-requests/" + id, httpRequest.getRemoteAddr());
+        return ResponseEntity.ok(updated);
     }
 
     @PostMapping("/{id}/reject")
-    public ResponseEntity<MedicineRequestResponse> rejectRequest(@PathVariable Long id) {
+    public ResponseEntity<MedicineRequestResponse> rejectRequest(@PathVariable Long id, Authentication authentication, HttpServletRequest httpRequest) {
         log.info("POST /medicine-requests/{}/reject - Rejecting request", id);
-        return ResponseEntity.ok(medicineRequestService.rejectRequest(id));
+        MedicineRequestResponse updated = medicineRequestService.rejectRequest(id);
+        String username = authentication != null ? authentication.getName() : "system";
+        userActivityLogService.log(username, "REJECT_MEDICINE_REQUEST", "medicine-requests/" + id, httpRequest.getRemoteAddr());
+        return ResponseEntity.ok(updated);
     }
 }

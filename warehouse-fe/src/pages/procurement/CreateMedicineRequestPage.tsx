@@ -21,7 +21,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { getAllMedicines } from "../../services/medicines";
 import { createMedicineRequest } from "../../services/medicineRequests";
 import type { Medicine, Warehouse } from "../../services/types";
-import { hasAnyRole } from "../../utils/auth";
 import { getWarehouses } from "../../services/warehouses";
 import MainLayout from "../../layouts/MainLayout";
 
@@ -234,8 +233,7 @@ export default function CreateMedicineRequestPage() {
         })),
       });
       messageApi.success("Medicine request created");
-      const managerView = hasAnyRole(["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"]);
-      navigate(managerView ? "/requests" : "/medicine-requests");
+      navigate("/requests");
     } catch {
       messageApi.error("Failed to create medicine request");
     } finally {

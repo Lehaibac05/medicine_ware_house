@@ -21,6 +21,7 @@ import InventoryReportPage from "../pages/reports/InventoryReportPage"
 import FinancialReportPage from "../pages/reports/FinancialReportPage"
 import IssueReportPage from "../pages/reports/IssueReportPage"
 import UserPage from "../pages/users/UserPage"
+import ActivityLogsPage from "../pages/activity-logs/ActivityLogsPage"
 import WarehousePage from "../pages/warehouses/WarehousePage"
 import SupplierPage from "../pages/suppliers/SupplierPage"
 import MedicineRequestsListPage from "../pages/procurement/MedicineRequestsListPage"
@@ -243,6 +244,14 @@ const AppRouter = () => {
           element={
             <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
               <UserPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/activity-logs"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
+              <ActivityLogsPage />
             </ProtectedRoute>
           }
         />

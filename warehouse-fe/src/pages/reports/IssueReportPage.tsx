@@ -82,20 +82,20 @@ export default function IssueReportPage() {
       })
 
       const headers = [
-        "maDong",
-        "maYeuCau",
-        "maThuoc",
-        "tenThuoc",
-        "maLo",
-        "soLo",
-        "hanDung",
-        "soLuong",
-        "maKho",
-        "tenKho",
-        "maNguoiCap",
-        "tenNguoiCap",
-        "khoaPhong",
-        "thoiDiemCap",
+        "Mã dòng",
+        "Mã yêu cầu",
+        "Mã thuốc",
+        "Tên thuốc",
+        "Mã lô",
+        "Số lô",
+        "Hạn dùng",
+        "Số lượng",
+        "Mã kho",
+        "Tên kho",
+        "Mã người cấp",
+        "Tên người cấp",
+        "Khoa/Phòng",
+        "Thời điểm cấp",
       ]
       const rows = exportData.items.map((item) => [
         item.orderItemId,
@@ -115,7 +115,7 @@ export default function IssueReportPage() {
       ])
 
       const csv = [headers.join(","), ...rows.map((row) => row.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(","))].join("\n")
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = url

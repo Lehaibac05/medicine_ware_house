@@ -98,13 +98,14 @@ const PaymentPage = () => {
   const [payTransactionReference, setPayTransactionReference] = useState("");
   const [payNotes, setPayNotes] = useState("");
 
-  const canManageInvoices = hasAnyRole(["ROLE_ACCOUNTANT"]);
+  const canCreateInvoices = hasAnyRole(["ROLE_ACCOUNTANT", "ROLE_ADMIN"]);
+  const canVerifyInvoices = hasAnyRole(["ROLE_WAREHOUSE_MANAGER", "ROLE_ADMIN"]);
+  const canRejectInvoices = hasAnyRole(["ROLE_WAREHOUSE_MANAGER", "ROLE_ADMIN"]);
+  const canPayInvoices = hasAnyRole(["ROLE_ACCOUNTANT", "ROLE_ADMIN"]);
   const currentRoleLabel = getRoleLabel(getPrimaryRole());
 
-  const showPermissionError = () => {
-    messageApi.error(
-      `403: Chỉ kế toán mới có quyền tạo/xác minh/từ chối/thanh toán hóa đơn. Vai trò hiện tại: ${currentRoleLabel}`,
-    );
+  const showPermissionError = (action: string) => {
+    messageApi.error(`403: Bạn không có quyền ${action}. Vai trò hiện tại: ${currentRoleLabel}`);
   };
   const { data: invoices = [], isLoading } = useSupplierInvoicesQuery();
   const { data: goodsReceipts = [] } = useGoodsReceiptsQuery();
@@ -271,7 +272,7 @@ const PaymentPage = () => {
           key: String(medicineId),
           medicineId,
           medicineName:
-            item.medicine?.medicineName || `Medicine #${medicineId}`,
+            item.medicine?.medicineName || `Thuốc #${medicineId}`,
           receivedQuantity: receivedQty,
           poUnitPrice,
           invoiceQuantity: receivedQty,
@@ -430,13 +431,13 @@ const PaymentPage = () => {
       });
       setVerifyTarget(null);
       setVerifyNotes("");
-      messageApi.success("Invoice verified");
+      messageApi.success("Xác minh hóa đơn thành công");
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 403) {
         showPermissionError();
         return;
       }
-      messageApi.error("Failed to verify invoice");
+      messageApi.error("Không thể xác minh hóa đơn");
     }
   };
 
@@ -509,11 +510,11 @@ const PaymentPage = () => {
   return (
     <MainLayout>
       {contextHolder}
-      {!canManageInvoices && (
+      {!canCreateInvoices && !canVerifyInvoices && !canPayInvoices && (
         <Alert
           type="warning"
           showIcon
-          message={`Bạn chỉ có thể xem hóa đơn. Vai trò ${currentRoleLabel} không có quyền tạo/xác minh/từ chối/thanh toán.`}
+          message={`Bạn chỉ có thể xem hóa đơn. Vai trò ${currentRoleLabel} không có quyền thao tác.`}
         />
       )}
 
@@ -526,13 +527,13 @@ const PaymentPage = () => {
               type="primary"
               className="h-[40px]"
               onClick={() => {
-                if (!canManageInvoices) {
-                  showPermissionError();
+                if (!canCreateInvoices) {
+                  showPermissionError("tạo hóa đơn");
                   return;
                 }
                 setCreateOpen(true);
               }}
-              disabled={!canManageInvoices}
+              disabled={!canCreateInvoices}
             >
               Tạo hóa đơn
             </Button>
@@ -579,7 +580,7 @@ const PaymentPage = () => {
           <RangePicker
             className="w-full"
             format="DD/MM/YYYY"
-            placeholder={["Start date", "End date"]}
+            placeholder={["Từ ngày", "Đến ngày"]}
             value={range}
             onChange={(values) =>
               setRange(values as [dayjs.Dayjs, dayjs.Dayjs] | null)
@@ -594,28 +595,31 @@ const PaymentPage = () => {
         search={search}
         onSearchChange={setSearch}
         onVerify={(invoice) => {
-          if (!canManageInvoices) {
-            showPermissionError();
+          if (!canVerifyInvoices) {
+            showPermissionError("xác minh hóa đơn");
             return;
           }
           setVerifyTarget(invoice);
         }}
         onReject={(invoice) => {
-          if (!canManageInvoices) {
-            showPermissionError();
+          if (!canRejectInvoices) {
+            showPermissionError("từ chối hóa đơn");
             return;
           }
           setRejectTarget(invoice);
         }}
         onPay={(invoice) => {
-          if (!canManageInvoices) {
-            showPermissionError();
+          if (!canPayInvoices) {
+            showPermissionError("thanh toán hóa đơn");
             return;
           }
           setPayTarget(invoice);
           setPayAmount(Number(invoice.remainingAmount || 0));
           setPayTransactionReference("");
         }}
+        canVerifyAction={canVerifyInvoices}
+        canRejectAction={canRejectInvoices}
+        canPayAction={canPayInvoices}
       />
       <Modal
         title="Tạo hóa đơn nhà cung cấp"
@@ -823,7 +827,7 @@ const PaymentPage = () => {
                 dataIndex: "poUnitPrice",
                 width: 140,
                 render: (value: number) =>
-                  Number(value || 0).toLocaleString("en-US"),
+                  Number(value || 0).toLocaleString("vi-VN"),
               },
               {
                 title: "Số lượng theo hóa đơn",

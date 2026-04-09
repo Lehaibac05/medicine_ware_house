@@ -154,6 +154,10 @@ const baseMenuItems: NonNullable<MenuProps["items"]> = [
         label: <Link to="/users">Quản lý người dùng</Link>,
       },
       {
+        key: "activity-logs",
+        label: <Link to="/activity-logs">Nhật ký hoạt động</Link>,
+      },
+      {
         key: "settings",
         label: <Link to="/settings">Cài đặt</Link>,
       },
@@ -263,13 +267,13 @@ const filterMenuItems = (
         return null;
       }
 
-      // Finance menu - ADMIN, ACCOUNTANT
-      if (nextItem.key === "finance" && !flags.isAdmin && !flags.isAccountant) {
+      // Finance menu - ADMIN, ACCOUNTANT, WAREHOUSE_MANAGER
+      if (nextItem.key === "finance" && !flags.isAdmin && !flags.isAccountant && !flags.isManager) {
         return null;
       }
 
-      // Payments - ADMIN, ACCOUNTANT
-      if (nextItem.key === "payments" && !flags.isAdmin && !flags.isAccountant) {
+      // Payments - ADMIN, ACCOUNTANT, WAREHOUSE_MANAGER
+      if (nextItem.key === "payments" && !flags.isAdmin && !flags.isAccountant && !flags.isManager) {
         return null;
       }
 

@@ -6,7 +6,9 @@ import com.pharmacy.warehouse.dto.CreateUserRequest;
 import com.pharmacy.warehouse.dto.ForceChangePasswordRequest;
 import com.pharmacy.warehouse.dto.UpdateUserRequest;
 import com.pharmacy.warehouse.dto.UserResponse;
+import com.pharmacy.warehouse.service.UserActivityLogService;
 import com.pharmacy.warehouse.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.AccessDeniedException;
@@ -26,6 +28,7 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
+    private final UserActivityLogService userActivityLogService;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -47,8 +50,14 @@ public class UserController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public UserResponse createUser(@RequestBody CreateUserRequest request) {
-        return userService.createUser(request);
+    public UserResponse createUser(@RequestBody CreateUserRequest request, Authentication authentication, HttpServletRequest httpRequest) {
+        UserResponse created = userService.createUser(request);
+        userActivityLogService.log(
+                authentication != null ? authentication.getName() : "system",
+                "CREATE_USER",
+                "users/" + created.getUserId(),
+                httpRequest.getRemoteAddr());
+        return created;
     }
 
     @PostMapping("/import")
@@ -59,14 +68,21 @@ public class UserController {
 
     @PostMapping("/import/commit")
     @PreAuthorize("hasRole('ADMIN')")
-    public BulkUserImportResponse importUsersCommit(@RequestParam("file") MultipartFile file) {
-        return userService.executeBulkUsersFromCsv(file);
+    public BulkUserImportResponse importUsersCommit(@RequestParam("file") MultipartFile file, Authentication authentication, HttpServletRequest httpRequest) {
+        BulkUserImportResponse result = userService.executeBulkUsersFromCsv(file);
+        userActivityLogService.log(
+                authentication != null ? authentication.getName() : "system",
+                "IMPORT_USERS_COMMIT",
+                "users/import/created=" + result.getCreatedRows(),
+                httpRequest.getRemoteAddr());
+        return result;
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or isAuthenticated()")
     public UserResponse updateUser(@PathVariable Long id,
-                                   @RequestBody UpdateUserRequest request) {
+                                   @RequestBody UpdateUserRequest request,
+                                   HttpServletRequest httpRequest) {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = auth.getName();
@@ -79,7 +95,13 @@ public class UserController {
             throw new AccessDeniedException("Bạn chỉ được phép sửa thông tin của chính mình");
         }
 
-        return userService.updateUser(id, request);
+        UserResponse updated = userService.updateUser(id, request);
+        userActivityLogService.log(
+            currentUsername,
+            "UPDATE_USER",
+            "users/" + id,
+            httpRequest.getRemoteAddr());
+        return updated;
     }
 
     @DeleteMapping("/{id}")

@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -33,6 +34,7 @@ public class ChatService {
     private final SettingsService settingsService;
     private final MedicineRequestService medicineRequestService;
     private final UserRepository userRepository;
+    private final GeminiAssistantService geminiAssistantService;
 
     private final Map<String, RestockDraft> restockDraftByUser = new ConcurrentHashMap<>();
 
@@ -75,10 +77,54 @@ public class ChatService {
             return answerAlertsSummary();
         }
 
+        Optional<String> llmAnswer = geminiAssistantService.ask(
+            username,
+            roles,
+            message,
+            buildLiveContext());
+        if (llmAnswer.isPresent()) {
+            return buildResponse(llmAnswer.get(), defaultSuggestions());
+        }
+
         return buildResponse(
                 "Mình chưa hiểu rõ câu hỏi. Bạn thử hỏi theo các mẫu gợi ý bên dưới nhé.",
                 defaultSuggestions());
     }
+
+        private String buildLiveContext() {
+        try {
+            AlertStatsResponse stats = alertService.getAlertStats();
+            List<InventoryResponse> lowStockTop = inventoryService.getLowStockInventory().stream()
+                .sorted((a, b) -> Long.compare(safeLong(a.getTotalStock()), safeLong(b.getTotalStock())))
+                .limit(5)
+                .toList();
+            List<ExpiringBatchResponse> expiringTop = inventoryService.getExpiringBatches().stream()
+                .limit(5)
+                .toList();
+
+            String lowStockText = lowStockTop.isEmpty()
+                ? "Không có mặt hàng tồn kho thấp"
+                : lowStockTop.stream()
+                .map(item -> safe(item.getMedicineName()) + " @ " + safe(item.getWarehouseName()) + " = " + safeLong(item.getTotalStock()))
+                .collect(Collectors.joining("; "));
+
+            String expiringText = expiringTop.isEmpty()
+                ? "Không có lô sắp hết hạn"
+                : expiringTop.stream()
+                .map(item -> safe(item.getMedicineName()) + " (lô " + safe(item.getLotNumber()) + ") - " + item.getExpiryDate())
+                .collect(Collectors.joining("; "));
+
+            return "Tổng cảnh báo mở=" + safeLong(stats.getTotalActiveAlerts())
+                + ", Tồn kho thấp=" + safeLong(stats.getLowStockCount())
+                + ", Sắp hết hạn=" + safeLong(stats.getExpiringSoonCount())
+                + ", Đã hết hạn=" + safeLong(stats.getExpiredCount())
+                + ", Cảnh báo hệ thống=" + safeLong(stats.getSystemWarningsCount())
+                + "\nTop tồn kho thấp: " + lowStockText
+                + "\nTop lô sắp hết hạn: " + expiringText;
+        } catch (Exception ex) {
+            return "Không lấy được context thời gian thực";
+        }
+        }
 
     private ChatAskResponse answerLowStock() {
         List<InventoryResponse> lowStock = inventoryService.getLowStockInventory();

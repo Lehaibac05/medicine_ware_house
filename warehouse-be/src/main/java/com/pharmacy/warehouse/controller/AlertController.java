@@ -2,6 +2,8 @@ package com.pharmacy.warehouse.controller;
 
 import com.pharmacy.warehouse.dto.*;
 import com.pharmacy.warehouse.service.AlertService;
+import com.pharmacy.warehouse.service.UserActivityLogService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,7 @@ import java.util.Map;
 public class AlertController {
 
     private final AlertService alertService;
+    private final UserActivityLogService userActivityLogService;
 
     @GetMapping
     public ResponseEntity<List<AlertResponse>> getAllAlerts() {
@@ -76,13 +79,15 @@ public class AlertController {
     public ResponseEntity<AlertResponse> resolveAlert(
             @PathVariable Long id,
             @RequestBody(required = false) ResolveAlertRequest request,
-            Authentication authentication) {
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
         
         String username = authentication != null ? authentication.getName() : "system";
         String comment = request != null ? request.getComment() : null;
         
         log.info("POST /alerts/{}/resolve - Resolving alert by user: {}", id, username);
         AlertResponse alert = alertService.resolveAlert(id, username, comment);
+        userActivityLogService.log(username, "RESOLVE_ALERT", "alerts/" + id, httpRequest.getRemoteAddr());
         return ResponseEntity.ok(alert);
     }
 
@@ -90,12 +95,14 @@ public class AlertController {
     public ResponseEntity<AlertResponse> updateAlertStatus(
             @PathVariable Long id,
             @RequestParam String status,
-            Authentication authentication) {
+            Authentication authentication,
+            HttpServletRequest httpRequest) {
         
         String username = authentication != null ? authentication.getName() : "system";
         
         log.info("PATCH /alerts/{}/status - Updating status to: {}", id, status);
         AlertResponse alert = alertService.updateAlertStatus(id, status, username);
+        userActivityLogService.log(username, "UPDATE_ALERT_STATUS", "alerts/" + id + "?status=" + status, httpRequest.getRemoteAddr());
         return ResponseEntity.ok(alert);
     }
 
@@ -107,15 +114,17 @@ public class AlertController {
     }
 
     @PostMapping("/scan")
-    public ResponseEntity<Map<String, Object>> triggerAlertScan() {
+    public ResponseEntity<Map<String, Object>> triggerAlertScan(Authentication authentication, HttpServletRequest httpRequest) {
         log.info("POST /alerts/scan - Manually triggering alert scan");
         int beforeActiveCount = alertService.getActiveAlerts().size();
         alertService.checkAndGenerateAlerts();
         int afterActiveCount = alertService.getActiveAlerts().size();
         int alertsGenerated = Math.max(afterActiveCount - beforeActiveCount, 0);
+        String username = authentication != null ? authentication.getName() : "system";
+        userActivityLogService.log(username, "SCAN_ALERTS", "alerts/generated=" + alertsGenerated, httpRequest.getRemoteAddr());
         
         Map<String, Object> response = new HashMap<>();
-        response.put("message", "Alert scan completed successfully");
+        response.put("message", "Quét cảnh báo thành công");
         response.put("alertsGenerated", alertsGenerated);
         
         return ResponseEntity.ok(response);

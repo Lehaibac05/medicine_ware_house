@@ -358,25 +358,28 @@ function UserTable({ filters, search, onSearch }: UserTableProps) {
   ];
 
   const tableHeader = (
-    <Flex justify="space-between" align="center">
+    <Flex justify="space-between" align="start" gap={16} wrap>
       <div className="flex flex-col">
         <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
           Danh sách người dùng
         </Text>
       </div>
-      <div className="w-[300px]">
-        <div className="flex items-center gap-3">
+      <div className="w-full lg:w-auto lg:min-w-[640px]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <Input.Search
             placeholder="Tìm kiếm theo tên hoặc email..."
-            className="w-[320px]"
+            className="w-full sm:min-w-[420px]"
+            size="large"
             value={search}
             onChange={(event) => onSearch?.(event.target.value)}
             allowClear
           />
-          <Button onClick={openImportModal}>Import user</Button>
-          <Button type="primary" onClick={openCreateModal}>
-            Tạo người dùng
-          </Button>
+          <Space>
+            <Button onClick={openImportModal}>Import hàng loạt</Button>
+            <Button type="primary" onClick={openCreateModal}>
+              Tạo 1 người dùng
+            </Button>
+          </Space>
         </div>
       </div>
     </Flex>

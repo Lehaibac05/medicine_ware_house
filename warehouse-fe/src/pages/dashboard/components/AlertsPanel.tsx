@@ -69,9 +69,30 @@ const translateAlertDescription = (description?: string) => {
     return "-";
   }
 
+  const warehouseStockPattern = /Stock level in warehouse '([^']+)' is (\d+) units/gi;
+  const batchLowStockPattern = /Batch\s+([^\s]+)\s+of\s+(.+?)\s+has low stock:\s*(\d+)\s+units remaining at\s+(.+)/gi;
+
+  if (warehouseStockPattern.test(description)) {
+    warehouseStockPattern.lastIndex = 0;
+    return description.replace(
+      warehouseStockPattern,
+      "Tồn kho tại kho '$1' hiện còn $2 đơn vị",
+    );
+  }
+
+  if (batchLowStockPattern.test(description)) {
+    batchLowStockPattern.lastIndex = 0;
+    return description.replace(
+      batchLowStockPattern,
+      "Lô $1 của $2 đang tồn kho thấp: còn $3 đơn vị tại $4",
+    );
+  }
+
   return description
     .replace(/batch expired on/gi, "Lô đã hết hạn vào")
+    .replace(/batch expires on/gi, "Lô sẽ hết hạn vào")
     .replace(/expired on/gi, "Đã hết hạn vào")
+    .replace(/expires on/gi, "Sẽ hết hạn vào")
     .replace(/batch expired/gi, "Lô đã hết hạn")
     .replace(/expired/gi, "đã hết hạn")
     .replace(/critical/gi, "nghiêm trọng");
