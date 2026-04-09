@@ -91,58 +91,50 @@ const ForecastPage = () => {
 
   const loadForecastStats = async () => {
     try {
-      const forecasts = await forecastApi.getAllForecasts();
+      const stats = await forecastApi.getForecastStats();
 
-      if (forecasts.length > 0) {
-        // Calculate stats from real data
-        const totalForecasts = forecasts.length;
-        const highRiskCount = forecasts.filter(f => f.predictedQuantity < 50).length;
-        const avgConfidence = forecasts.reduce((sum, f) => sum + f.confidenceLevel, 0) / forecasts.length;
-        const needRestockCount = forecasts.filter(f => f.predictedQuantity < 100).length;
-
-        setForecastStats([
-          {
-            label: "Dự báo kỳ này",
-            value: totalForecasts,
-            note: "Dự báo cho các loại thuốc",
-            icon: <LineChartOutlined />,
-            trend: "+6%",
-            trendUp: true,
-            color: "text-blue-600",
-            bg: "bg-[#eff6ff]",
-          },
-          {
-            label: "Rủi ro cao",
-            value: highRiskCount,
-            note: "Nguy cơ thiếu hàng trong 30 ngày",
-            icon: <WarningOutlined />,
-            trend: highRiskCount > 0 ? "+2%" : "0%",
-            trendUp: false,
-            color: "text-red-600",
-            bg: "bg-[#fef2f2]",
-          },
-          {
-            label: "Độ tin cậy TB",
-            value: `${(avgConfidence * 100).toFixed(0)}%`,
-            note: "Dựa trên model AI",
-            icon: <CheckCircleOutlined />,
-            trend: "+1.5%",
-            trendUp: true,
-            color: "text-emerald-600",
-            bg: "bg-[#f0fdf4]",
-          },
-          {
-            label: "Cần nhập thêm",
-            value: needRestockCount,
-            note: "Đề xuất tăng tồn kho ngay",
-            icon: <ShoppingCartOutlined />,
-            trend: "+3%",
-            trendUp: true,
-            color: "text-amber-600",
-            bg: "bg-[#fffbeb]",
-          },
-        ]);
-      }
+      setForecastStats([
+        {
+          label: "Dự báo kỳ này",
+          value: stats.totalForecasts,
+          note: "Dự báo cho các loại thuốc",
+          icon: <LineChartOutlined />,
+          trend: "+6%",
+          trendUp: true,
+          color: "text-blue-600",
+          bg: "bg-[#eff6ff]",
+        },
+        {
+          label: "Rủi ro cao",
+          value: stats.highRiskCount,
+          note: "Nguy cơ thiếu hàng trong 30 ngày",
+          icon: <WarningOutlined />,
+          trend: stats.highRiskCount > 0 ? "+2%" : "0%",
+          trendUp: false,
+          color: "text-red-600",
+          bg: "bg-[#fef2f2]",
+        },
+        {
+          label: "Độ tin cậy TB",
+          value: `${(stats.avgConfidence * 100).toFixed(0)}%`,
+          note: "Dựa trên model AI",
+          icon: <CheckCircleOutlined />,
+          trend: "+1.5%",
+          trendUp: true,
+          color: "text-emerald-600",
+          bg: "bg-[#f0fdf4]",
+        },
+        {
+          label: "Cần nhập thêm",
+          value: stats.needRestockCount,
+          note: "Đề xuất tăng tồn kho ngay",
+          icon: <ShoppingCartOutlined />,
+          trend: "+3%",
+          trendUp: true,
+          color: "text-amber-600",
+          bg: "bg-[#fffbeb]",
+        },
+      ]);
     } catch (error) {
       console.error("Error loading forecast stats:", error);
       // Keep default loading state

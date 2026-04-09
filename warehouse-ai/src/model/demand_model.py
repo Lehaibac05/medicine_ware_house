@@ -128,6 +128,18 @@ class DemandPredictor:
 
             base_pred = lag1 * 0.5 + lag7 * 0.3 + lag30 * 0.2
 
+        # ===== Inventory-aware adjustment =====
+        current_inventory = float(features_dict.get('currentInventory', 0) or 0)
+        if base_pred > 0 and current_inventory > 0:
+            stock_ratio = current_inventory / base_pred
+            if stock_ratio < 0.5:
+                adjustment = 0.75 + 0.5 * stock_ratio
+            elif stock_ratio > 2.0:
+                adjustment = 1.0 + min(0.1, (stock_ratio - 2.0) * 0.05)
+            else:
+                adjustment = 1.0
+            base_pred = max(1.0, base_pred * adjustment)
+
         # ===== Season adjust (deterministic, không random) =====
         if features_dict.get('flu_season', 0):
             base_pred *= 1.2
@@ -140,12 +152,15 @@ class DemandPredictor:
             est.predict(X)[0] for est in self.model.estimators_
         ])
 
-        std = preds.std() + base_pred * 0.05
+        std = preds.std() + abs(base_pred) * 0.05
+        confidence = 1 - min(0.9, std / max(abs(base_pred), 1.0))
+        confidence = float(max(0.1, min(0.99, confidence)))
 
         return {
             "prediction": float(max(1, base_pred)),
             "lower_bound": float(max(0, base_pred - 1.96 * std)),
-            "upper_bound": float(base_pred + 1.96 * std)
+            "upper_bound": float(base_pred + 1.96 * std),
+            "confidence": confidence,
         }
     
     def load_model(self):

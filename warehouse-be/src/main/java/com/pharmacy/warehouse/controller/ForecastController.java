@@ -8,7 +8,9 @@ import com.pharmacy.warehouse.repository.AIModelRepository;
 import com.pharmacy.warehouse.repository.ForecastRepository;
 import com.pharmacy.warehouse.repository.MedicineRepository;
 import com.pharmacy.warehouse.repository.OrderItemRepository;
+import com.pharmacy.warehouse.dto.InventoryDetailResponse;
 import com.pharmacy.warehouse.service.AIModelService;
+import com.pharmacy.warehouse.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +34,7 @@ public class ForecastController {
     private final AIModelRepository aiModelRepository;
     private final MedicineRepository medicineRepository;
     private final OrderItemRepository orderItemRepository;
+    private final InventoryService inventoryService;
     private final AIModelService aiModelService;
 
     @GetMapping
@@ -55,6 +58,27 @@ public class ForecastController {
             if (!aiModelService.isAIServiceAvailable()) {
                 log.warn("AI Service không khả dụng, sử dụng dự báo fallback");
             }
+
+            int currentInventory = 0;
+            if (request.get("medicineId") != null) {
+                try {
+                    Long requestedMedicineId = Long.parseLong(request.get("medicineId").toString());
+                    List<InventoryDetailResponse> inventoryDetails = inventoryService.getInventoryDetailByMedicine(requestedMedicineId);
+                    currentInventory = (int) inventoryDetails.stream()
+                            .mapToLong(detail -> detail.getTotalStock() != null ? detail.getTotalStock() : 0L)
+                            .sum();
+                    log.info("   → Tồn kho hệ thống hiện tại cho thuốc {}: {}", requestedMedicineId, currentInventory);
+                } catch (Exception ex) {
+                    log.warn("Không lấy được tồn kho hệ thống cho predict: {}", ex.getMessage());
+                }
+            }
+            if (currentInventory <= 0 && request.get("currentInventory") != null) {
+                try {
+                    currentInventory = Integer.parseInt(request.get("currentInventory").toString());
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            request.put("currentInventory", currentInventory);
 
             Map<String, Object> prediction = aiModelService.predictDemand(request);
 
@@ -162,7 +186,17 @@ public class ForecastController {
             double salesLag1 = 45.0;
             double salesLag7 = 48.0;
             double salesLag30 = 45.0;
-            int currentInventory = 50;
+            int currentInventory = 0;
+
+            try {
+                List<InventoryDetailResponse> inventoryDetails = inventoryService.getInventoryDetailByMedicine(medicineId);
+                currentInventory = (int) inventoryDetails.stream()
+                        .mapToLong(detail -> detail.getTotalStock() != null ? detail.getTotalStock() : 0L)
+                        .sum();
+                log.info("   → Tồn kho hệ thống hiện tại cho thuốc {}: {}", medicineId, currentInventory);
+            } catch (Exception ex) {
+                log.warn("Không lấy được tồn kho hệ thống cho dự báo 30 ngày: {}", ex.getMessage());
+            }
 
             if (hasDbData) {
                 Map<LocalDate, Integer> dailyTotal = historyItems.stream()
@@ -187,9 +221,11 @@ public class ForecastController {
                 salesLag30 = Math.max(0.0, salesLag30 / 30.0);
 
                 // Nếu có dữ liệu tồn kho/nhập hàng trong DB, có thể lấy ra để cải thiện AI.
-                // Thời điểm này tạm thời dùng giá trị giả định từ dòng gần nhất.
-                currentInventory = historyItems.get(historyItems.size() - 1).getQuantity() != null
-                        ? historyItems.get(historyItems.size() - 1).getQuantity() : 50;
+                // Thời điểm này dùng tồn kho hệ thống làm nguồn chính.
+                if (currentInventory <= 0) {
+                    currentInventory = historyItems.get(historyItems.size() - 1).getQuantity() != null
+                            ? historyItems.get(historyItems.size() - 1).getQuantity() : 50;
+                }
             }
 
             Map<String, Object> request = new HashMap<>();
@@ -288,5 +324,103 @@ public class ForecastController {
             return ResponseEntity.ok(forecasts);
         }
         return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getForecastStats() {
+        try {
+            log.info("📊 Lấy thống kê dự báo tổng quan");
+
+            List<Medicine> medicines = medicineRepository.findAll();
+            if (medicines.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                    "totalForecasts", 0,
+                    "highRiskCount", 0,
+                    "avgConfidence", 0.0,
+                    "needRestockCount", 0
+                ));
+            }
+
+            int totalForecasts = medicines.size();
+            int highRiskCount = 0;
+            double totalConfidence = 0.0;
+            int needRestockCount = 0;
+            int validPredictions = 0;
+
+            for (Medicine medicine : medicines) {
+                try {
+                    // Lấy tồn kho hiện tại
+                    int currentInventory = 0;
+                    try {
+                        List<InventoryDetailResponse> inventoryDetails = inventoryService.getInventoryDetailByMedicine(medicine.getMedicineId());
+                        currentInventory = (int) inventoryDetails.stream()
+                                .mapToLong(detail -> detail.getTotalStock() != null ? detail.getTotalStock() : 0L)
+                                .sum();
+                    } catch (Exception ex) {
+                        log.warn("Không lấy được tồn kho cho thuốc {}: {}", medicine.getMedicineId(), ex.getMessage());
+                    }
+
+                    // Tạo request cho AI prediction
+                    Map<String, Object> request = new HashMap<>();
+                    request.put("medicineId", medicine.getMedicineId());
+                    request.put("medicineName", medicine.getName());
+                    request.put("region", "Bắc");
+                    request.put("temperature", 28.0);
+                    request.put("fluSeason", 0);
+                    request.put("rain", 0);
+                    request.put("currentInventory", currentInventory);
+                    request.put("salesLag1", 45.0); // Default values
+                    request.put("salesLag7", 48.0);
+                    request.put("salesLag30", 45.0);
+                    request.put("storageCondition", medicine.getStorageCondition() != null ? medicine.getStorageCondition() : "Room temperature");
+
+                    // Gọi AI prediction
+                    Map<String, Object> prediction = aiModelService.predictDemand(request);
+
+                    double predictedQuantity = 0.0;
+                    if (prediction.get("predictedQuantity") != null) {
+                        predictedQuantity = Double.parseDouble(prediction.get("predictedQuantity").toString());
+                    }
+
+                    double confidence = 0.65; // Default confidence
+                    if (prediction.get("confidenceLevel") != null) {
+                        confidence = Double.parseDouble(prediction.get("confidenceLevel").toString());
+                    } else if (prediction.get("confidence") != null) {
+                        confidence = Double.parseDouble(prediction.get("confidence").toString());
+                    }
+
+                    // Tính toán thống kê
+                    if (predictedQuantity < 50) {
+                        highRiskCount++;
+                    }
+                    if (predictedQuantity < 100) {
+                        needRestockCount++;
+                    }
+                    totalConfidence += confidence;
+                    validPredictions++;
+
+                } catch (Exception ex) {
+                    log.warn("Lỗi dự báo cho thuốc {}: {}", medicine.getMedicineId(), ex.getMessage());
+                    // Tiếp tục với thuốc tiếp theo
+                }
+            }
+
+            double avgConfidence = validPredictions > 0 ? totalConfidence / validPredictions : 0.0;
+
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalForecasts", totalForecasts);
+            stats.put("highRiskCount", highRiskCount);
+            stats.put("avgConfidence", avgConfidence);
+            stats.put("needRestockCount", needRestockCount);
+
+            log.info("✅ Thống kê dự báo: {} thuốc, {} rủi ro cao, độ tin cậy TB: {:.2f}, cần nhập thêm: {}",
+                    totalForecasts, highRiskCount, avgConfidence, needRestockCount);
+
+            return ResponseEntity.ok(stats);
+
+        } catch (Exception e) {
+            log.error("❌ Lỗi lấy thống kê dự báo: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

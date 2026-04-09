@@ -2,7 +2,7 @@ import { Card, Typography } from "antd";
 import { useDashboardSummaryQuery } from "../../hooks/useReports";
 import ChartWidget from "../../components/reporting/ChartWidget";
 import StatsGrid from "./components/StatsGrid";
-import ForecastPanel from "./components/ForecastPanel";
+import DashboardForecastPanel from "./components/DashboardForecastPanel";
 import AlertsPanel from "./components/AlertsPanel";
 import InventoryTable from "../inventory/components/InventoryTable";
 import MainLayout from "../../layouts/MainLayout";
@@ -18,7 +18,7 @@ const DashboardPage = () => {
 
       {/* Forecast + Alerts */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <ForecastPanel />
+        <DashboardForecastPanel />
         <AlertsPanel />
       </div>
 

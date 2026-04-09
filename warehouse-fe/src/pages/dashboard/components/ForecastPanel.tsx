@@ -118,6 +118,9 @@ function ForecastPanel() {
     }
   }, [medicines, selectedMedicineId]);
 
+  const todayDate = new Date().toLocaleDateString('en-CA');
+  const showTodayLine = chartData.some(point => point.date === todayDate);
+
   return (
     <Card className="rounded-2xl border-0 shadow-[0_18px_32px_rgba(15,23,42,0.08)] bg-white" bodyStyle={{ padding: 28 }}>
 
@@ -259,23 +262,17 @@ function ForecastPanel() {
                 textAnchor="end"
                 height={100}
               />
-              {/* Left Y-Axis for History Data */}
+              {/* Single Y-Axis for history and forecast */}
               <YAxis
                 yAxisId="left"
                 stroke="#3b82f6"
                 fontSize={12}
                 tick={{ fontSize: 12, fill: '#3b82f6' }}
-                label={{ value: 'Lịch sử (đơn vị)', angle: -90, position: 'insideLeft', offset: -10, style: { fontSize: 12, fontWeight: 600, fill: '#3b82f6' } }}
-                width={55}
-              />
-              {/* Right Y-Axis for Forecast Data */}
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                stroke="#10b981"
-                fontSize={12}
-                tick={{ fontSize: 12, fill: '#10b981' }}
-                label={{ value: 'Dự báo (đơn vị)', angle: 90, position: 'insideRight', offset: -10, style: { fontSize: 12, fontWeight: 600, fill: '#10b981' } }}
+                tickLine={{ stroke: '#cbd5e1' }}
+                axisLine={{ stroke: '#cbd5e1' }}
+                domain={[ 'auto', 'auto' ]}
+                tickCount={6}
+                label={{ value: 'Đơn vị', angle: -90, position: 'insideLeft', offset: -10, style: { fontSize: 12, fontWeight: 600, fill: '#3b82f6' } }}
                 width={55}
               />
               <Tooltip
@@ -300,23 +297,23 @@ function ForecastPanel() {
                 iconType="line"
                 height={36}
               />
-              {/* History line - blue (left axis) */}
+              {/* Combined history + forecast line */}
               <Line
                 yAxisId="left"
                 type="natural"
-                dataKey="predicted"
+                dataKey={(entry) => entry.predicted ?? entry.forecast}
                 stroke="#3b82f6"
-                strokeWidth={3.5}
-                name="Dữ liệu lịch sử"
-                dot={{ fill: '#3b82f6', r: 5, strokeWidth: 2, stroke: '#fff' }}
-                activeDot={{ r: 8, strokeWidth: 2 }}
-                connectNulls={false}
+                strokeWidth={2}
+                name="Lịch sử & Dự báo"
+                dot={{ fill: '#3b82f6', r: 3, strokeWidth: 1, stroke: '#fff' }}
+                activeDot={{ r: 6, strokeWidth: 1 }}
+                connectNulls={true}
                 isAnimationActive={true}
               />
 
-              {/* Forecast area band (right axis) */}
+              {/* Forecast area band */}
               <Area
-                yAxisId="right"
+                yAxisId="left"
                 type="natural"
                 dataKey="upper"
                 fill="#10b981"
@@ -326,27 +323,13 @@ function ForecastPanel() {
                 name="Vùng dự báo"
               />
 
-              {/* Forecast line - green (right axis) */}
+              {/* Upper bound - dashed */}
               <Line
-                yAxisId="right"
-                type="natural"
-                dataKey="forecast"
-                stroke="#10b981"
-                strokeWidth={3.5}
-                name="Dự báo AI"
-                dot={{ fill: '#10b981', r: 5, strokeWidth: 2, stroke: '#fff' }}
-                activeDot={{ r: 8, strokeWidth: 2 }}
-                connectNulls={false}
-                isAnimationActive={true}
-              />
-
-              {/* Upper bound - dashed (right axis) */}
-              <Line
-                yAxisId="right"
+                yAxisId="left"
                 type="natural"
                 dataKey="upper"
                 stroke="#f59e0b"
-                strokeWidth={2.5}
+                strokeWidth={1.5}
                 strokeDasharray="6 4"
                 name="Khoảng trên"
                 dot={false}
@@ -354,13 +337,13 @@ function ForecastPanel() {
                 opacity={0.9}
               />
 
-              {/* Lower bound - dashed (right axis) */}
+              {/* Lower bound - dashed */}
               <Line
-                yAxisId="right"
+                yAxisId="left"
                 type="natural"
                 dataKey="lower"
                 stroke="#ef4444"
-                strokeWidth={2.5}
+                strokeWidth={1.5}
                 strokeDasharray="6 4"
                 name="Khoảng dưới"
                 dot={false}
@@ -369,13 +352,16 @@ function ForecastPanel() {
               />
 
               {/* Today divider line */}
-              <ReferenceLine
-                x={new Date().toISOString().split('T')[0]}
-                stroke="#ef4444"
-                strokeWidth={2}
-                strokeDasharray="8 4"
-                label={{ value: 'Hôm nay', position: 'top', fill: '#ef4444', fontWeight: 'bold' }}
-              />
+              {showTodayLine && (
+                <ReferenceLine
+                  x={todayDate}
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  strokeDasharray="8 4"
+                  isFront={true}
+                  label={{ value: 'Hôm nay', position: 'insideTopRight', fill: '#ef4444', fontWeight: 'bold' }}
+                />
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         ) : (

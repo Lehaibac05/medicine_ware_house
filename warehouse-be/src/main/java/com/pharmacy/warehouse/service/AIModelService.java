@@ -73,7 +73,8 @@ public class AIModelService {
             result.put("predictedQuantity", predicted);
             result.put("lowerBound", lower);
             result.put("upperBound", upper);
-            result.put("confidenceLevel", 0.8);
+            result.put("confidenceLevel", getDouble(response, "confidenceLevel", "confidence", "confidence_level"));
+            result.put("recommendedOrder", response.getOrDefault("recommendedOrder", response.getOrDefault("recommended_order", "")));
             result.put("isFallback", false);
 
             return result;

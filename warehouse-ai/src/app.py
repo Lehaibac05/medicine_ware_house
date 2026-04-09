@@ -62,6 +62,8 @@ def predict_demand():
             lag7 = float(data.get('salesLag7', 50))
             lag30 = float(data.get('salesLag30', 50))
 
+        current_inventory = float(data.get('currentInventory', 0) or 0)
+
         features = {
             'temperature': weather['temperature'] if weather else 25,
             'rain': weather['rain'] if weather else 0,
@@ -71,7 +73,8 @@ def predict_demand():
             'sales_lag_1': lag1,
             'sales_lag_7': lag7,
             'sales_lag_30': lag30,
-            'storage_condition': data.get('storageCondition', 'Room temperature')
+            'storage_condition': data.get('storageCondition', 'Room temperature'),
+            'currentInventory': current_inventory,
         }
 
         logger.info(f"FINAL FEATURES → {features}")
@@ -97,7 +100,7 @@ def predict_demand():
             res['note'] = "fallback heuristic applied"
 
         recommended = agent.get_best_action(
-            data.get('currentInventory', 50),
+            current_inventory,
             predicted_demand=predicted_qty
         )
 
@@ -214,6 +217,7 @@ def get_combined_chart():
                 "quantity": round(predicted_qty, 2),
                 "lowerBound": round(pred_res.get('lower_bound', 0.0), 2),
                 "upperBound": round(pred_res.get('upper_bound', 0.0), 2),
+                "confidence": float(pred_res.get('confidence', 0.0)),
                 "type": "forecast"
             })
 

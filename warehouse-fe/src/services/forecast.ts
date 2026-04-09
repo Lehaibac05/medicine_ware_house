@@ -20,7 +20,8 @@ export interface AIModel {
 export interface ForecastPrediction {
   medicineId: number;
   predictedQuantity: number;
-  confidenceLevel: number;
+  confidenceLevel?: number;
+  confidence?: number;
   period: string;
   lowerBound: number;
   upperBound: number;
@@ -82,7 +83,6 @@ const aiFetch = async <T>(endpoint: string, options: RequestInit = {}): Promise<
 };
 
 export const forecastApi = {
-  // Get all forecasts from backend
   getAllForecasts: async (): Promise<Forecast[]> => {
     try {
       return await apiFetch<Forecast[]>('/api/forecast');
@@ -96,7 +96,7 @@ export const forecastApi = {
   get30DayForecast: async (medicineId?: number, region?: string): Promise<ForecastPoint[]> => {
     try {
       let selectedMedicine;
-      
+
       if (medicineId) {
         // Get specific medicine by ID
         const medicinePage = await getMedicines({
@@ -133,6 +133,7 @@ export const forecastApi = {
         body: JSON.stringify({
           medicineName: selectedMedicine.name,
           region: region || 'Bắc',
+          dataPath: 'data/pharmacy_training_final_scaled.csv', 
         }),
       });
 
@@ -143,9 +144,11 @@ export const forecastApi = {
 
       const parsedData = chartData.map((item) => {
         const isForecast = item.type === 'forecast';
+        const rawDate = item.date ?? '';
+        const normalizedDate = rawDate.split('T')[0];
         const quantity = Number(item.quantity ?? item.predicted ?? item.forecast ?? 0);
         return {
-          date: item.date,
+          date: normalizedDate,
           predicted: isForecast ? null : quantity,
           forecast: isForecast ? quantity : null,
           lower: isForecast ? Number(item.lowerBound ?? item.lower ?? 0) : null,
@@ -177,6 +180,7 @@ export const forecastApi = {
         const chartData = await apiFetch<ForecastPoint[]>(`/api/forecast/30-day?medicineId=${fallbackMedicine.medicineId}`);
         return chartData.map(item => ({
           ...item,
+          date: item.date?.split('T')[0] ?? item.date,
           dataSource: item.dataSource ?? 'unknown',
           forecast: item.forecast ?? item.predicted,
         }));
@@ -266,5 +270,20 @@ export const forecastApi = {
   // Get forecasts by medicine
   getForecastsByMedicine: async (medicineId: number): Promise<Forecast[]> => {
     return apiFetch<Forecast[]>(`/api/forecast/medicine/${medicineId}`);
+  },
+
+  // Get forecast statistics
+  getForecastStats: async (): Promise<{
+    totalForecasts: number;
+    highRiskCount: number;
+    avgConfidence: number;
+    needRestockCount: number;
+  }> => {
+    return apiFetch<{
+      totalForecasts: number;
+      highRiskCount: number;
+      avgConfidence: number;
+      needRestockCount: number;
+    }>('/api/forecast/stats');
   },
 };

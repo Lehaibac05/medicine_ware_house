@@ -4,7 +4,7 @@ import { Flex, Typography, Tag, Button, message } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { forecastApi } from "../../../services/forecast";
 import { getAllMedicines } from "../../../services/medicines";
-import type { Medicine } from "../../../services/types";
+import { getInventory } from "../../../services/inventory";
 
 const { Text } = Typography;
 
@@ -16,6 +16,7 @@ type ForecastRow = {
   confidence_level: string;
   risk_level: string;
   suggested_action: string;
+  recommended_order: string;
 };
 
 const columns: ColumnsType<ForecastRow> = [
@@ -39,7 +40,10 @@ const columns: ColumnsType<ForecastRow> = [
     dataIndex: "confidence_level",
     key: "confidence_level",
     render: (value: string) => {
-      const confidence = parseFloat(value);
+      const confidence = Number(value);
+      if (!Number.isFinite(confidence)) {
+        return <Tag color="default">-</Tag>;
+      }
       let color = "red";
       if (confidence >= 0.8) color = "green";
       else if (confidence >= 0.6) color = "orange";
@@ -62,6 +66,12 @@ const columns: ColumnsType<ForecastRow> = [
     dataIndex: "suggested_action",
     key: "suggested_action",
   },
+  {
+    title: "Đề xuất đặt hàng",
+    dataIndex: "recommended_order",
+    key: "recommended_order",
+    render: (value: string) => <Tag color="blue">{value || "-"}</Tag>,
+  },
 ];
 
 function ForecastTable() {
@@ -73,37 +83,70 @@ function ForecastTable() {
     try {
       setLoading(true);
 
+      // Lấy danh sách tất cả thuốc
       const medicinesData = await getAllMedicines();
       const medicineMapData = Object.fromEntries(
         medicinesData.map((m) => [m.medicineId, m.name])
       );
 
-      const forecastsData = await forecastApi.getAllForecasts();
+      // Lấy dữ liệu dự báo cho từng thuốc (song song nhưng giới hạn số lượng)
+      const allForecastData: ForecastRow[] = [];
+      const medicinesToProcess = medicinesData.slice(0, 10); // Giới hạn 10 thuốc
 
-      if (forecastsData.length === 0) {
-        setForecasts([]);
-        return;
-      }
+      const inventoryData = await getInventory({ page: 0, size: 1000 });
+      const inventoryRows = Array.isArray(inventoryData) ? inventoryData : inventoryData.content;
+      const inventoryByMedicine = inventoryRows.reduce<Record<number, number>>((acc, row) => {
+        acc[row.medicineId] = (acc[row.medicineId] || 0) + row.totalStock;
+        return acc;
+      }, {});
 
-      const tableData = forecastsData
-        .filter((forecast) => medicineMapData[forecast.medicineId] !== undefined)
-        .map((forecast) => ({
-          key: forecast.forecastId.toString(),
-          medicine_name: medicineMapData[forecast.medicineId],
-          forecast_period: forecast.period,
-          predicted_quantity: forecast.predictedQuantity.toString(),
-          confidence_level: forecast.confidenceLevel.toString(),
-          risk_level:
-            forecast.predictedQuantity < 50
-              ? "HIGH"
-              : forecast.predictedQuantity < 100
-                ? "MEDIUM"
-                : "LOW",
-          suggested_action:
-            forecast.predictedQuantity < 50 ? "Đặt hàng ngay" : "Theo dõi",
-        }));
+      const forecastPromises = medicinesToProcess.map(async (medicine) => {
+        try {
+          const currentStock = inventoryByMedicine[medicine.medicineId] ?? 0;
+          const forecastResponse = await forecastApi.predictDemand({
+            medicineId: medicine.medicineId,
+            medicineName: medicine.name,
+            region: 'Bắc',
+            currentInventory: currentStock,
+            salesLag1: 50,
+            salesLag7: 45,
+            salesLag30: 40,
+          });
 
-      setForecasts(tableData);
+          const forecastValue = Number(forecastResponse.predictedQuantity || 0);
+          const rawConfidence = forecastResponse.confidenceLevel ?? forecastResponse.confidence;
+          const confidenceLevel = Number.isFinite(Number(rawConfidence)) ? Number(rawConfidence) : NaN;
+          const recommendedOrder = forecastResponse.recommendedOrder ?? "-";
+          const riskLevel = forecastValue < 50 ? "HIGH" : forecastValue < 100 ? "MEDIUM" : "LOW";
+          const hasRecommendation = recommendedOrder !== "-" && Number(recommendedOrder) > 0;
+          const actionSentence = hasRecommendation
+            ? `AI đề xuất đặt thêm ${recommendedOrder} đơn vị để đảm bảo tồn kho đủ cho 30 ngày tới.`
+            : riskLevel === "HIGH"
+            ? "Tồn kho đang thấp và nhu cầu cao; cần đặt hàng ngay để tránh thiếu hụt."
+            : riskLevel === "MEDIUM"
+            ? "Tồn kho khá ổn nhưng cần theo dõi sát sao; cân nhắc đặt thêm nếu xu hướng tăng." 
+            : "Tồn kho hiện ổn; tiếp tục giám sát và không cần đặt thêm ngay.";
+
+          return {
+            key: `${medicine.medicineId}_${new Date().toISOString().split('T')[0]}`,
+            medicine_name: medicineMapData[medicine.medicineId],
+            forecast_period: `30 ngày`,
+            predicted_quantity: Math.round(forecastValue).toString(),
+            confidence_level: Number.isFinite(confidenceLevel) ? confidenceLevel.toFixed(2) : "-",
+            risk_level: riskLevel,
+            suggested_action: actionSentence,
+            recommended_order: recommendedOrder.toString(),
+          };
+        } catch (error) {
+          console.warn(`Không thể tải dự báo cho thuốc ${medicine.name}:`, error);
+        }
+        return null;
+      });
+
+      const forecastResults = await Promise.all(forecastPromises);
+      const validForecasts = forecastResults.filter((result): result is ForecastRow => result !== null);
+
+      setForecasts(validForecasts);
     } catch (error) {
       console.error("Error loading forecast data:", error);
       messageApi.error("Lỗi khi tải dữ liệu dự báo");

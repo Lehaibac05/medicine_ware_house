@@ -23,7 +23,7 @@ def train_from_csv(file_path=None):
     """
     if file_path is None:
         base_path = Path(__file__).resolve().parent
-        file_path = base_path / '..' / 'data' / 'pharmacy_training_final.csv'
+        file_path = base_path / '..' / 'data' / 'pharmacy_training_final_scaled.csv'
         file_path = file_path.resolve()  # Normalize path
     else:
         file_path = Path(file_path)
@@ -44,31 +44,17 @@ def train_from_csv(file_path=None):
         print(f"   Cột: {data.columns.tolist()}")
 
         # SCALE DATA 
-        print("Đang scale dữ liệu để phù hợp với hệ thống thực tế...")
+        print("Bỏ qua bước scale dữ liệu, sử dụng dữ liệu gốc...")
 
-        scale_factor = data['quantity_sold'].mean() / 60 
-
-        print(f"Scale factor: {scale_factor:.2f}")
-
-        # scale target
-        data['quantity_sold'] = data['quantity_sold'] / scale_factor
-
-        # scale lag features nếu có
-        for lag in (1, 7, 30):
-            col = f'sales_lag_{lag}'
-            if col in data.columns:
-                data[col] = data[col] / scale_factor
-
-        print("Sau khi scale:")
+        print("Thống kê dữ liệu:")
         print(data['quantity_sold'].describe())
-        print(f"✅ Dữ liệu sau scale: {len(data)} dòng")
+        print(f"Dữ liệu sau xử lý: {len(data)} dòng")
     except Exception as e:
         print(f"❌ Lỗi khi chuẩn hóa dữ liệu: {e}")
         import traceback
         traceback.print_exc()
         return None, None
 
-    # 🔥 ĐẢM BẢO THƯ MỤC model-ai TỒN TẠI
     model_ai_dir = Path(__file__).resolve().parent.parent.parent / 'model-ai'
     model_ai_dir.mkdir(parents=True, exist_ok=True)
     print(f"✅ Đã tạo thư mục: {model_ai_dir}")
@@ -102,9 +88,9 @@ def train_from_csv(file_path=None):
     print("Đang huấn luyện mô hình Inventory Agent (Q-Learning)...")
     try:
         agent.train(data['quantity_sold'].tolist(), episodes=500)
-        print("✅ Inventory Agent đã được huấn luyện!")
+        print("Inventory Agent đã được huấn luyện!")
     except Exception as e:
-        print(f"❌ Lỗi khi train InventoryAgent: {e}")
+        print(f"Lỗi khi train InventoryAgent: {e}")
         import traceback
         traceback.print_exc()
         return None, None
@@ -192,7 +178,6 @@ def predict_demand():
 # Tắt các cảnh báo để Terminal sạch sẽ
 warnings.filterwarnings("ignore")
 
-
 def display_metrics(predictor):
     print("\nĐÁNH GIÁ ĐỘ CHÍNH XÁC MÔ HÌNH (MODEL PERFORMANCE)")
     print("-" * 55)
@@ -213,7 +198,7 @@ def main():
     print(f"{'Đơn vị tính: ĐƠN VỊ | Phạm vi: TOÀN QUỐC (BẮC - TRUNG - NAM)':^145}")
     print("="*145)
 
-    csv_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'pharmacy_training_final.csv')
+    csv_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'pharmacy_training_final_scaled.csv')
     csv_path = os.path.abspath(csv_path)  # Normalize path
     if not os.path.exists(csv_path):
         print(f"Lỗi: Không tìm thấy file dữ liệu tại: {csv_path}")
