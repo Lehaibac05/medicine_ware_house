@@ -2,6 +2,7 @@ package com.pharmacy.warehouse.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -19,6 +20,8 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
+    @Value("${spring.mail.username:noreply@pharmacy-warehouse.com}")
+    private String fromEmail;
 
     public void sendSimpleMessage(String to, String subject, String text) {
         try {
@@ -26,7 +29,7 @@ public class EmailService {
             message.setTo(to);
             message.setSubject(subject);
             message.setText(text);
-            message.setFrom("noreply@pharmacy-warehouse.com");
+            message.setFrom(fromEmail);
             mailSender.send(message);
         } catch (Exception e) {
             log.error("Failed to send email to {}: {}", to, e.getMessage(), e);
@@ -52,7 +55,7 @@ public class EmailService {
             String htmlContent = templateEngine.process("account-creation-email", context);
             helper.setText(htmlContent, true);
 
-            helper.setFrom("noreply@pharmacy-warehouse.com");
+            helper.setFrom(fromEmail);
 
             mailSender.send(message);
             log.info("Email thông báo tạo tài khoản đã được gửi thành công đến: {}", toEmail);

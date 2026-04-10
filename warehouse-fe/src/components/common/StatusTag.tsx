@@ -12,29 +12,30 @@ const normalize = (value?: string | null) =>
 
 const palette: Record<StatusDomain, Record<string, { color: string; label?: string }>> = {
   invoice: {
-    PENDING_VERIFICATION: { color: "gold" },
-    VERIFIED: { color: "blue" },
-    REJECTED: { color: "red" },
-    PARTIALLY_PAID: { color: "volcano" },
-    PAID: { color: "green" },
+    PENDING_VERIFICATION: { color: "gold", label: "CHỜ XÁC MINH" },
+    VERIFIED: { color: "blue", label: "ĐÃ XÁC MINH" },
+    REJECTED: { color: "red", label: "ĐÃ TỪ CHỐI" },
+    PARTIALLY_PAID: { color: "volcano", label: "THANH TOÁN MỘT PHẦN" },
+    PAID: { color: "green", label: "ĐÃ THANH TOÁN" },
   },
   goodsReceipt: {
-    APPROVED: { color: "green" },
-    PENDING_APPROVAL: { color: "gold" },
-    REJECTED: { color: "red" },
+    APPROVED: { color: "green", label: "ĐÃ DUYỆT" },
+    PENDING_APPROVAL: { color: "gold", label: "CHỜ DUYỆT" },
+    REJECTED: { color: "red", label: "ĐÃ TỪ CHỐI" },
   },
   purchaseOrder: {
-    APPROVED: { color: "green" },
-    RECEIVED: { color: "green" },
-    SHIPPING: { color: "blue", label: "SHIPPED" },
-    CONFIRMED: { color: "geekblue" },
-    PENDING: { color: "gold" },
-    REJECTED: { color: "red" },
+    APPROVED: { color: "green", label: "ĐÃ DUYỆT" },
+    RECEIVED: { color: "green", label: "ĐÃ NHẬN HÀNG" },
+    SHIPPING: { color: "blue", label: "ĐANG GIAO HÀNG" },
+    CONFIRMED: { color: "geekblue", label: "ĐÃ XÁC NHẬN" },
+    PENDING: { color: "gold", label: "CHỜ XỬ LÝ" },
+    REJECTED: { color: "red", label: "ĐÃ TỪ CHỐI" },
+    CANCELLED: { color: "default", label: "ĐÃ HỦY" },
   },
   payment: {
-    COMPLETED: { color: "green" },
-    PENDING: { color: "gold" },
-    CANCELLED: { color: "red" },
+    COMPLETED: { color: "green", label: "HOÀN THÀNH" },
+    PENDING: { color: "gold", label: "CHỜ XỬ LÝ" },
+    CANCELLED: { color: "red", label: "ĐÃ HỦY" },
   },
 }
 

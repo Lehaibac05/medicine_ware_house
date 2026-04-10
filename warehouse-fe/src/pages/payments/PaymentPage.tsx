@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Button,
@@ -19,6 +19,7 @@ import {
   CheckCircleOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
+import { QRCodeSVG } from "@rc-component/qrcode";
 import dayjs from "dayjs";
 import { AxiosError } from "axios";
 import BaseFilterCard from "../../components/base/BaseFilterCard";
@@ -31,6 +32,7 @@ import {
   usePaySupplierInvoiceMutation,
   useRejectSupplierInvoiceMutation,
   useSupplierInvoicesQuery,
+  useSupplierInvoiceDetailQuery,
   useVerifySupplierInvoiceMutation,
 } from "../../hooks/useWorkflow";
 import type { GoodsReceipt, SupplierInvoice } from "../../services/workflow";
@@ -55,7 +57,6 @@ const statusOptions = [
   { value: "all", label: "Tất cả trạng thái" },
   { value: "PENDING_VERIFICATION", label: "Chờ xác minh" },
   { value: "VERIFIED", label: "Đã xác minh" },
-  { value: "PARTIALLY_PAID", label: "Thanh toán một phần" },
   { value: "PAID", label: "Đã thanh toán" },
   { value: "REJECTED", label: "Đã từ chối" },
 ];
@@ -65,14 +66,6 @@ const methodOptions = [
   { value: "CASH", label: "Tiền mặt" },
   { value: "CREDIT_CARD", label: "Thẻ tín dụng" },
   { value: "E_WALLET", label: "Ví điện tử" },
-];
-
-const paymentTermOptions = [
-  { value: "DUE_ON_RECEIPT", label: "Thanh toán ngay khi nhận hóa đơn" },
-  { value: "NET_7", label: "Thanh toán trong 7 ngày" },
-  { value: "NET_15", label: "Thanh toán trong 15 ngày" },
-  { value: "NET_30", label: "Thanh toán trong 30 ngày" },
-  { value: "CUSTOM", label: "Tùy chỉnh" },
 ];
 
 const PaymentPage = () => {
@@ -87,8 +80,6 @@ const PaymentPage = () => {
     invoiceDate: undefined as string | undefined,
     dueDate: undefined as string | undefined,
     supplierInvoiceAmount: undefined as number | undefined,
-    paymentTerms: "NET_30",
-    customPaymentTerms: "",
     notes: "",
   });
   const [draftItems, setDraftItems] = useState<InvoiceDraftItem[]>([]);
@@ -107,16 +98,20 @@ const PaymentPage = () => {
   const [payTransactionReference, setPayTransactionReference] = useState("");
   const [payNotes, setPayNotes] = useState("");
 
-  const canManageInvoices = hasAnyRole(["ROLE_ACCOUNTANT"]);
+  const canCreateInvoices = hasAnyRole(["ROLE_ACCOUNTANT", "ROLE_ADMIN"]);
+  const canVerifyInvoices = hasAnyRole(["ROLE_WAREHOUSE_MANAGER", "ROLE_ADMIN"]);
+  const canRejectInvoices = hasAnyRole(["ROLE_WAREHOUSE_MANAGER", "ROLE_ADMIN"]);
+  const canPayInvoices = hasAnyRole(["ROLE_ACCOUNTANT", "ROLE_ADMIN"]);
   const currentRoleLabel = getRoleLabel(getPrimaryRole());
 
-  const showPermissionError = () => {
-    messageApi.error(
-      `403: Chỉ kế toán mới có quyền tạo/xác minh/từ chối/thanh toán hóa đơn. Vai trò hiện tại: ${currentRoleLabel}`,
-    );
+  const showPermissionError = (action: string) => {
+    messageApi.error(`403: Bạn không có quyền ${action}. Vai trò hiện tại: ${currentRoleLabel}`);
   };
   const { data: invoices = [], isLoading } = useSupplierInvoicesQuery();
   const { data: goodsReceipts = [] } = useGoodsReceiptsQuery();
+  const {
+    data: payTargetDetail,
+  } = useSupplierInvoiceDetailQuery(payTarget?.invoiceId ?? 0);
   const createMutation = useCreateSupplierInvoiceMutation();
   const verifyMutation = useVerifySupplierInvoiceMutation();
   const rejectMutation = useRejectSupplierInvoiceMutation();
@@ -145,6 +140,21 @@ const PaymentPage = () => {
         );
       });
   }, [invoices, search, status, range]);
+
+  // Đồng bộ hóa payTarget với dữ liệu hóa đơn mới nhất (để QR đổi ngay sau khi cập nhật supplier).
+  useEffect(() => {
+    if (!payTarget) return;
+
+    const latest = invoices.find((i) => i.invoiceId === payTarget.invoiceId);
+    if (!latest) return;
+
+    const latestQr = latest.supplier?.qrBankTransferLink;
+    const currentQr = payTarget.supplier?.qrBankTransferLink;
+
+    if (latestQr !== currentQr) {
+      setPayTarget(latest);
+    }
+  }, [invoices, payTarget?.invoiceId, payTarget?.supplier?.qrBankTransferLink]);
 
   const paymentStats = useMemo(() => {
     const totalInvoices = invoices.length;
@@ -262,7 +272,7 @@ const PaymentPage = () => {
           key: String(medicineId),
           medicineId,
           medicineName:
-            item.medicine?.medicineName || `Medicine #${medicineId}`,
+            item.medicine?.medicineName || `Thuốc #${medicineId}`,
           receivedQuantity: receivedQty,
           poUnitPrice,
           invoiceQuantity: receivedQty,
@@ -371,16 +381,6 @@ const PaymentPage = () => {
     }
 
     try {
-      const selectedPaymentTerms =
-        createPayload.paymentTerms === "CUSTOM"
-          ? (
-              createPayload.customPaymentTerms ||
-              "Điều khoản thanh toán tùy chỉnh"
-            ).trim()
-          : paymentTermOptions.find(
-              (item) => item.value === createPayload.paymentTerms,
-            )?.label || createPayload.paymentTerms;
-
       const mergedNotes = [
         createPayload.notes?.trim(),
         `Số tiền phải thanh toán theo nhà cung cấp: ${supplierInvoiceAmount.toLocaleString(
@@ -390,7 +390,7 @@ const PaymentPage = () => {
             maximumFractionDigits: 2,
           },
         )}`,
-        `Điều khoản thanh toán: ${selectedPaymentTerms}`,
+        "Điều khoản thanh toán: Thanh toán ngay khi nhận hóa đơn",
       ]
         .filter((value) => !!value)
         .join(" | ");
@@ -409,8 +409,6 @@ const PaymentPage = () => {
         invoiceDate: undefined,
         dueDate: undefined,
         supplierInvoiceAmount: undefined,
-        paymentTerms: "NET_30",
-        customPaymentTerms: "",
         notes: "",
       });
       setDraftItems([]);
@@ -433,13 +431,13 @@ const PaymentPage = () => {
       });
       setVerifyTarget(null);
       setVerifyNotes("");
-      messageApi.success("Invoice verified");
+      messageApi.success("Xác minh hóa đơn thành công");
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 403) {
         showPermissionError();
         return;
       }
-      messageApi.error("Failed to verify invoice");
+      messageApi.error("Không thể xác minh hóa đơn");
     }
   };
 
@@ -491,14 +489,32 @@ const PaymentPage = () => {
     }
   };
 
+  const qrValue =
+    payTargetDetail?.supplier?.qrBankTransferLink?.trim() ||
+    payTarget?.supplier?.qrBankTransferLink?.trim() ||
+    "";
+  const isLikelyImageLink =
+    qrValue.startsWith("data:image/") ||
+    (() => {
+      try {
+        const url = new URL(qrValue);
+        return (
+          /^https?:\/\//i.test(url.toString()) &&
+          /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(url.pathname)
+        );
+      } catch {
+        return false;
+      }
+    })();
+
   return (
     <MainLayout>
       {contextHolder}
-      {!canManageInvoices && (
+      {!canCreateInvoices && !canVerifyInvoices && !canPayInvoices && (
         <Alert
           type="warning"
           showIcon
-          message={`Bạn chỉ có thể xem hóa đơn. Vai trò ${currentRoleLabel} không có quyền tạo/xác minh/từ chối/thanh toán.`}
+          message={`Bạn chỉ có thể xem hóa đơn. Vai trò ${currentRoleLabel} không có quyền thao tác.`}
         />
       )}
 
@@ -511,13 +527,13 @@ const PaymentPage = () => {
               type="primary"
               className="h-[40px]"
               onClick={() => {
-                if (!canManageInvoices) {
-                  showPermissionError();
+                if (!canCreateInvoices) {
+                  showPermissionError("tạo hóa đơn");
                   return;
                 }
                 setCreateOpen(true);
               }}
-              disabled={!canManageInvoices}
+              disabled={!canCreateInvoices}
             >
               Tạo hóa đơn
             </Button>
@@ -564,7 +580,7 @@ const PaymentPage = () => {
           <RangePicker
             className="w-full"
             format="DD/MM/YYYY"
-            placeholder={["Start date", "End date"]}
+            placeholder={["Từ ngày", "Đến ngày"]}
             value={range}
             onChange={(values) =>
               setRange(values as [dayjs.Dayjs, dayjs.Dayjs] | null)
@@ -579,28 +595,31 @@ const PaymentPage = () => {
         search={search}
         onSearchChange={setSearch}
         onVerify={(invoice) => {
-          if (!canManageInvoices) {
-            showPermissionError();
+          if (!canVerifyInvoices) {
+            showPermissionError("xác minh hóa đơn");
             return;
           }
           setVerifyTarget(invoice);
         }}
         onReject={(invoice) => {
-          if (!canManageInvoices) {
-            showPermissionError();
+          if (!canRejectInvoices) {
+            showPermissionError("từ chối hóa đơn");
             return;
           }
           setRejectTarget(invoice);
         }}
         onPay={(invoice) => {
-          if (!canManageInvoices) {
-            showPermissionError();
+          if (!canPayInvoices) {
+            showPermissionError("thanh toán hóa đơn");
             return;
           }
           setPayTarget(invoice);
           setPayAmount(Number(invoice.remainingAmount || 0));
           setPayTransactionReference("");
         }}
+        canVerifyAction={canVerifyInvoices}
+        canRejectAction={canRejectInvoices}
+        canPayAction={canPayInvoices}
       />
       <Modal
         title="Tạo hóa đơn nhà cung cấp"
@@ -612,8 +631,6 @@ const PaymentPage = () => {
             invoiceDate: undefined,
             dueDate: undefined,
             supplierInvoiceAmount: undefined,
-            paymentTerms: "NET_30",
-            customPaymentTerms: "",
             notes: "",
           });
           setDraftItems([]);
@@ -699,34 +716,6 @@ const PaymentPage = () => {
               }))
             }
           />
-
-          <Select
-            className="w-full"
-            placeholder="Điều khoản thanh toán"
-            value={createPayload.paymentTerms}
-            options={paymentTermOptions}
-            onChange={(value) =>
-              setCreatePayload((prev) => ({
-                ...prev,
-                paymentTerms: value,
-                customPaymentTerms:
-                  value === "CUSTOM" ? prev.customPaymentTerms : "",
-              }))
-            }
-          />
-
-          {createPayload.paymentTerms === "CUSTOM" && (
-            <Input
-              placeholder="Nhập điều khoản thanh toán tùy chỉnh"
-              value={createPayload.customPaymentTerms}
-              onChange={(e) =>
-                setCreatePayload((prev) => ({
-                  ...prev,
-                  customPaymentTerms: e.target.value,
-                }))
-              }
-            />
-          )}
 
           {invalidDateRange && (
             <Alert
@@ -838,7 +827,7 @@ const PaymentPage = () => {
                 dataIndex: "poUnitPrice",
                 width: 140,
                 render: (value: number) =>
-                  Number(value || 0).toLocaleString("en-US"),
+                  Number(value || 0).toLocaleString("vi-VN"),
               },
               {
                 title: "Số lượng theo hóa đơn",
@@ -963,6 +952,40 @@ const PaymentPage = () => {
         confirmLoading={payMutation.isPending}
       >
         <div className="grid gap-3">
+          {payMethod === "BANK_TRANSFER" && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <Text className="block text-xs text-slate-500">
+                Mã QR chuyển khoản
+              </Text>
+
+              {!qrValue ? (
+                <Alert
+                  type="warning"
+                  showIcon
+                  className="mt-2"
+                  message="Chưa cấu hình mã QR cho nhà cung cấp này"
+                />
+              ) : (
+                <div className="mt-3 flex flex-col items-start gap-2">
+                  {isLikelyImageLink ? (
+                    <img
+                      key={`qr-img-${qrValue}`}
+                      src={qrValue}
+                      alt="QR"
+                      className="h-[180px] w-[180px] object-contain rounded border border-slate-200 bg-white"
+                    />
+                  ) : (
+                    <QRCodeSVG key={`qr-${qrValue}`} value={qrValue} size={180} level="M" />
+                  )}
+                  <Text className="text-xs text-slate-500">
+                    {isLikelyImageLink
+                      ? "Hiển thị ảnh QR từ link"
+                      : "Sinh QR từ chuỗi nội dung"}
+                  </Text>
+                </div>
+              )}
+            </div>
+          )}
           <InputNumber
             className="w-full"
             min={0.01}

@@ -2,9 +2,7 @@ import {
   Alert,
   Button,
   Card,
-  Input,
   InputNumber,
-  Select,
   Spin,
   Switch,
   Tag,
@@ -15,22 +13,17 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   BellOutlined,
   DatabaseOutlined,
-  LockOutlined,
   ReloadOutlined,
   RobotOutlined,
   SaveOutlined,
-  SafetyCertificateOutlined,
-  SettingOutlined,
 } from "@ant-design/icons";
 import MainLayout from "../../layouts/MainLayout";
 import {
   getSettings,
-  updateGeneralSettings,
   updateInventorySettings,
   updateNotificationSettings,
-  updateSecuritySettings,
-  updateSystemSettings,
 } from "../../services/settings";
+import { ApiError } from "../../services/api";
 
 const { Text, Title } = Typography;
 
@@ -115,59 +108,49 @@ const SettingsPage = () => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const [pharmacyName, setPharmacyName] = useState("Main Street Pharmacy");
-  const [contactEmail, setContactEmail] = useState("admin@pharmacy.com");
-  const [address, setAddress] = useState(
-    "123 Health Ave, Medical District, City State",
-  );
-  const [phoneNumber, setPhoneNumber] = useState("+1 (555) 012-3456");
-  const [lowStockThreshold, setLowStockThreshold] = useState(50);
   const [expiryAlertDays, setExpiryAlertDays] = useState(30);
   const [enableAIForecast, setEnableAIForecast] = useState(true);
   const [autoOrderEnabled, setAutoOrderEnabled] = useState(false);
-  const [reorderPoint, setReorderPoint] = useState(20);
-  const [passwordPolicy, setPasswordPolicy] = useState("medium");
-  const [sessionTimeout, setSessionTimeout] = useState(15);
-  const [twoFactorAuth, setTwoFactorAuth] = useState(false);
-  const [loginAttempts, setLoginAttempts] = useState(5);
+  const [reorderPoint, setReorderPoint] = useState(10);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [lowStockAlert, setLowStockAlert] = useState(true);
   const [expiryAlert, setExpiryAlert] = useState(true);
   const [orderAlert, setOrderAlert] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [language, setLanguage] = useState("en");
-  const [timezone, setTimezone] = useState("UTC+7");
-  const [dateFormat, setDateFormat] = useState("DD/MM/YYYY");
+
+  const resolveSettingsErrorMessage = (error: unknown): string => {
+    if (error instanceof ApiError) {
+      if (error.status === 401) {
+        return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+      }
+      if (error.status === 403) {
+        return "Bạn không có quyền thao tác phần cài đặt.";
+      }
+    }
+    return "Failed to save settings";
+  };
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
         setLoading(true);
         const settings = await getSettings();
-        setPharmacyName(settings.general.pharmacyName);
-        setContactEmail(settings.general.contactEmail);
-        setAddress(settings.general.address);
-        setPhoneNumber(settings.general.phoneNumber);
-        setLowStockThreshold(settings.inventory.lowStockThreshold);
+        const resolvedDefaultReorder =
+          settings.inventory.reorderPoint ?? settings.inventory.lowStockThreshold;
         setExpiryAlertDays(settings.inventory.expiryAlertDays);
         setEnableAIForecast(settings.inventory.enableAIForecast);
         setAutoOrderEnabled(settings.inventory.autoOrderEnabled);
-        setReorderPoint(settings.inventory.reorderPoint);
-        setPasswordPolicy(settings.security.passwordPolicy);
-        setSessionTimeout(settings.security.sessionTimeout);
-        setTwoFactorAuth(settings.security.twoFactorAuth);
-        setLoginAttempts(settings.security.loginAttempts);
+        setReorderPoint(resolvedDefaultReorder);
         setEmailNotifications(settings.notifications.emailNotifications);
         setLowStockAlert(settings.notifications.lowStockAlert);
         setExpiryAlert(settings.notifications.expiryAlert);
         setOrderAlert(settings.notifications.orderAlert);
-        setDarkMode(settings.system.darkMode);
-        setLanguage(settings.system.language);
-        setTimezone(settings.system.timezone);
-        setDateFormat(settings.system.dateFormat);
       } catch (error) {
         console.error("Failed to load settings:", error);
-        messageApi.warning("Using default settings");
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          messageApi.error(resolveSettingsErrorMessage(error));
+        } else {
+          messageApi.warning("Using default settings");
+        }
       } finally {
         setLoading(false);
       }
@@ -184,8 +167,8 @@ const SettingsPage = () => {
       setSaving(true);
       await action();
       messageApi.success(successText);
-    } catch {
-      messageApi.error("Failed to save settings");
+    } catch (error) {
+      messageApi.error(resolveSettingsErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -194,8 +177,8 @@ const SettingsPage = () => {
   const automationScore = [
     enableAIForecast,
     autoOrderEnabled,
-    twoFactorAuth,
     emailNotifications,
+    lowStockAlert || expiryAlert || orderAlert,
   ].filter(Boolean).length;
 
   return (
@@ -222,8 +205,8 @@ const SettingsPage = () => {
                   Cài đặt hệ thống quản lí kho thuốc thông minh
                 </Title>
                 <Text className="max-w-3xl text-base text-slate-600">
-                  Giao diện điều phối dành cho kho dược có AI dự báo nhu cầu,
-                  cảnh báo cận hạn và kiểm soát nhập hàng.
+                  Chỉ giữ lại nhóm cài đặt đã triển khai đầy đủ cả frontend và
+                  backend để vận hành ổn định trong đợt release hiện tại.
                 </Text>
                 <div className="mt-6 grid gap-4 md:grid-cols-3">
                   <Card className="!rounded-[24px] !border-cyan-100 !bg-white/90 shadow-[0_12px_30px_rgba(14,165,233,0.08)]">
@@ -251,7 +234,7 @@ const SettingsPage = () => {
                     </Text>
                   </Card>
                   <Card className="!rounded-[24px] !border-amber-100 !bg-white/90 shadow-[0_12px_30px_rgba(245,158,11,0.08)]">
-                    <SafetyCertificateOutlined className="text-lg text-amber-600" />
+                    <BellOutlined className="text-lg text-amber-600" />
                     <Text className="mt-3 block text-xs uppercase tracking-[0.24em] text-slate-400">
                       Automation
                     </Text>
@@ -270,9 +253,9 @@ const SettingsPage = () => {
                   Snapshot
                 </Text>
                 <Title level={4} className="!mb-0 !mt-4 !text-slate-900">
-                  {pharmacyName}
+                  Cấu hình kho vận hành
                 </Title>
-                <Text className="text-sm text-slate-500">{contactEmail}</Text>
+                <Text className="text-sm text-slate-500">Đồng bộ theo cấu hình đang áp dụng cho cảnh báo và tồn kho</Text>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <Text className="block text-xs uppercase tracking-[0.2em] text-slate-400">
@@ -284,10 +267,10 @@ const SettingsPage = () => {
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <Text className="block text-xs uppercase tracking-[0.2em] text-slate-400">
-                      Session Timeout
+                      Email Alerts
                     </Text>
                     <Text className="text-lg font-semibold text-slate-900">
-                      {sessionTimeout} phút
+                      {emailNotifications ? "Bật" : "Tắt"}
                     </Text>
                   </div>
                 </div>
@@ -308,92 +291,12 @@ const SettingsPage = () => {
           <div className="grid gap-6 xl:grid-cols-2">
             <Card className={panelClass}>
               <SectionTitle
-                icon={<SettingOutlined />}
-                title="Thông tin cơ sở dược"
-                subtitle="Định danh kho thuốc và đầu mối vận hành."
-                color="bg-emerald-100 text-emerald-700"
-              />
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <Field label="Tên nhà thuốc / kho">
-                  <Input
-                    value={pharmacyName}
-                    onChange={(e) => setPharmacyName(e.target.value)}
-                    size="large"
-                  />
-                </Field>
-                <Field label="Email điều hành">
-                  <Input
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    type="email"
-                    size="large"
-                  />
-                </Field>
-                <Field
-                  label="Địa chỉ kho"
-                  hint="Dùng cho điều phối nhập hàng và báo cáo nội bộ."
-                >
-                  <Input
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    size="large"
-                  />
-                </Field>
-                <Field label="Số điện thoại trực vận hành">
-                  <Input
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    size="large"
-                  />
-                </Field>
-              </div>
-              <div className="mt-6 flex justify-end">
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<SaveOutlined />}
-                  loading={saving}
-                  onClick={() =>
-                    withSaving(
-                      () =>
-                        updateGeneralSettings({
-                          pharmacyName,
-                          contactEmail,
-                          address,
-                          phoneNumber,
-                        }),
-                      "General settings saved successfully",
-                    )
-                  }
-                  className="!rounded-xl !bg-emerald-600 hover:!bg-emerald-500"
-                >
-                  Lưu thông tin cơ sở
-                </Button>
-              </div>
-            </Card>
-
-            <Card className={panelClass}>
-              <SectionTitle
                 icon={<DatabaseOutlined />}
                 title="Chính sách tồn kho và AI"
                 subtitle="Ngưỡng cảnh báo, tái nhập và dự báo thông minh."
                 color="bg-cyan-100 text-cyan-700"
               />
               <div className="mt-6 grid gap-4">
-                <Field
-                  label="Ngưỡng tồn kho thấp"
-                  hint="Cảnh báo khi thuốc xuống dưới mức này."
-                >
-                  <InputNumber
-                    value={lowStockThreshold}
-                    onChange={(v) => setLowStockThreshold(v || 50)}
-                    min={0}
-                    max={1000}
-                    className="w-full"
-                    size="large"
-                    addonAfter="đơn vị"
-                  />
-                </Field>
                 <div className="grid gap-4 md:grid-cols-2">
                   <Field label="Cảnh báo hết hạn">
                     <InputNumber
@@ -406,12 +309,15 @@ const SettingsPage = () => {
                       addonAfter="ngày"
                     />
                   </Field>
-                  <Field label="Điểm tái nhập">
+                  <Field
+                    label="Ngưỡng tồn kho thấp mặc định"
+                    hint="Áp dụng toàn hệ thống cho các thuốc chưa có reorder level riêng."
+                  >
                     <InputNumber
                       value={reorderPoint}
-                      onChange={(v) => setReorderPoint(v || 20)}
+                      onChange={(v) => setReorderPoint(typeof v === "number" ? Math.max(0, Math.floor(v)) : 0)}
                       min={0}
-                      max={1000}
+                      step={1}
                       className="w-full"
                       size="large"
                       addonAfter="đơn vị"
@@ -443,7 +349,7 @@ const SettingsPage = () => {
                     withSaving(
                       () =>
                         updateInventorySettings({
-                          lowStockThreshold,
+                          lowStockThreshold: reorderPoint,
                           expiryAlertDays,
                           enableAIForecast,
                           autoOrderEnabled,
@@ -461,107 +367,15 @@ const SettingsPage = () => {
 
             <Card className={panelClass}>
               <SectionTitle
-                icon={<LockOutlined />}
-                title="Bảo mật và truy cập"
-                subtitle="Kiểm soát đăng nhập cho tài khoản nội bộ."
-                color="bg-amber-100 text-amber-700"
-              />
-              <div className="mt-6 grid gap-4">
-                <Field label="Chính sách mật khẩu">
-                  <Select
-                    value={passwordPolicy}
-                    onChange={setPasswordPolicy}
-                    size="large"
-                    options={[
-                      { value: "low", label: "Low (6+ characters)" },
-                      {
-                        value: "medium",
-                        label: "Medium (8+ chars, Alpha-numeric)",
-                      },
-                      {
-                        value: "high",
-                        label: "High (10+ chars, Special symbols)",
-                      },
-                      {
-                        value: "strict",
-                        label: "Strict (12+ chars, All types)",
-                      },
-                    ]}
-                  />
-                </Field>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Thời gian hết phiên">
-                    <Select
-                      value={sessionTimeout}
-                      onChange={setSessionTimeout}
-                      size="large"
-                      options={[
-                        { value: 5, label: "5 phút" },
-                        { value: 15, label: "15 phút" },
-                        { value: 30, label: "30 phút" },
-                        { value: 60, label: "1 giờ" },
-                        { value: 120, label: "2 giờ" },
-                      ]}
-                    />
-                  </Field>
-                  <Field
-                    label="Số lần đăng nhập sai"
-                    hint="Khoá tạm khi vượt ngưỡng."
-                  >
-                    <InputNumber
-                      value={loginAttempts}
-                      onChange={(v) => setLoginAttempts(v || 5)}
-                      min={3}
-                      max={10}
-                      className="w-full"
-                      size="large"
-                      addonAfter="lần"
-                    />
-                  </Field>
-                </div>
-                <ToggleCard
-                  title="Xác thực hai lớp (2FA)"
-                  description="Bảo vệ tài khoản quản trị và phê duyệt nhập kho."
-                  checked={twoFactorAuth}
-                  onChange={setTwoFactorAuth}
-                />
-              </div>
-              <div className="mt-6 flex justify-end">
-                <Button
-                  size="large"
-                  icon={<SaveOutlined />}
-                  loading={saving}
-                  onClick={() =>
-                    withSaving(
-                      () =>
-                        updateSecuritySettings({
-                          passwordPolicy,
-                          sessionTimeout,
-                          twoFactorAuth,
-                          loginAttempts,
-                        }),
-                      "Security settings saved successfully",
-                    )
-                  }
-                  danger
-                  className="!rounded-xl"
-                >
-                  Lưu chính sách bảo mật
-                </Button>
-              </div>
-            </Card>
-
-            <Card className={panelClass}>
-              <SectionTitle
                 icon={<BellOutlined />}
-                title="Cảnh báo và tuỳ chọn hệ thống"
-                subtitle="Kênh thông báo, múi giờ và định dạng dữ liệu."
-                color="bg-slate-200 text-slate-700"
+                title="Cảnh báo hệ thống"
+                subtitle="Bật/tắt nhóm thông báo email đã tích hợp backend."
+                color="bg-amber-100 text-amber-700"
               />
               <div className="mt-6 grid gap-4">
                 <ToggleCard
                   title="Thông báo email"
-                  description="Gửi cảnh báo tới email điều hành."
+                  description="Gửi cảnh báo theo nhóm vai trò đã cấu hình trên hệ thống."
                   checked={emailNotifications}
                   onChange={setEmailNotifications}
                 />
@@ -588,58 +402,11 @@ const SettingsPage = () => {
                     disabled={!emailNotifications}
                   />
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Ngôn ngữ giao diện">
-                    <Select
-                      value={language}
-                      onChange={setLanguage}
-                      size="large"
-                      options={[
-                        { value: "en", label: "English" },
-                        { value: "vi", label: "Tiếng Việt" },
-                        { value: "es", label: "Español" },
-                        { value: "fr", label: "Français" },
-                      ]}
-                    />
-                  </Field>
-                  <Field label="Múi giờ vận hành">
-                    <Select
-                      value={timezone}
-                      onChange={setTimezone}
-                      size="large"
-                      options={[
-                        { value: "UTC+7", label: "UTC+7 (Bangkok, Hanoi)" },
-                        { value: "UTC+8", label: "UTC+8 (Singapore, Manila)" },
-                        { value: "UTC+9", label: "UTC+9 (Tokyo, Seoul)" },
-                        { value: "UTC-5", label: "UTC-5 (New York)" },
-                        { value: "UTC+0", label: "UTC+0 (London)" },
-                      ]}
-                    />
-                  </Field>
-                </div>
-                <Field label="Định dạng ngày">
-                  <Select
-                    value={dateFormat}
-                    onChange={setDateFormat}
-                    size="large"
-                    options={[
-                      { value: "DD/MM/YYYY", label: "DD/MM/YYYY (31/12/2026)" },
-                      { value: "MM/DD/YYYY", label: "MM/DD/YYYY (12/31/2026)" },
-                      { value: "YYYY-MM-DD", label: "YYYY-MM-DD (2026-12-31)" },
-                    ]}
-                  />
-                </Field>
-                <ToggleCard
-                  title="Chế độ tối"
-                  description="Tùy chọn giao diện dự phòng cho các phiên bản sau."
-                  checked={darkMode}
-                  onChange={setDarkMode}
-                />
                 <Alert
                   type="info"
                   showIcon
                   className="!rounded-2xl"
-                  message={`Thông báo sẽ gửi tới ${contactEmail}. Dark mode hiện mới là tuỳ chọn dự phòng.`}
+                  message="Các mục ngôn ngữ, giao diện tối và bảo mật nâng cao đã tạm ẩn để tập trung phần đã hoàn thiện end-to-end."
                 />
               </div>
               <div className="mt-6 flex flex-wrap justify-end gap-3">
@@ -663,27 +430,6 @@ const SettingsPage = () => {
                   className="!rounded-xl !bg-emerald-600 hover:!bg-emerald-500"
                 >
                   Lưu cảnh báo
-                </Button>
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<SaveOutlined />}
-                  loading={saving}
-                  onClick={() =>
-                    withSaving(
-                      () =>
-                        updateSystemSettings({
-                          darkMode,
-                          language,
-                          timezone,
-                          dateFormat,
-                        }),
-                      "System settings saved successfully",
-                    )
-                  }
-                  className="!rounded-xl !bg-slate-900 hover:!bg-slate-800"
-                >
-                  Lưu tuỳ chọn
                 </Button>
                 <Button
                   size="large"

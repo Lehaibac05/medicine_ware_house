@@ -7,12 +7,14 @@ import {
   deleteSupplier,
   getSuppliers,
   updateSupplier,
+  updateSupplierQr,
 } from "../../../services/suppliers";
 import type { Supplier } from "../../../services/types";
 import type { SupplierFilters } from "../SupplierPage";
 import SupplierFormModal, {
   type SupplierFormValues,
 } from "./SupplierFormModal";
+import { hasAnyRole } from "../../../utils/auth";
 
 const { Text } = Typography;
 
@@ -55,6 +57,9 @@ function SupplierTable({ filters, search }: SupplierTableProps) {
   const [submitting, setSubmitting] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
+
+  const canEditDetails = hasAnyRole(["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"]);
+  const canEditQr = canEditDetails || hasAnyRole(["ROLE_ACCOUNTANT"]);
 
   const loadSuppliers = useCallback(async () => {
     setLoading(true);
@@ -129,9 +134,20 @@ function SupplierTable({ filters, search }: SupplierTableProps) {
     setSubmitting(true);
     try {
       if (editingSupplier) {
-        await updateSupplier(editingSupplier.supplierId, values);
-        messageApi.success("Cập nhật nhà cung cấp thành công");
+        if (canEditDetails) {
+          await updateSupplier(editingSupplier.supplierId, values);
+          messageApi.success("Cập nhật nhà cung cấp thành công");
+        } else {
+          await updateSupplierQr(editingSupplier.supplierId, {
+            qrBankTransferLink: values.qrBankTransferLink || "",
+          });
+          messageApi.success("Cập nhật mã QR thành công");
+        }
       } else {
+        if (!canEditDetails) {
+          messageApi.error("Bạn không có quyền tạo nhà cung cấp");
+          return;
+        }
         await createSupplier(values);
         messageApi.success("Thêm nhà cung cấp thành công");
       }
@@ -220,15 +236,17 @@ function SupplierTable({ filters, search }: SupplierTableProps) {
           >
             Sửa
           </Button>
-          <Popconfirm
-            title="Ngừng nhà cung cấp"
-            description="Thao tác này sẽ chuyển trạng thái sang ngừng hoạt động."
-            onConfirm={() => handleDelete(record.supplierId)}
-          >
-            <Button size="small" danger>
-              Ngừng
-            </Button>
-          </Popconfirm>
+          {canEditDetails ? (
+            <Popconfirm
+              title="Ngừng nhà cung cấp"
+              description="Thao tác này sẽ chuyển trạng thái sang ngừng hoạt động."
+              onConfirm={() => handleDelete(record.supplierId)}
+            >
+              <Button size="small" danger>
+                Ngừng
+              </Button>
+            </Popconfirm>
+          ) : null}
         </Space>
       ),
     },
@@ -245,9 +263,11 @@ function SupplierTable({ filters, search }: SupplierTableProps) {
               Danh sách nhà cung cấp
             </Text>
 
-            <Button type="primary" onClick={openCreateModal}>
-              Thêm nhà cung cấp
-            </Button>
+            {canEditDetails ? (
+              <Button type="primary" onClick={openCreateModal}>
+                Thêm nhà cung cấp
+              </Button>
+            ) : null}
           </div>
         )}
         columns={columns}
@@ -280,12 +300,15 @@ function SupplierTable({ filters, search }: SupplierTableProps) {
               email: editingSupplier.email || "",
               address: editingSupplier.address || "",
               taxCode: editingSupplier.taxCode || "",
+              qrBankTransferLink: editingSupplier.qrBankTransferLink || "",
               status: editingSupplier.status || "ACTIVE",
             }
             : undefined
         }
         onCancel={closeModal}
         onSubmit={handleSubmit}
+        canEditDetails={canEditDetails}
+        canEditQr={canEditQr}
       />
     </>
   );

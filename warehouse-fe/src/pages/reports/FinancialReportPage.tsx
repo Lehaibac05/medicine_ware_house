@@ -23,6 +23,12 @@ const statusTag = (status: FinancialStatus) => {
   return <Tag color="red">CHƯA THANH TOÁN</Tag>;
 };
 
+const financialStatusToVietnamese = (status: FinancialStatus): string => {
+  if (status === "PAID") return "Đã thanh toán";
+  if (status === "PARTIAL") return "Thanh toán một phần";
+  return "Chưa thanh toán";
+};
+
 const money = (value: number) =>
   Number(value || 0).toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -98,16 +104,16 @@ export default function FinancialReportPage() {
         status,
       });
       const headers = [
-        "invoiceId",
-        "invoiceCode",
-        "supplierId",
-        "supplierName",
-        "invoiceDate",
-        "dueDate",
-        "totalAmount",
-        "paidAmount",
-        "remainingAmount",
-        "status",
+        "Mã hóa đơn",
+        "Số hóa đơn",
+        "Mã nhà cung cấp",
+        "Nhà cung cấp",
+        "Ngày hóa đơn",
+        "Hạn thanh toán",
+        "Tổng tiền",
+        "Đã thanh toán",
+        "Còn lại",
+        "Trạng thái",
       ];
       const rows = exportData.items.map((item) => [
         item.invoiceId,
@@ -119,7 +125,7 @@ export default function FinancialReportPage() {
         item.totalAmount,
         item.paidAmount,
         item.remainingAmount,
-        item.status,
+        financialStatusToVietnamese(item.status),
       ]);
       const csv = [
         headers.join(","),
@@ -129,11 +135,11 @@ export default function FinancialReportPage() {
             .join(","),
         ),
       ].join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `financial-report-${dayjs().format("YYYYMMDD-HHmmss")}.csv`;
+      link.download = `bao-cao-tai-chinh-${dayjs().format("YYYYMMDD-HHmmss")}.csv`;
       link.click();
       URL.revokeObjectURL(url);
       messageApi.success("File CSV tài chính đã sẵn sàng");
@@ -232,7 +238,6 @@ export default function FinancialReportPage() {
             value={status}
             options={[
               { value: "PAID", label: "Đã thanh toán" },
-              { value: "PARTIAL", label: "Thanh toán một phần" },
               { value: "UNPAID", label: "Chưa thanh toán" },
             ]}
             onChange={(value) => {

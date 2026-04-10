@@ -5,8 +5,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -48,31 +50,32 @@ public class SupplierInvoiceService {
     private final MedicineRepository medicineRepository;
     private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     @Transactional
     public SupplierInvoiceResponse createInvoice(CreateSupplierInvoiceRequest request, Long userId) {
         if (request.getItems() == null || request.getItems().isEmpty()) {
-            throw new IllegalArgumentException("Invoice must contain at least one item");
+            throw new IllegalArgumentException("Hóa đơn phải có ít nhất một mặt hàng");
         }
 
         GoodsReceipt goodsReceipt = goodsReceiptRepository.findById(request.getGoodsReceiptId())
-                .orElseThrow(() -> new RuntimeException("Goods receipt not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phiếu nhập"));
 
         if (goodsReceipt.getStatus() != ReceiptStatus.APPROVED) {
-            throw new IllegalStateException("Invoice can only be created for APPROVED goods receipt");
+            throw new IllegalStateException("Chỉ được tạo hóa đơn từ phiếu nhập đã duyệt");
         }
 
         if (goodsReceipt.getPurchaseOrder() == null || goodsReceipt.getPurchaseOrder().getSupplier() == null) {
-            throw new RuntimeException("Goods receipt must be linked to purchase order and supplier");
+            throw new RuntimeException("Phiếu nhập phải liên kết với đơn mua hàng và nhà cung cấp");
         }
 
         supplierInvoiceRepository.findByGoodsReceipt_ReceiptId(goodsReceipt.getReceiptId())
                 .ifPresent(existing -> {
-                    throw new RuntimeException("Invoice already exists for this goods receipt");
+                    throw new RuntimeException("Phiếu nhập này đã có hóa đơn nhà cung cấp");
                 });
 
         User createdBy = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         Supplier supplier = goodsReceipt.getPurchaseOrder().getSupplier();
 
@@ -90,14 +93,14 @@ public class SupplierInvoiceService {
 
         for (CreateSupplierInvoiceRequest.CreateSupplierInvoiceItemRequest itemRequest : request.getItems()) {
             if (itemRequest.getQuantity() == null || itemRequest.getQuantity() <= 0) {
-                throw new IllegalArgumentException("Item quantity must be greater than 0");
+                throw new IllegalArgumentException("Số lượng mặt hàng phải lớn hơn 0");
             }
             if (itemRequest.getUnitPrice() == null || itemRequest.getUnitPrice().compareTo(BigDecimal.ZERO) < 0) {
-                throw new IllegalArgumentException("Item unit price is invalid");
+                throw new IllegalArgumentException("Đơn giá mặt hàng không hợp lệ");
             }
 
             Medicine medicine = medicineRepository.findById(itemRequest.getMedicineId())
-                    .orElseThrow(() -> new RuntimeException("Medicine not found with id: " + itemRequest.getMedicineId()));
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy thuốc với mã: " + itemRequest.getMedicineId()));
 
             SupplierInvoiceItem item = new SupplierInvoiceItem();
             item.setSupplierInvoice(invoice);
@@ -123,8 +126,45 @@ public class SupplierInvoiceService {
 
         SupplierInvoice saved = supplierInvoiceRepository.save(invoice);
         log.info("Created supplier invoice {} for goods receipt {}", saved.getInvoiceCode(), goodsReceipt.getReceiptCode());
+        notifyWarehouseManagersForVerification(saved, createdBy);
 
         return convertToResponse(saved);
+    }
+
+    private void notifyWarehouseManagersForVerification(SupplierInvoice invoice, User createdBy) {
+        if (invoice == null || invoice.getSupplier() == null || invoice.getGoodsReceipt() == null) {
+            return;
+        }
+
+        Set<String> managerRoles = new LinkedHashSet<>();
+        managerRoles.add("WAREHOUSE_MANAGER");
+        managerRoles.add("ROLE_WAREHOUSE_MANAGER");
+
+        List<User> managers = userRepository.findByStatusIgnoreCaseAndRole_RoleNameIn("ACTIVE", managerRoles);
+        if (managers.isEmpty()) {
+            return;
+        }
+
+        String subject = "[Phê duyệt hóa đơn] Cần xác minh hóa đơn nhà cung cấp " + invoice.getInvoiceCode();
+        String creatorName = createdBy != null && createdBy.getFullName() != null && !createdBy.getFullName().isBlank()
+                ? createdBy.getFullName()
+                : (createdBy != null ? createdBy.getUsername() : "-");
+
+        String body = "Hệ thống vừa tạo hóa đơn nhà cung cấp và đang chờ Quản lý kho xác minh.\n"
+                + "- Mã hóa đơn: " + safe(invoice.getInvoiceCode()) + "\n"
+                + "- Nhà cung cấp: " + safe(invoice.getSupplier().getSupplierName()) + "\n"
+                + "- Phiếu nhập: " + safe(invoice.getGoodsReceipt().getReceiptCode()) + "\n"
+                + "- Tổng tiền: " + (invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO) + "\n"
+                + "- Người tạo: " + safe(creatorName) + "\n"
+                + "\nVui lòng vào màn Hóa đơn nhà cung cấp để xác minh.";
+
+        for (User manager : managers) {
+            String email = manager.getEmail();
+            if (email == null || email.isBlank()) {
+                continue;
+            }
+            emailService.sendSimpleMessage(email.trim(), subject, body);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -138,7 +178,7 @@ public class SupplierInvoiceService {
     public SupplierInvoiceResponse getInvoiceById(Long invoiceId) {
         SupplierInvoice invoice = supplierInvoiceRepository.findByIdWithItems(invoiceId);
         if (invoice == null) {
-            throw new RuntimeException("Supplier invoice not found with id: " + invoiceId);
+            throw new RuntimeException("Không tìm thấy hóa đơn nhà cung cấp với mã: " + invoiceId);
         }
         return convertToResponse(invoice);
     }
@@ -147,14 +187,14 @@ public class SupplierInvoiceService {
     public SupplierInvoiceResponse verifyInvoice(Long invoiceId, VerifyInvoiceRequest request, Long userId) {
         SupplierInvoice invoice = supplierInvoiceRepository.findByIdWithItems(invoiceId);
         if (invoice == null) {
-            throw new RuntimeException("Supplier invoice not found");
+            throw new RuntimeException("Không tìm thấy hóa đơn nhà cung cấp");
         }
         if (invoice.getStatus() != InvoiceStatus.PENDING_VERIFICATION) {
-            throw new IllegalStateException("Only PENDING_VERIFICATION invoice can be verified");
+            throw new IllegalStateException("Chỉ hóa đơn chờ xác minh mới được xác minh");
         }
 
         User verifiedBy = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         MismatchResult mismatch = validateMismatch(invoice);
         invoice.setHasMismatch(mismatch.hasMismatch);
@@ -163,7 +203,7 @@ public class SupplierInvoiceService {
         if (mismatch.hasMismatch) {
             supplierInvoiceRepository.save(invoice);
             throw new IllegalStateException(
-                "Invoice has mismatch with goods receipt. Reject or correct invoice before verification");
+                "Hóa đơn có sai lệch so với phiếu nhập. Vui lòng từ chối hoặc chỉnh sửa trước khi xác minh");
         }
 
         invoice.setStatus(InvoiceStatus.VERIFIED);
@@ -178,14 +218,14 @@ public class SupplierInvoiceService {
     @Transactional
     public SupplierInvoiceResponse rejectInvoice(Long invoiceId, RejectInvoiceRequest request, Long userId) {
         SupplierInvoice invoice = supplierInvoiceRepository.findById(invoiceId)
-                .orElseThrow(() -> new RuntimeException("Supplier invoice not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn nhà cung cấp"));
 
         if (invoice.getStatus() != InvoiceStatus.PENDING_VERIFICATION) {
-            throw new IllegalStateException("Only PENDING_VERIFICATION invoice can be rejected");
+            throw new IllegalStateException("Chỉ hóa đơn chờ xác minh mới được từ chối");
         }
 
         User verifiedBy = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         invoice.setStatus(InvoiceStatus.REJECTED);
         invoice.setVerifiedBy(verifiedBy);
@@ -199,24 +239,24 @@ public class SupplierInvoiceService {
     @Transactional
     public SupplierInvoiceResponse payInvoice(Long invoiceId, PaymentInvoiceRequest request, Long userId) {
         if (request == null || request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Payment amount must be greater than 0");
+            throw new IllegalArgumentException("Số tiền thanh toán phải lớn hơn 0");
         }
 
         SupplierInvoice invoice = supplierInvoiceRepository.findById(invoiceId)
-                .orElseThrow(() -> new RuntimeException("Supplier invoice not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn nhà cung cấp"));
 
         if (invoice.getStatus() != InvoiceStatus.VERIFIED && invoice.getStatus() != InvoiceStatus.PARTIALLY_PAID) {
-            throw new IllegalStateException("Only VERIFIED or PARTIALLY_PAID invoices can be paid");
+            throw new IllegalStateException("Chỉ hóa đơn đã xác minh hoặc thanh toán một phần mới được thanh toán");
         }
 
         if (request.getAmount().compareTo(invoice.getRemainingAmount()) > 0) {
-            throw new IllegalArgumentException("Payment exceeds remaining amount");
+            throw new IllegalArgumentException("Số tiền thanh toán vượt quá số tiền còn lại");
         }
 
         String txRef = normalizeTransactionReference(request.getTransactionReference());
         if (txRef != null
                 && paymentRepository.existsBySupplierInvoice_InvoiceIdAndTransactionReference(invoiceId, txRef)) {
-            throw new IllegalArgumentException("Transaction reference already exists for this invoice");
+            throw new IllegalArgumentException("Mã giao dịch đã tồn tại cho hóa đơn này");
         }
 
         if (txRef == null) {
@@ -224,7 +264,7 @@ public class SupplierInvoiceService {
         }
 
         User paidBy = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
         Payment payment = new Payment();
         payment.setSupplierInvoice(invoice);
@@ -272,21 +312,21 @@ public class SupplierInvoiceService {
         for (SupplierInvoiceItem invoiceItem : invoice.getItems()) {
             Long medicineId = invoiceItem.getMedicine() != null ? invoiceItem.getMedicine().getMedicineId() : null;
             if (medicineId == null || !poItemByMedicine.containsKey(medicineId)) {
-                mismatches.add("Medicine not found in purchase order: " + medicineId);
+                mismatches.add("Không tìm thấy thuốc trong đơn mua hàng: " + medicineId);
                 continue;
             }
 
             PurchaseOrderItem poItem = poItemByMedicine.get(medicineId);
             Integer receivedQty = poItem.getReceivedQuantity() != null ? poItem.getReceivedQuantity() : poItem.getRequestedQuantity();
             if (receivedQty != null && !receivedQty.equals(invoiceItem.getQuantity())) {
-                mismatches.add("Quantity mismatch for medicine " + poItem.getMedicine().getName()
-                        + " (received=" + receivedQty + ", invoice=" + invoiceItem.getQuantity() + ")");
+                mismatches.add("Sai lệch số lượng thuốc " + poItem.getMedicine().getName()
+                        + " (phiếu nhập=" + receivedQty + ", hóa đơn=" + invoiceItem.getQuantity() + ")");
             }
 
             if (poItem.getUnitPrice() != null && invoiceItem.getUnitPrice() != null
                     && poItem.getUnitPrice().compareTo(invoiceItem.getUnitPrice()) != 0) {
-                mismatches.add("Unit price mismatch for medicine " + poItem.getMedicine().getName()
-                        + " (PO=" + poItem.getUnitPrice() + ", invoice=" + invoiceItem.getUnitPrice() + ")");
+                mismatches.add("Sai lệch đơn giá thuốc " + poItem.getMedicine().getName()
+                        + " (đơn mua=" + poItem.getUnitPrice() + ", hóa đơn=" + invoiceItem.getUnitPrice() + ")");
             }
         }
 
@@ -295,7 +335,7 @@ public class SupplierInvoiceService {
             boolean missingInInvoice = invoice.getItems().stream()
                     .noneMatch(item -> item.getMedicine() != null && item.getMedicine().getMedicineId().equals(medicineId));
             if (medicineId != null && missingInInvoice) {
-                mismatches.add("Missing medicine in invoice: " + poItem.getMedicine().getName());
+                mismatches.add("Thiếu thuốc trong hóa đơn: " + poItem.getMedicine().getName());
             }
         }
 
@@ -386,6 +426,10 @@ public class SupplierInvoiceService {
         return "PAY-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
     }
 
+    private String safe(String value) {
+        return value == null ? "" : value;
+    }
+
     private SupplierInvoiceResponse.UserInfo convertUserInfo(User user) {
         if (user == null) {
             return null;
@@ -409,6 +453,7 @@ public class SupplierInvoiceService {
                 .email(supplier.getEmail())
                 .address(supplier.getAddress())
                 .taxCode(supplier.getTaxCode())
+                .qrBankTransferLink(supplier.getQrBankTransferLink())
                 .status(supplier.getStatus() != null ? supplier.getStatus().name() : null)
                 .createdAt(supplier.getCreatedAt())
                 .updatedAt(supplier.getUpdatedAt())

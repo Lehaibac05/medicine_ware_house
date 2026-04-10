@@ -48,6 +48,7 @@ export type PurchaseOrder = {
   supplier?: {
     supplierId: number
     supplierName: string
+    qrBankTransferLink?: string
     email?: string
   }
   warehouse?: {
@@ -108,6 +109,7 @@ export type SupplierInvoice = {
   supplier?: {
     supplierId: number
     supplierName: string
+    qrBankTransferLink?: string
   }
   goodsReceipt?: {
     receiptId: number
@@ -246,6 +248,10 @@ export const workflowApi = {
     }
     const url = query.toString() ? `/goods-receipts?${query.toString()}` : "/goods-receipts"
     const response = await http.get<any>(url)
+    return response.data
+  },
+  getGoodsReceiptById: async (id: number) => {
+    const response = await http.get<GoodsReceipt>(`/goods-receipts/${id}`)
     return response.data
   },
   approveGoodsReceipt: async (id: number, approved = true, notes?: string) => {

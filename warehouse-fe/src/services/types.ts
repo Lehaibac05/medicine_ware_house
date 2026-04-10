@@ -4,7 +4,16 @@ export type Medicine = {
   name: string
   manufacturer: string
   storageCondition: string
-  description: string
+  description?: string
+  reorderLevel?: number
+}
+
+export type PageResponse<T> = {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
 }
 
 export type PageResponse<T> = {
@@ -30,6 +39,10 @@ export type Supplier = {
   email?: string
   address?: string
   taxCode?: string
+<<<<<<< HEAD
+=======
+  qrBankTransferLink?: string
+>>>>>>> Finalflow
   status?: string
   createdAt?: string
   updatedAt?: string

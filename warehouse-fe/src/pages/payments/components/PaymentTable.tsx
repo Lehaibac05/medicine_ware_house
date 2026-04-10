@@ -14,6 +14,9 @@ type PaymentTableProps = {
   onVerify: (invoice: SupplierInvoice) => void;
   onReject: (invoice: SupplierInvoice) => void;
   onPay: (invoice: SupplierInvoice) => void;
+  canVerifyAction: boolean;
+  canRejectAction: boolean;
+  canPayAction: boolean;
 };
 
 const formatMoney = (value?: number) =>
@@ -30,6 +33,9 @@ function PaymentTable({
   onVerify,
   onReject,
   onPay,
+  canVerifyAction,
+  canRejectAction,
+  canPayAction,
 }: PaymentTableProps) {
   const columns: ColumnsType<SupplierInvoice> = [
     {
@@ -52,22 +58,10 @@ function PaymentTable({
       width: 160,
     },
     {
-      title: "Tổng tiền",
-      key: "totalAmount",
-      width: 140,
-      render: (_, record) => formatMoney(record.totalAmount),
-    },
-    {
-      title: "Đã thanh toán",
+      title: "Tổng tiền đã thanh toán",
       key: "paidAmount",
-      width: 140,
+      width: 180,
       render: (_, record) => formatMoney(record.paidAmount),
-    },
-    {
-      title: "Còn lại",
-      key: "remainingAmount",
-      width: 140,
-      render: (_, record) => formatMoney(record.remainingAmount),
     },
     {
       title: "Trạng thái",
@@ -99,35 +93,41 @@ function PaymentTable({
       width: 240,
       render: (_, record) => {
         const status = (record.status || "").toUpperCase();
-        const canVerify = status === "PENDING_VERIFICATION";
-        const canReject = status === "PENDING_VERIFICATION";
-        const canPay = status === "VERIFIED" || status === "PARTIALLY_PAID";
+        const canVerify = canVerifyAction && status === "PENDING_VERIFICATION";
+        const canReject = canRejectAction && status === "PENDING_VERIFICATION";
+        const canPay = canPayAction && (status === "VERIFIED" || status === "PARTIALLY_PAID");
 
         return (
           <Space>
-            <Button
-              size="small"
-              onClick={() => onVerify(record)}
-              disabled={!canVerify || !!record.hasMismatch}
-            >
-              Xác minh
-            </Button>
-            <Button
-              size="small"
-              danger
-              onClick={() => onReject(record)}
-              disabled={!canReject}
-            >
-              Từ chối
-            </Button>
-            <Button
-              size="small"
-              type="primary"
-              onClick={() => onPay(record)}
-              disabled={!canPay}
-            >
-              Thanh toán
-            </Button>
+            {canVerifyAction && (
+              <Button
+                size="small"
+                onClick={() => onVerify(record)}
+                disabled={!canVerify || !!record.hasMismatch}
+              >
+                Xác minh
+              </Button>
+            )}
+            {canRejectAction && (
+              <Button
+                size="small"
+                danger
+                onClick={() => onReject(record)}
+                disabled={!canReject}
+              >
+                Từ chối
+              </Button>
+            )}
+            {canPayAction && (
+              <Button
+                size="small"
+                type="primary"
+                onClick={() => onPay(record)}
+                disabled={!canPay}
+              >
+                Thanh toán
+              </Button>
+            )}
           </Space>
         );
       },

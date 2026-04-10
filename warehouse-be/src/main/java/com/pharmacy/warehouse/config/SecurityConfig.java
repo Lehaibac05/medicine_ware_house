@@ -60,10 +60,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/warehouses/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         .requestMatchers(HttpMethod.DELETE, "/warehouses/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
 
-                        // Suppliers - ADMIN, WAREHOUSE_MANAGER (view and update)
-                        .requestMatchers(HttpMethod.GET, "/suppliers/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "REQUESTER")
+                        // Suppliers - ADMIN, WAREHOUSE_MANAGER, ACCOUNTANT (view)
+                        .requestMatchers(HttpMethod.GET, "/suppliers/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "REQUESTER", "ACCOUNTANT")
                         .requestMatchers(HttpMethod.POST, "/suppliers/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/suppliers/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                        .requestMatchers(HttpMethod.PATCH, "/suppliers/*/qr").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "ACCOUNTANT")
                         .requestMatchers(HttpMethod.DELETE, "/suppliers/**").hasRole("ADMIN")
 
                         // Batches - ADMIN, WAREHOUSE_MANAGER, WAREHOUSE_STAFF, ACCOUNTANT (view), WAREHOUSE_STAFF (create)
@@ -82,8 +83,8 @@ public class SecurityConfig {
                         .requestMatchers("/purchase-orders/*/pdf").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         .requestMatchers("/purchase-orders/*/send-email").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
 
-                        // Goods Receipts - ADMIN, WAREHOUSE_MANAGER (approve), WAREHOUSE_STAFF (create/view)
-                        .requestMatchers(HttpMethod.GET, "/goods-receipts/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "REQUESTER")
+                        // Goods Receipts - ADMIN, WAREHOUSE_MANAGER (approve), WAREHOUSE_STAFF (create/view), ACCOUNTANT (view for invoice reconciliation)
+                        .requestMatchers(HttpMethod.GET, "/goods-receipts/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT", "REQUESTER")
                         .requestMatchers(HttpMethod.POST, "/goods-receipts").hasAnyRole("ADMIN", "WAREHOUSE_STAFF")
                         .requestMatchers("/goods-receipts/*/approve").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
 
@@ -104,11 +105,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/issues/history").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT", "REQUESTER")
                         .requestMatchers(HttpMethod.GET, "/issues/stock-insight").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT", "REQUESTER")
 
-                        // Supplier Invoices - ACCOUNTANT (full), ADMIN (full), WAREHOUSE_MANAGER/ACCOUNTANT (view)
+                        // Supplier Invoices - ACCOUNTANT creates/pays, WAREHOUSE_MANAGER verifies/rejects, ADMIN full, MANAGER/ACCOUNTANT view
                         .requestMatchers(HttpMethod.GET, "/supplier-invoices/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "ACCOUNTANT")
                         .requestMatchers(HttpMethod.POST, "/supplier-invoices").hasAnyRole("ADMIN", "ACCOUNTANT")
-                        .requestMatchers("/supplier-invoices/*/verify").hasAnyRole("ADMIN", "ACCOUNTANT")
-                        .requestMatchers("/supplier-invoices/*/reject").hasAnyRole("ADMIN", "ACCOUNTANT")
+                        .requestMatchers("/supplier-invoices/*/verify").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                        .requestMatchers("/supplier-invoices/*/reject").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         .requestMatchers("/supplier-invoices/*/pay").hasAnyRole("ADMIN", "ACCOUNTANT")
                         .requestMatchers("/supplier-invoices/*/pay/confirm").hasAnyRole("ADMIN", "ACCOUNTANT")
 
@@ -125,9 +126,13 @@ public class SecurityConfig {
                         // Alerts - ADMIN (full), WAREHOUSE_MANAGER (view/resolve/update status/scan), other operational staff/accountant (view)
                         .requestMatchers(HttpMethod.GET, "/alerts/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT")
                         .requestMatchers(HttpMethod.POST, "/alerts/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
-                        .requestMatchers(HttpMethod.PATCH, "/alerts/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
+                        .requestMatchers(HttpMethod.PATCH, "/alerts/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF")
+
+                        // Chatbot - authenticated business roles
+                        .requestMatchers("/chat/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER", "WAREHOUSE_STAFF", "ACCOUNTANT", "REQUESTER")
 
                         // System Configurations - ADMIN only
+                        .requestMatchers("/settings/**").hasRole("ADMIN")
                         .requestMatchers("/system-configurations/**").hasRole("ADMIN")
 
                         // Users - ADMIN can manage all, users can update their own info

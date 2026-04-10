@@ -112,7 +112,7 @@ public class ForecastController {
             return ResponseEntity.ok(normalized);
 
         } catch (Exception e) {
-            log.error("❌ Lỗi dự báo: {}", e.getMessage());
+            log.error("Lỗi dự báo: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -128,16 +128,16 @@ public class ForecastController {
                         .body(Map.of("error", "Empty predictions list"));
             }
             
-            log.info("📊 Yêu cầu batch dự báo cho {} thuốc", predictions.size());
+            log.info("Yêu cầu batch dự báo cho {} thuốc", predictions.size());
             
             // Gọi AI Model Service batch predict
             Map<String, Object> result = aiModelService.predictBatch(predictions);
             
-            log.info("✅ Batch dự báo hoàn tất: {} kết quả", result.get("total"));
+            log.info("Batch dự báo hoàn tất: {} kết quả", result.get("total"));
             return ResponseEntity.ok(result);
             
         } catch (Exception e) {
-            log.error("❌ Lỗi batch dự báo: {}", e.getMessage());
+            log.error("Lỗi batch dự báo: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -147,16 +147,16 @@ public class ForecastController {
         try {
             String dataPath = (String) request.getOrDefault("dataPath", "../data/pharmacy_training_final.csv");
             
-            log.info("🔄 Yêu cầu huấn luyện model từ: {}", dataPath);
+            log.info("Yêu cầu huấn luyện model từ: {}", dataPath);
             
             // Gọi AI Model Service train
             Map<String, Object> result = aiModelService.trainModel(dataPath);
             
-            log.info("✅ Huấn luyện hoàn tất");
+            log.info("Huấn luyện hoàn tất");
             return ResponseEntity.ok(result);
             
         } catch (Exception e) {
-            log.error("❌ Lỗi huấn luyện model: {}", e.getMessage());
+            log.error("Lỗi huấn luyện model: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -164,7 +164,7 @@ public class ForecastController {
     @GetMapping("/30-day")
     public ResponseEntity<List<Map<String, Object>>> get30DayForecast(@RequestParam Long medicineId) {
         try {
-            log.info("📅 Lấy dự báo 30 ngày cho thuốc ID: {}", medicineId);
+            log.info("Lấy dự báo 30 ngày cho thuốc ID: {}", medicineId);
 
             Optional<Medicine> medicineOpt = medicineRepository.findById(medicineId);
             if (medicineOpt.isEmpty()) {
@@ -329,7 +329,7 @@ public class ForecastController {
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getForecastStats() {
         try {
-            log.info("📊 Lấy thống kê dự báo tổng quan");
+            log.info("Lấy thống kê dự báo tổng quan");
 
             List<Medicine> medicines = medicineRepository.findAll();
             if (medicines.isEmpty()) {
@@ -413,13 +413,13 @@ public class ForecastController {
             stats.put("avgConfidence", avgConfidence);
             stats.put("needRestockCount", needRestockCount);
 
-            log.info("✅ Thống kê dự báo: {} thuốc, {} rủi ro cao, độ tin cậy TB: {:.2f}, cần nhập thêm: {}",
+            log.info("Thống kê dự báo: {} thuốc, {} rủi ro cao, độ tin cậy TB: {:.2f}, cần nhập thêm: {}",
                     totalForecasts, highRiskCount, avgConfidence, needRestockCount);
 
             return ResponseEntity.ok(stats);
 
         } catch (Exception e) {
-            log.error("❌ Lỗi lấy thống kê dự báo: {}", e.getMessage());
+            log.error("Lỗi lấy thống kê dự báo: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }

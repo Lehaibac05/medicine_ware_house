@@ -89,6 +89,20 @@ export const updateSupplier = async (
   })
 }
 
+export type UpdateSupplierQrPayload = {
+  qrBankTransferLink: string
+}
+
+export const updateSupplierQr = async (
+  id: number,
+  payload: UpdateSupplierQrPayload,
+): Promise<Supplier> => {
+  return apiFetch<Supplier>(`/suppliers/${id}/qr`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  })
+}
+
 export const deleteSupplier = async (id: number): Promise<void> => {
   return apiFetch<void>(`/suppliers/${id}`, {
     method: "DELETE",

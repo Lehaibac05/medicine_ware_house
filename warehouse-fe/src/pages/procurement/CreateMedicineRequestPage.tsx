@@ -1,4 +1,8 @@
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  PlusOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import {
   Button,
   DatePicker,
@@ -7,6 +11,8 @@ import {
   InputNumber,
   Select,
   Typography,
+  Upload,
+  type UploadProps,
   message,
 } from "antd";
 import dayjs from "dayjs";
@@ -15,7 +21,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { getAllMedicines } from "../../services/medicines";
 import { createMedicineRequest } from "../../services/medicineRequests";
 import type { Medicine, Warehouse } from "../../services/types";
-import { hasAnyRole } from "../../utils/auth";
 import { getWarehouses } from "../../services/warehouses";
 import MainLayout from "../../layouts/MainLayout";
 
@@ -40,6 +45,139 @@ export default function CreateMedicineRequestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+
+  const normalize = (value: string) => value.trim().toLowerCase();
+
+  const parseCsvLine = (line: string): string[] => {
+    const cols: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if (char === "," && !inQuotes) {
+        cols.push(current.trim());
+        current = "";
+        continue;
+      }
+
+      current += char;
+    }
+
+    cols.push(current.trim());
+    return cols;
+  };
+
+  const parseMedicineId = (
+    rawValue: string,
+    medicineByName: Map<string, Medicine>,
+  ) => {
+    const asNumber = Number(rawValue);
+    if (Number.isFinite(asNumber) && asNumber > 0) {
+      const byId = medicines.find((medicine) => medicine.medicineId === asNumber);
+      if (byId) {
+        return byId.medicineId;
+      }
+    }
+
+    const byName = medicineByName.get(normalize(rawValue));
+    return byName?.medicineId;
+  };
+
+  const importCsv: UploadProps["beforeUpload"] = async (file) => {
+    try {
+      if (!medicines.length) {
+        messageApi.error("Chưa tải xong danh mục thuốc");
+        return Upload.LIST_IGNORE;
+      }
+
+      const content = await file.text();
+      const rows = content
+        .replace(/^\uFEFF/, "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      if (!rows.length) {
+        messageApi.error("File CSV rỗng");
+        return Upload.LIST_IGNORE;
+      }
+
+      const medicineByName = new Map<string, Medicine>(
+        medicines.map((medicine) => [normalize(medicine.name), medicine]),
+      );
+
+      const firstCols = parseCsvLine(rows[0]).map((col) => normalize(col));
+      const hasHeader =
+        firstCols.length >= 2 &&
+        (firstCols[0].includes("medicine") ||
+          firstCols[0].includes("thuoc") ||
+          firstCols[1].includes("quantity") ||
+          firstCols[1].includes("so luong"));
+
+      const dataRows = hasHeader ? rows.slice(1) : rows;
+      const importedItems: Array<{
+        medicineId: number;
+        quantity: number;
+        notes?: string;
+      }> = [];
+      const errors: string[] = [];
+
+      dataRows.forEach((row, idx) => {
+        const cols = parseCsvLine(row);
+        if (cols.length < 2) {
+          errors.push(`Dòng ${idx + 1}: thiếu cột bắt buộc`);
+          return;
+        }
+
+        const medicineId = parseMedicineId(cols[0], medicineByName);
+        if (!medicineId) {
+          errors.push(`Dòng ${idx + 1}: không tìm thấy thuốc '${cols[0]}'`);
+          return;
+        }
+
+        const quantity = Number(cols[1]);
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+          errors.push(`Dòng ${idx + 1}: số lượng không hợp lệ`);
+          return;
+        }
+
+        importedItems.push({
+          medicineId,
+          quantity,
+          notes: cols[2] || undefined,
+        });
+      });
+
+      if (!importedItems.length) {
+        messageApi.error(errors[0] || "Không có dữ liệu hợp lệ để import");
+        return Upload.LIST_IGNORE;
+      }
+
+      form.setFieldValue("items", importedItems);
+      if (errors.length) {
+        messageApi.warning(
+          `Đã import ${importedItems.length} dòng hợp lệ, bỏ qua ${errors.length} dòng lỗi`,
+        );
+      } else {
+        messageApi.success(`Đã import ${importedItems.length} dòng từ CSV`);
+      }
+    } catch {
+      messageApi.error("Đọc file CSV thất bại");
+    }
+
+    return Upload.LIST_IGNORE;
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -95,8 +233,7 @@ export default function CreateMedicineRequestPage() {
         })),
       });
       messageApi.success("Medicine request created");
-      const managerView = hasAnyRole(["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"]);
-      navigate(managerView ? "/requests" : "/medicine-requests");
+      navigate("/requests");
     } catch {
       messageApi.error("Failed to create medicine request");
     } finally {
@@ -198,13 +335,22 @@ export default function CreateMedicineRequestPage() {
                   </div>
                 ))}
 
-                <Button
-                  type="dashed"
-                  icon={<PlusOutlined />}
-                  onClick={() => add({ quantity: 1 })}
-                >
-                  Thêm thuốc
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Upload
+                    accept=".csv,text/csv"
+                    showUploadList={false}
+                    beforeUpload={importCsv}
+                  >
+                    <Button icon={<UploadOutlined />}>Import CSV</Button>
+                  </Upload>
+                  <Button
+                    type="dashed"
+                    icon={<PlusOutlined />}
+                    onClick={() => add({ quantity: 1 })}
+                  >
+                    Thêm thuốc
+                  </Button>
+                </div>
               </div>
             )}
           </Form.List>

@@ -55,15 +55,15 @@ export default function IssueReportPage() {
   }, [data?.items])
 
   const columns: ColumnsType<IssueReportItem> = [
-    { title: "Request ID", dataIndex: "requestId", width: 100 },
-    { title: "Medicine", dataIndex: "medicineName" },
-    { title: "Batch", dataIndex: "lotNumber", width: 130 },
-    { title: "Qty", dataIndex: "quantity", width: 90 },
-    { title: "Warehouse", dataIndex: "warehouseName", width: 160 },
-    { title: "Issued By", dataIndex: "issuedByName", width: 150 },
-    { title: "Department", dataIndex: "department", width: 150 },
+    { title: "Mã yêu cầu", dataIndex: "requestId", width: 100 },
+    { title: "Thuốc", dataIndex: "medicineName" },
+    { title: "Số lô", dataIndex: "lotNumber", width: 130 },
+    { title: "Số lượng", dataIndex: "quantity", width: 90 },
+    { title: "Kho", dataIndex: "warehouseName", width: 160 },
+    { title: "Người cấp", dataIndex: "issuedByName", width: 150 },
+    { title: "Khoa/Phòng", dataIndex: "department", width: 150 },
     {
-      title: "Issued At",
+      title: "Thời điểm cấp",
       dataIndex: "issuedAt",
       width: 170,
       render: (v?: string) => (v ? new Date(v).toLocaleString() : "-"),
@@ -82,20 +82,20 @@ export default function IssueReportPage() {
       })
 
       const headers = [
-        "orderItemId",
-        "requestId",
-        "medicineId",
-        "medicineName",
-        "batchId",
-        "lotNumber",
-        "expiryDate",
-        "quantity",
-        "warehouseId",
-        "warehouseName",
-        "issuedById",
-        "issuedByName",
-        "department",
-        "issuedAt",
+        "Mã dòng",
+        "Mã yêu cầu",
+        "Mã thuốc",
+        "Tên thuốc",
+        "Mã lô",
+        "Số lô",
+        "Hạn dùng",
+        "Số lượng",
+        "Mã kho",
+        "Tên kho",
+        "Mã người cấp",
+        "Tên người cấp",
+        "Khoa/Phòng",
+        "Thời điểm cấp",
       ]
       const rows = exportData.items.map((item) => [
         item.orderItemId,
@@ -115,16 +115,16 @@ export default function IssueReportPage() {
       ])
 
       const csv = [headers.join(","), ...rows.map((row) => row.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(","))].join("\n")
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = url
-      link.download = `issue-report-${dayjs().format("YYYYMMDD-HHmmss")}.csv`
+      link.download = `bao-cao-cap-thuoc-${dayjs().format("YYYYMMDD-HHmmss")}.csv`
       link.click()
       URL.revokeObjectURL(url)
-      messageApi.success("Issue report CSV ready")
+      messageApi.success("Xuất CSV báo cáo thành công")
     } catch {
-      messageApi.error("Failed to export issue report")
+      messageApi.error("Xuất CSV báo cáo thất bại")
     }
   }
 
@@ -150,13 +150,13 @@ export default function IssueReportPage() {
               setDateRange(null)
               setPage(1)
             }}
-            extraActions={<Button onClick={() => void onExport()}>Export</Button>}
+            extraActions={<Button onClick={() => void onExport()}>Xuất file</Button>}
           >
             <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Medicine</Text>
+              <Text className="text-xs text-slate-500">Thuốc</Text>
               <Select
                 allowClear
-                placeholder="All medicines"
+                placeholder="Tất cả thuốc"
                 value={medicineId}
                 options={medicines.map((m) => ({ value: m.medicineId, label: m.name }))}
                 onChange={(value) => {
@@ -167,10 +167,10 @@ export default function IssueReportPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Department</Text>
+              <Text className="text-xs text-slate-500">Khoa/Phòng</Text>
               <Input
                 value={department}
-                placeholder="Department"
+                placeholder="Nhập khoa/phòng"
                 onChange={(e) => {
                   setDepartment(e.target.value)
                   setPage(1)
@@ -179,12 +179,12 @@ export default function IssueReportPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Warehouse</Text>
+              <Text className="text-xs text-slate-500">Kho</Text>
               <Select
                 allowClear
-                placeholder="All warehouses"
+                placeholder="Tất cả kho"
                 value={warehouseId}
-                options={warehouses.map((w) => ({ value: w.warehouseId, label: w.name || `Warehouse ${w.warehouseId}` }))}
+                options={warehouses.map((w) => ({ value: w.warehouseId, label: w.name || `Kho ${w.warehouseId}` }))}
                 onChange={(value) => {
                   setWarehouseId(value)
                   setPage(1)
@@ -193,10 +193,10 @@ export default function IssueReportPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Issued By</Text>
+              <Text className="text-xs text-slate-500">Người cấp</Text>
               <Select
                 allowClear
-                placeholder="All users"
+                placeholder="Tất cả người dùng"
                 value={issuedById}
                 options={issuedByOptions}
                 onChange={(value) => {
@@ -207,7 +207,7 @@ export default function IssueReportPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Text className="text-xs text-slate-500">Issued Date</Text>
+              <Text className="text-xs text-slate-500">Ngày cấp</Text>
               <RangePicker
                 className="w-full"
                 value={dateRange}
@@ -224,7 +224,7 @@ export default function IssueReportPage() {
             columns={columns}
             dataSource={data?.items || []}
             loading={isLoading}
-            title={() => <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Issue Report</Text>}
+            title={() => <Text className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Báo cáo yêu cầu cấp thuốc</Text>}
             pagination={{
               current: page,
               pageSize: size,

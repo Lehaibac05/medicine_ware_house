@@ -8,10 +8,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,8 +32,15 @@ public class AlertService {
     private final MedicineRepository medicineRepository;
     private final WarehouseRepository warehouseRepository;
     private final InventoryService inventoryService;
+    private final SettingsService settingsService;
+    private final EmailService emailService;
 
-    private static final int EXPIRING_SOON_DAYS = 30;
+    private static final double CRITICAL_RATIO = 0.5;
+    private static final double HIGH_RATIO = 0.8;
+    private static final String ROLE_ADMIN = "ADMIN";
+    private static final String ROLE_WAREHOUSE_MANAGER = "WAREHOUSE_MANAGER";
+    private static final String ROLE_WAREHOUSE_STAFF = "WAREHOUSE_STAFF";
+    private static final String ROLE_ACCOUNTANT = "ACCOUNTANT";
 
     @Transactional(readOnly = true)
     public List<AlertResponse> getAllAlerts() {
@@ -98,6 +109,15 @@ public class AlertService {
         
         User user = userRepository.findByUsername(username)
                 .orElse(null);
+
+        if ("EXPIRED".equalsIgnoreCase(alert.getAlertType())) {
+            if (!canResolveExpiredAlert(user)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền đóng cảnh báo đã hết hạn");
+            }
+            if (!StringUtils.hasText(comment) || comment.trim().length() < 10) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cảnh báo đã hết hạn yêu cầu ghi chú xử lý tối thiểu 10 ký tự");
+            }
+        }
         
         String oldStatus = alert.getStatus();
         alert.setStatus("RESOLVED");
@@ -121,6 +141,14 @@ public class AlertService {
                 .orElseThrow(() -> new RuntimeException("Alert not found with id: " + alertId));
         
         User user = userRepository.findByUsername(username).orElse(null);
+
+        if ("EXPIRED".equalsIgnoreCase(alert.getAlertType()) && !canResolveExpiredAlert(user)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền cập nhật cảnh báo đã hết hạn");
+        }
+
+        if ("RESOLVED".equalsIgnoreCase(newStatus) && !canResolveExpiredAlert(user)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền đóng cảnh báo");
+        }
         
         String oldStatus = alert.getStatus();
         alert.setStatus(newStatus);
@@ -205,7 +233,7 @@ public class AlertService {
                         "AUTO_RESOLVED",
                         oldStatus,
                         "RESOLVED",
-                        "Auto-resolved: stock returned to normal level",
+                    "Tự động xử lý: tồn kho đã quay về mức an toàn",
                         null);
 
                 log.info(
@@ -224,15 +252,17 @@ public class AlertService {
     @Transactional
     public void checkExpiringBatches() {
         LocalDate today = LocalDate.now();
-        LocalDate expiryThreshold = today.plusDays(EXPIRING_SOON_DAYS);
-        
+        LocalDate expiryThreshold = today.plusDays(settingsService.getExpiryAlertDays());
+        Set<Long> expiringBatchIds = new HashSet<>();
+
         List<Batch> batches = batchRepository.findAll();
         
         for (Batch batch : batches) {
-            if (batch.getExpiryDate() != null) {
+            if (batch.getExpiryDate() != null && batch.getQuantity() != null && batch.getQuantity() > 0) {
                 LocalDate expiryDate = batch.getExpiryDate();
                 
-                if (expiryDate.isAfter(today) && expiryDate.isBefore(expiryThreshold)) {
+                if (!expiryDate.isBefore(today) && !expiryDate.isAfter(expiryThreshold)) {
+                    expiringBatchIds.add(batch.getBatchId());
                     List<Alert> existing = alertRepository.findActiveAlertByBatchAndType(
                             batch.getBatchId(), "EXPIRING_SOON");
                     
@@ -240,6 +270,37 @@ public class AlertService {
                         createExpiringSoonAlert(batch);
                     }
                 }
+            }
+        }
+
+        autoResolveRecoveredExpiringSoonAlerts(expiringBatchIds);
+    }
+
+    private void autoResolveRecoveredExpiringSoonAlerts(Set<Long> expiringBatchIds) {
+        List<Alert> expiringAlerts = alertRepository.findByAlertType("EXPIRING_SOON");
+
+        for (Alert alert : expiringAlerts) {
+            boolean activeAlert = "OPEN".equals(alert.getStatus()) || "IN_PROGRESS".equals(alert.getStatus());
+            if (!activeAlert || alert.getBatch() == null) {
+                continue;
+            }
+
+            if (!expiringBatchIds.contains(alert.getBatch().getBatchId())) {
+                String oldStatus = alert.getStatus();
+                alert.setStatus("RESOLVED");
+                alert.setResolvedAt(LocalDateTime.now());
+                alert.setResolvedBy(null);
+
+                Alert updated = alertRepository.save(alert);
+                createHistoryEntry(
+                        updated,
+                        "AUTO_RESOLVED",
+                        oldStatus,
+                        "RESOLVED",
+                    "Tự động xử lý: lô thuốc không còn trong ngưỡng sắp hết hạn",
+                        null);
+
+                log.info("Auto-resolved EXPIRING_SOON alert {} for batch {}", updated.getAlertId(), updated.getBatch().getBatchId());
             }
         }
     }
@@ -267,22 +328,47 @@ public class AlertService {
         Warehouse warehouse = warehouseRepository.findById(inventory.getWarehouseId())
             .orElseThrow(() -> new RuntimeException("Warehouse not found with id: " + inventory.getWarehouseId()));
 
+        int reorderLevel = resolveReorderLevel(medicine.getReorderLevel());
+        String severity = determineLowStockSeverity(inventory.getTotalStock(), reorderLevel);
+
         Alert alert = new Alert();
         alert.setAlertType("LOW_STOCK");
-        alert.setSeverity(inventory.getTotalStock() <= 5 ? "CRITICAL" : "HIGH");
+        alert.setSeverity(severity);
         alert.setStatus("OPEN");
-        alert.setMessage("Low stock: " + medicine.getName());
-        alert.setDescription("Stock level in warehouse '" + warehouse.getName() + "' is "
-            + inventory.getTotalStock() + " units");
+        alert.setMessage("Tồn kho thấp: " + medicine.getName());
+        alert.setDescription("Số lượng tồn tại kho '" + warehouse.getName() + "' còn "
+            + inventory.getTotalStock() + " đơn vị");
         alert.setCreatedAt(LocalDateTime.now());
         alert.setBatch(null);
         alert.setMedicine(medicine);
         alert.setWarehouse(warehouse);
         
         alertRepository.save(alert);
-        createHistoryEntry(alert, "CREATED", null, "OPEN", "Auto-generated alert", null);
+        createHistoryEntry(alert, "CREATED", null, "OPEN", "Cảnh báo được tạo tự động", null);
+        sendAlertNotificationEmail(alert);
         
         log.info("Created LOW_STOCK alert for medicine {} in warehouse {}", medicine.getMedicineId(), warehouse.getWarehouseId());
+    }
+
+    private int resolveReorderLevel(Integer reorderLevel) {
+        if (reorderLevel == null || reorderLevel <= 0) {
+            return settingsService.getDefaultReorderLevel();
+        }
+        return reorderLevel;
+    }
+
+    private String determineLowStockSeverity(Long totalStock, int reorderLevel) {
+        long stock = totalStock == null ? 0L : totalStock;
+        double criticalThreshold = reorderLevel * CRITICAL_RATIO;
+        double highThreshold = reorderLevel * HIGH_RATIO;
+
+        if (stock <= criticalThreshold) {
+            return "CRITICAL";
+        }
+        if (stock <= highThreshold) {
+            return "HIGH";
+        }
+        return "MEDIUM";
     }
 
     private void createExpiringSoonAlert(Batch batch) {
@@ -290,15 +376,16 @@ public class AlertService {
         alert.setAlertType("EXPIRING_SOON");
         alert.setSeverity("MEDIUM");
         alert.setStatus("OPEN");
-        alert.setMessage("Expiring soon: " + batch.getMedicine().getName());
-        alert.setDescription("Batch expires on " + batch.getExpiryDate());
+        alert.setMessage("Sắp hết hạn: " + batch.getMedicine().getName());
+        alert.setDescription("Lô thuốc sẽ hết hạn vào ngày " + batch.getExpiryDate());
         alert.setCreatedAt(LocalDateTime.now());
         alert.setBatch(batch);
         alert.setMedicine(batch.getMedicine());
         alert.setWarehouse(batch.getWarehouse());
         
         alertRepository.save(alert);
-        createHistoryEntry(alert, "CREATED", null, "OPEN", "Auto-generated alert", null);
+        createHistoryEntry(alert, "CREATED", null, "OPEN", "Cảnh báo được tạo tự động", null);
+        sendAlertNotificationEmail(alert);
         
         log.info("Created EXPIRING_SOON alert for batch {}", batch.getBatchId());
     }
@@ -308,15 +395,16 @@ public class AlertService {
         alert.setAlertType("EXPIRED");
         alert.setSeverity("CRITICAL");
         alert.setStatus("OPEN");
-        alert.setMessage("Expired: " + batch.getMedicine().getName());
-        alert.setDescription("Batch expired on " + batch.getExpiryDate());
+        alert.setMessage("Đã hết hạn: " + batch.getMedicine().getName());
+        alert.setDescription("Lô thuốc đã hết hạn vào ngày " + batch.getExpiryDate());
         alert.setCreatedAt(LocalDateTime.now());
         alert.setBatch(batch);
         alert.setMedicine(batch.getMedicine());
         alert.setWarehouse(batch.getWarehouse());
         
         alertRepository.save(alert);
-        createHistoryEntry(alert, "CREATED", null, "OPEN", "Auto-generated alert", null);
+        createHistoryEntry(alert, "CREATED", null, "OPEN", "Cảnh báo được tạo tự động", null);
+        sendAlertNotificationEmail(alert);
         
         log.info("Created EXPIRED alert for batch {}", batch.getBatchId());
     }
@@ -333,6 +421,107 @@ public class AlertService {
         history.setUser(user);
         
         alertHistoryRepository.save(history);
+    }
+
+    private void sendAlertNotificationEmail(Alert alert) {
+        if (!settingsService.isEmailNotificationsEnabled() || !isAlertTypeEmailEnabled(alert.getAlertType())) {
+            return;
+        }
+
+        Set<String> recipients = resolveRecipientsByAlertType(alert.getAlertType());
+        if (recipients.isEmpty()) {
+            return;
+        }
+
+        String subject = "[Cảnh báo kho thuốc] "
+            + toVietnameseAlertType(alert.getAlertType())
+            + " - "
+            + toVietnameseSeverity(alert.getSeverity());
+        String body = "Loại cảnh báo: " + toVietnameseAlertType(alert.getAlertType()) + "\n"
+            + "Mức độ: " + toVietnameseSeverity(alert.getSeverity()) + "\n"
+            + "Nội dung: " + safe(alert.getMessage()) + "\n"
+            + "Chi tiết: " + safe(alert.getDescription()) + "\n"
+            + "Thời gian tạo: " + alert.getCreatedAt() + "\n"
+            + "Trạng thái: " + toVietnameseStatus(alert.getStatus());
+
+        for (String recipient : recipients) {
+            emailService.sendSimpleMessage(recipient, subject, body);
+        }
+    }
+
+    private Set<String> resolveRecipientsByAlertType(String alertType) {
+        Set<String> roleNames = new LinkedHashSet<>();
+        roleNames.add(ROLE_ADMIN);
+        roleNames.add(ROLE_WAREHOUSE_MANAGER);
+        roleNames.add(ROLE_WAREHOUSE_STAFF);
+
+        // Accountant receives only expired alerts by default to reduce noise.
+        if ("EXPIRED".equals(alertType)) {
+            roleNames.add(ROLE_ACCOUNTANT);
+        }
+
+        List<User> users = userRepository.findByStatusIgnoreCaseAndRole_RoleNameIn("ACTIVE", roleNames);
+        return users.stream()
+                .map(User::getEmail)
+                .filter(email -> email != null && !email.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private boolean isAlertTypeEmailEnabled(String alertType) {
+        if ("LOW_STOCK".equals(alertType)) {
+            return settingsService.isLowStockEmailEnabled();
+        }
+        if ("EXPIRING_SOON".equals(alertType) || "EXPIRED".equals(alertType)) {
+            return settingsService.isExpiryEmailEnabled();
+        }
+        return true;
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
+    }
+
+    private String toVietnameseAlertType(String alertType) {
+        return switch (alertType) {
+            case "LOW_STOCK" -> "Tồn kho thấp";
+            case "EXPIRING_SOON" -> "Sắp hết hạn";
+            case "EXPIRED" -> "Đã hết hạn";
+            case "SYSTEM" -> "Hệ thống";
+            default -> safe(alertType);
+        };
+    }
+
+    private String toVietnameseSeverity(String severity) {
+        return switch (severity) {
+            case "CRITICAL" -> "Nghiêm trọng";
+            case "HIGH" -> "Cao";
+            case "MEDIUM" -> "Trung bình";
+            case "LOW" -> "Thấp";
+            default -> safe(severity);
+        };
+    }
+
+    private String toVietnameseStatus(String status) {
+        return switch (status) {
+            case "OPEN" -> "Mở";
+            case "IN_PROGRESS" -> "Đang xử lý";
+            case "RESOLVED" -> "Đã xử lý";
+            default -> safe(status);
+        };
+    }
+
+    private boolean canResolveExpiredAlert(User user) {
+        if (user == null || user.getRole() == null || user.getRole().getRoleName() == null) {
+            return false;
+        }
+
+        String roleName = user.getRole().getRoleName().trim().toUpperCase();
+        if (roleName.startsWith("ROLE_")) {
+            roleName = roleName.substring(5);
+        }
+
+        return ROLE_ADMIN.equals(roleName) || ROLE_WAREHOUSE_MANAGER.equals(roleName);
     }
 
     private AlertResponse convertToResponse(Alert alert) {

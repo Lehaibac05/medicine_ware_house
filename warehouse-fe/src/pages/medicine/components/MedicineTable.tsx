@@ -22,6 +22,7 @@ type MedicineRow = {
   manufacturer: string;
   storage: string;
   description: string;
+  reorderLevel: number;
 };
 
 type MedicineFilters = {
@@ -108,7 +109,8 @@ function MedicineTable({
         name: med.name,
         manufacturer: med.manufacturer,
         storage: med.storageCondition,
-        description: med.description,
+        description: med.description ?? "--",
+        reorderLevel: med.reorderLevel ?? 10,
       })),
     [data],
   );
@@ -181,6 +183,10 @@ function MedicineTable({
       dataIndex: "description",
     },
     {
+      title: "Reorder Level",
+      dataIndex: "reorderLevel",
+    },
+    {
       title: "Hành động",
       render: (_, record) => (
         <Space>
@@ -226,9 +232,9 @@ function MedicineTable({
                 allowClear
               />
 
-              <Button type="primary" onClick={openCreateModal}>
-                Thêm thuốc
-              </Button>
+                 <Button type="primary" onClick={openCreateModal}>
+                  Thêm thuốc
+                </Button> 
             </div>
           </div>
         )}
@@ -259,6 +265,7 @@ function MedicineTable({
                 manufacturer: editingMedicine.manufacturer,
                 storageCondition: editingMedicine.storageCondition,
                 description: editingMedicine.description,
+                reorderLevel: editingMedicine.reorderLevel ?? 10,
               }
             : undefined
         }

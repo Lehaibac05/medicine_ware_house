@@ -27,6 +27,18 @@ type FormValues = {
 
 const normalizeOrderStatus = (status?: string) => status?.trim().toUpperCase() ?? ""
 
+const toOrderStatusLabel = (status?: string) => {
+  const normalized = normalizeOrderStatus(status)
+  if (normalized === "PENDING") return "Chờ xử lý"
+  if (normalized === "CONFIRMED") return "Đã xác nhận"
+  if (normalized === "SHIPPING") return "Đang giao hàng"
+  if (normalized === "RECEIVED") return "Đã nhận hàng"
+  if (normalized === "APPROVED") return "Đã duyệt"
+  if (normalized === "REJECTED") return "Đã từ chối"
+  if (normalized === "CANCELLED") return "Đã hủy"
+  return normalized || "-"
+}
+
 export default function GoodsReceiptCreatePage() {
   const { purchaseOrderId } = useParams()
   const navigate = useNavigate()
@@ -42,7 +54,7 @@ export default function GoodsReceiptCreatePage() {
     if (!order?.items) return []
     return order.items.map((item) => ({
       itemId: item.itemId,
-      medicine: item.medicine?.medicineName || `Medicine #${item.medicine?.medicineId}`,
+      medicine: item.medicine?.medicineName || `Thuốc #${item.medicine?.medicineId}`,
       requestedQuantity: item.requestedQuantity,
       receivedQuantity: item.requestedQuantity,
     }))
@@ -76,7 +88,7 @@ export default function GoodsReceiptCreatePage() {
 
   const onFinish = async (values: FormValues) => {
     if (!canCreateReceipt) {
-      messageApi.error("Goods receipt can only be created when PO is CONFIRMED or SHIPPING")
+      messageApi.error("Chỉ có thể tạo phiếu nhập khi đơn mua hàng đã xác nhận hoặc đang giao")
       return
     }
 
@@ -93,10 +105,10 @@ export default function GoodsReceiptCreatePage() {
           manufactureDate: item.manufactureDate ? item.manufactureDate.format("YYYY-MM-DD") : undefined,
         })),
       })
-      messageApi.success("Goods receipt created. PO moved to RECEIVED and waiting manager approval")
+      messageApi.success("Tạo phiếu nhập thành công. Đơn mua hàng đã chuyển sang trạng thái đã nhận và chờ quản lý duyệt")
       navigate("/goods-receipts")
     } catch {
-      messageApi.error("Failed to create goods receipt")
+      messageApi.error("Tạo phiếu nhập thất bại")
     }
   }
 
@@ -114,9 +126,9 @@ export default function GoodsReceiptCreatePage() {
 
         <Content className="p-6 pt-[114px] flex flex-col gap-6">
           <div className="rounded-2xl bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
-            <Text strong>Purchase Order: {order?.orderCode || `#${poId}`}</Text>
+            <Text strong>Đơn mua hàng: {order?.orderCode || `#${poId}`}</Text>
             <br />
-            <Text type="secondary">Current status: {poStatus || "-"}</Text>
+            <Text type="secondary">Trạng thái hiện tại: {toOrderStatusLabel(poStatus)}</Text>
           </div>
 
           <Form
@@ -125,7 +137,7 @@ export default function GoodsReceiptCreatePage() {
             onFinish={onFinish}
           >
             <div className="rounded-2xl bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
-              <Form.Item name="qualityCheckNotes" label="Quality Check Notes">
+              <Form.Item name="qualityCheckNotes" label="Ghi chú kiểm tra chất lượng">
                 <Input.TextArea rows={3} />
               </Form.Item>
 
@@ -140,14 +152,14 @@ export default function GoodsReceiptCreatePage() {
                     </Form.Item>
 
                     <div>
-                      <Text className="text-xs text-slate-500">Medicine</Text>
+                      <Text className="text-xs text-slate-500">Thuốc</Text>
                       <div className="font-medium text-slate-900">{item.medicine}</div>
-                      <Text className="text-xs text-slate-500">Requested: {item.requestedQuantity}</Text>
+                      <Text className="text-xs text-slate-500">Số lượng đặt: {item.requestedQuantity}</Text>
                     </div>
 
                     <Form.Item
                       name={["receivedItems", index, "receivedQuantity"]}
-                      label="Received Qty"
+                      label="Số lượng nhận"
                       className="!mb-0"
                       rules={[{ required: true }]}
                     >
@@ -156,7 +168,7 @@ export default function GoodsReceiptCreatePage() {
 
                     <Form.Item
                       name={["receivedItems", index, "actualExpiryDate"]}
-                      label="Actual Expiry"
+                      label="Hạn dùng thực tế"
                       className="!mb-0"
                     >
                       <DatePicker className="w-full" />
@@ -164,7 +176,7 @@ export default function GoodsReceiptCreatePage() {
 
                     <Form.Item
                       name={["receivedItems", index, "lotNumber"]}
-                      label="Lot Number"
+                      label="Số lô"
                       className="!mb-0"
                     >
                       <Input />
@@ -172,7 +184,7 @@ export default function GoodsReceiptCreatePage() {
 
                     <Form.Item
                       name={["receivedItems", index, "manufactureDate"]}
-                      label="Manufacture Date"
+                      label="Ngày sản xuất"
                       className="!mb-0"
                     >
                       <DatePicker className="w-full" />
@@ -183,10 +195,10 @@ export default function GoodsReceiptCreatePage() {
 
               <Space className="mt-4 w-full justify-end">
                 <Link to={`/purchase-orders/${poId}`}>
-                  <Button>Cancel</Button>
+                  <Button>Hủy</Button>
                 </Link>
                 <Button type="primary" htmlType="submit" loading={createMutation.isPending}>
-                  Submit Receipt
+                  Gửi phiếu nhập
                 </Button>
               </Space>
             </div>

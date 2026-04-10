@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pharmacy.warehouse.dto.SupplierRequest;
 import com.pharmacy.warehouse.dto.SupplierResponse;
+import com.pharmacy.warehouse.dto.UpdateSupplierQrRequest;
 import com.pharmacy.warehouse.model.Supplier.SupplierStatus;
 import com.pharmacy.warehouse.service.SupplierService;
 
@@ -90,6 +92,24 @@ public class SupplierController {
         log.info("PUT /suppliers/{} - Updating supplier by user: {}",
                 id, authentication != null ? authentication.getName() : "unknown");
         SupplierResponse supplier = supplierService.updateSupplier(id, request);
+        return ResponseEntity.ok(supplier);
+    }
+
+    @PatchMapping("/{id}/qr")
+    public ResponseEntity<SupplierResponse> updateSupplierQr(
+            @PathVariable Long id,
+            @RequestBody UpdateSupplierQrRequest request,
+            Authentication authentication) {
+        log.info("PATCH /suppliers/{}/qr - Updating supplier QR by user: {}",
+                id, authentication != null ? authentication.getName() : "unknown");
+
+        String qrBankTransferLink = request != null ? request.getQrBankTransferLink() : null;
+        // Chặn cập nhật sai payload (để tránh trường hợp Jackson map nhầm thành null)
+        if (qrBankTransferLink == null) {
+            throw new IllegalArgumentException("qrBankTransferLink is required");
+        }
+
+        SupplierResponse supplier = supplierService.updateSupplierQr(id, qrBankTransferLink);
         return ResponseEntity.ok(supplier);
     }
 

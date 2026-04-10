@@ -7,6 +7,7 @@ export const workflowQueryKeys = {
   purchaseOrders: ["workflow", "purchaseOrders"] as const,
   purchaseOrderDetail: (id: number) => ["workflow", "purchaseOrder", id] as const,
   goodsReceipts: ["workflow", "goodsReceipts"] as const,
+  goodsReceiptDetail: (id: number) => ["workflow", "goodsReceipt", id] as const,
   supplierInvoices: ["workflow", "supplierInvoices"] as const,
   supplierInvoiceDetail: (id: number) => ["workflow", "supplierInvoice", id] as const,
 }
@@ -71,6 +72,14 @@ export const useGoodsReceiptsQuery = (params?: { page?: number; size?: number })
   })
 }
 
+export const useGoodsReceiptDetailQuery = (id?: number) => {
+  return useQuery({
+    queryKey: id ? workflowQueryKeys.goodsReceiptDetail(id) : ["workflow", "goodsReceipt", "none"],
+    queryFn: () => workflowApi.getGoodsReceiptById(id as number),
+    enabled: Number.isFinite(id) && (id as number) > 0,
+  })
+}
+
 export const useCreateGoodsReceiptMutation = () => {
   const queryClient = useQueryClient()
   return useMutation({
@@ -106,6 +115,10 @@ export const useSupplierInvoicesQuery = () => {
   return useQuery({
     queryKey: workflowQueryKeys.supplierInvoices,
     queryFn: workflowApi.getSupplierInvoices,
+    // Luôn lấy dữ liệu mới nhất cho màn thanh toán/hiển thị QR.
+    // Tránh trường hợp cache khiến supplier QR không đổi dù đã cập nhật.
+    staleTime: 0,
+    refetchOnMount: "always",
   })
 }
 
@@ -114,6 +127,8 @@ export const useSupplierInvoiceDetailQuery = (id: number) => {
     queryKey: workflowQueryKeys.supplierInvoiceDetail(id),
     queryFn: () => workflowApi.getSupplierInvoiceById(id),
     enabled: Number.isFinite(id) && id > 0,
+    staleTime: 0,
+    refetchOnMount: "always",
   })
 }
 

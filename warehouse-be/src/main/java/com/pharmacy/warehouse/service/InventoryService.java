@@ -32,12 +32,10 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class InventoryService {
 
-        private static final int DEFAULT_REORDER_LEVEL = 10;
-    private static final int EXPIRING_SOON_DAYS = 30;
-
     private final BatchRepository batchRepository;
     private final MedicineRepository medicineRepository;
     private final WarehouseRepository warehouseRepository;
+        private final SettingsService settingsService;
 
     @Transactional(readOnly = true)
     public List<InventoryResponse> getInventory(
@@ -151,9 +149,10 @@ public class InventoryService {
 
     @Transactional(readOnly = true)
     public List<ExpiringBatchResponse> getExpiringBatches() {
-        log.info("Fetching expiring batches within {} days", EXPIRING_SOON_DAYS);
+                int expiryAlertDays = settingsService.getExpiryAlertDays();
+                log.info("Fetching expiring batches within {} days", expiryAlertDays);
 
-        LocalDate threshold = LocalDate.now().plusDays(EXPIRING_SOON_DAYS);
+                LocalDate threshold = LocalDate.now().plusDays(expiryAlertDays);
         return batchRepository.findExpiringBatches(threshold).stream()
                 .map(batch -> ExpiringBatchResponse.builder()
                         .batchId(batch.getBatchId())
@@ -194,10 +193,14 @@ public class InventoryService {
     }
 
     private InventoryResponse toInventoryResponse(InventoryAggregateProjection projection) {
+        int defaultReorderLevel = settingsService.getDefaultReorderLevel();
+        int expiryAlertDays = settingsService.getExpiryAlertDays();
         String status = determineStatus(
                 projection.getTotalStock(),
                 projection.getNearestExpiryDate(),
-                projection.getReorderLevel());
+                projection.getReorderLevel(),
+                defaultReorderLevel,
+                expiryAlertDays);
 
         return InventoryResponse.builder()
                 .medicineId(projection.getMedicineId())
@@ -211,10 +214,15 @@ public class InventoryService {
                 .build();
     }
 
-        private String determineStatus(Long totalStock, LocalDate nearestExpiryDate, Integer reorderLevel) {
+        private String determineStatus(
+                Long totalStock,
+                LocalDate nearestExpiryDate,
+                Integer reorderLevel,
+                int defaultReorderLevel,
+                int expiryAlertDays) {
         long stock = totalStock == null ? 0L : totalStock;
                 int threshold = (reorderLevel == null || reorderLevel < 0)
-                                ? DEFAULT_REORDER_LEVEL
+                                ? defaultReorderLevel
                                 : reorderLevel;
 
                 if (stock < threshold) {
@@ -223,7 +231,7 @@ public class InventoryService {
 
         if (nearestExpiryDate != null) {
             LocalDate now = LocalDate.now();
-                        LocalDate expiryThreshold = now.plusDays(EXPIRING_SOON_DAYS);
+                                                LocalDate expiryThreshold = now.plusDays(expiryAlertDays);
                         if (!nearestExpiryDate.isBefore(now) && !nearestExpiryDate.isAfter(expiryThreshold)) {
                 return "EXPIRING_SOON";
             }

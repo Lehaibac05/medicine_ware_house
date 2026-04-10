@@ -21,6 +21,7 @@ import InventoryReportPage from "../pages/reports/InventoryReportPage"
 import FinancialReportPage from "../pages/reports/FinancialReportPage"
 import IssueReportPage from "../pages/reports/IssueReportPage"
 import UserPage from "../pages/users/UserPage"
+import ActivityLogsPage from "../pages/activity-logs/ActivityLogsPage"
 import WarehousePage from "../pages/warehouses/WarehousePage"
 import SupplierPage from "../pages/suppliers/SupplierPage"
 import MedicineRequestsListPage from "../pages/procurement/MedicineRequestsListPage"
@@ -193,7 +194,7 @@ const AppRouter = () => {
         <Route
           path="/alerts"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_WAREHOUSE_STAFF", "ROLE_ACCOUNTANT"]}>
               <AlertsPage />
             </ProtectedRoute>
           }
@@ -201,7 +202,7 @@ const AppRouter = () => {
         <Route
           path="/settings"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
               <SettingsPage />
             </ProtectedRoute>
           }
@@ -247,6 +248,14 @@ const AppRouter = () => {
           }
         />
         <Route
+          path="/activity-logs"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
+              <ActivityLogsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/warehouses"
           element={
             <ProtectedRoute
@@ -260,7 +269,7 @@ const AppRouter = () => {
           path="/suppliers"
           element={
             <ProtectedRoute
-              allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER"]}
+              allowedRoles={["ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_ACCOUNTANT"]}
             >
               <SupplierPage />
             </ProtectedRoute>

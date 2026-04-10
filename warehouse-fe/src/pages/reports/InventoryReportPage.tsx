@@ -31,6 +31,12 @@ const statusTag = (status: InventoryStatus) => {
   return <Tag color="green">CÒN HÀNG</Tag>;
 };
 
+const inventoryStatusToVietnamese = (status: InventoryStatus): string => {
+  if (status === "LOW_STOCK") return "Sắp hết hàng";
+  if (status === "EXPIRING_SOON") return "Sắp hết hạn";
+  return "Còn hàng";
+};
+
 export default function InventoryReportPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const [medicineName, setMedicineName] = useState("");
@@ -97,15 +103,15 @@ export default function InventoryReportPage() {
       });
 
       const headers = [
-        "medicineId",
-        "medicineName",
-        "warehouseId",
-        "warehouseName",
-        "totalStock",
-        "batchCount",
-        "nearestExpiryDate",
-        "status",
-        "reorderLevel",
+        "Mã thuốc",
+        "Tên thuốc",
+        "Mã kho",
+        "Tên kho",
+        "Tổng tồn kho",
+        "Số lô",
+        "Hạn gần nhất",
+        "Trạng thái",
+        "Ngưỡng đặt hàng lại",
       ];
       const rows = exportData.items.map((item) => [
         item.medicineId,
@@ -115,7 +121,7 @@ export default function InventoryReportPage() {
         item.totalStock,
         item.batchCount,
         item.nearestExpiryDate || "",
-        item.status,
+        inventoryStatusToVietnamese(item.status),
         item.reorderLevel ?? "",
       ]);
       const csv = [
@@ -126,11 +132,11 @@ export default function InventoryReportPage() {
             .join(","),
         ),
       ].join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `inventory-report-${dayjs().format("YYYYMMDD-HHmmss")}.csv`;
+      link.download = `bao-cao-ton-kho-${dayjs().format("YYYYMMDD-HHmmss")}.csv`;
       link.click();
       URL.revokeObjectURL(url);
       messageApi.success("File CSV tồn kho đã sẵn sàng");

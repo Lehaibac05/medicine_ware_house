@@ -19,6 +19,7 @@ public class SupplierResponse {
     private String email;
     private String address;
     private String taxCode;
+    private String qrBankTransferLink;
     private String status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
