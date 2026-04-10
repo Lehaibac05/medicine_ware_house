@@ -8,6 +8,10 @@ import { getInventory } from "../../../services/inventory";
 
 const { Text } = Typography;
 
+interface ForecastTableProps {
+  onDataUpdate?: (data: any[]) => void;
+}
+
 type ForecastRow = {
   key: string;
   medicine_name: string;
@@ -31,7 +35,7 @@ const columns: ColumnsType<ForecastRow> = [
     key: "forecast_period",
   },
   {
-    title: "Số lượng dự báo",
+    title: "Dự tính tiêu thụ",
     dataIndex: "predicted_quantity",
     key: "predicted_quantity",
   },
@@ -47,7 +51,8 @@ const columns: ColumnsType<ForecastRow> = [
       let color = "red";
       if (confidence >= 0.8) color = "green";
       else if (confidence >= 0.6) color = "orange";
-      return <Tag color={color}>{value}</Tag>;
+      const percentage = (confidence * 100).toFixed(2);
+      return <Tag color={color}>{percentage}%</Tag>;
     },
   },
   {
@@ -74,7 +79,7 @@ const columns: ColumnsType<ForecastRow> = [
   },
 ];
 
-function ForecastTable() {
+function ForecastTable({ onDataUpdate }: ForecastTableProps) {
   const [forecasts, setForecasts] = useState<ForecastRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
@@ -147,6 +152,11 @@ function ForecastTable() {
       const validForecasts = forecastResults.filter((result): result is ForecastRow => result !== null);
 
       setForecasts(validForecasts);
+      
+      // Truyên dâ liêu lên parent component cho ExecutiveNewsSummary
+      if (onDataUpdate) {
+        onDataUpdate(validForecasts);
+      }
     } catch (error) {
       console.error("Error loading forecast data:", error);
       messageApi.error("Lỗi khi tải dữ liệu dự báo");
@@ -177,6 +187,28 @@ function ForecastTable() {
       </Button>
     </Flex>
   );
+
+  // Tính toán thông tin tóm tắt
+  const getSummaryInfo = () => {
+    const totalRecommendations = forecasts.filter(f => 
+      f.recommended_order !== "-" && Number(f.recommended_order) > 0
+    ).length;
+    
+    const highRiskItems = forecasts.filter(f => f.risk_level === "HIGH").length;
+    const totalRecommendedQuantity = forecasts.reduce((sum, f) => {
+      const order = Number(f.recommended_order) || 0;
+      return sum + order;
+    }, 0);
+
+    return {
+      totalRecommendations,
+      highRiskItems,
+      totalRecommendedQuantity,
+      hasRecommendations: totalRecommendations > 0
+    };
+  };
+
+  const summaryInfo = getSummaryInfo();
 
   return (
     <>

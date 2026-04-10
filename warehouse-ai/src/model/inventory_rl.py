@@ -126,31 +126,40 @@ class InventoryAgent:
 
     def get_best_action(self, current_stock, predicted_demand=None):
         """
-        HÀM QUAN TRỌNG: Kết hợp kinh nghiệm (Q-Table) và Dự báo (AI Forecast)
+        HÀM QUAN TRÒNG: Tính toán chính xác lượng nhập hàng dựa trên dự báo và tồn kho
         """
         # Đảm bảo index nằm trong giới hạn mảng
         safe_stock = int(min(max(0, current_stock), self.max_stock))
         
-        # 1. Lấy đề xuất dựa trên kinh nghiệm học được từ lịch sử (Q-table)
+        # 1. Lấy đề xuất gốc dựa trên kinh nghiệm (Q-table) - chỉ dùng làm reference
         action_idx = np.argmax(self.q_table[safe_stock])
-        recommended_order = self.actions[action_idx]
+        base_recommendation = self.actions[action_idx]
         
-        # 2. Hiệu chỉnh "nhạy bén" bằng kết quả từ DemandPredictor
+        # 2. TÍNH TOÁN CHÍNH XÁC dựa trên dự báo AI
         if predicted_demand is not None:
-            expected_total_stock = safe_stock + recommended_order
+            # Tính toán lượng thiếu hụt
+            shortage = predicted_demand - safe_stock
             
-            # TÌNH HUỐNG 1: Nếu AI dự báo nhu cầu SẮP TỚI cao hơn lượng kho đang có
-            if predicted_demand > expected_total_stock:
-                # Tìm mức nhập hàng cao hơn để đáp ứng đủ nhu cầu dự báo
-                for a in self.actions:
-                    if (safe_stock + a) >= predicted_demand:
-                        recommended_order = a
-                        logger.info(f"Tăng lượng nhập lên {a} để đáp ứng dự báo {predicted_demand:.1f}")
-                        break
-            
-            # TÌNH HUỐNG 2: Nếu AI dự báo nhu cầu THẤP, giảm nhập để tránh tồn kho quá nhiều
-            elif predicted_demand < (safe_stock * 0.5) and recommended_order > 0:
+            if shortage > 0:
+                # Cân nhập thêm: lượng thiếu hụt + 10% buffer
+                recommended_order = max(0, shortage * 1.1)
+                logger.info(f"Nhu cầu cao: dự báo {predicted_demand:.1f}, tồn kho {safe_stock}, nhập {recommended_order:.1f}")
+            elif predicted_demand < (safe_stock * 0.3):
+                # Tồn kho quá dư, giảm nhập
                 recommended_order = 0
-                logger.info(f"Giảm lượng nhập về 0 vì tồn kho hiện tại đủ cho dự báo thấp ({predicted_demand:.1f})")
+                logger.info(f"Tồn kho dư: dự báo {predicted_demand:.1f}, tồn kho {safe_stock}, không nhập")
+            else:
+                # Tồn kho dư dư, giảm nhập
+                recommended_order = max(0, (predicted_demand - safe_stock) * 0.8)
+                logger.info(f"Tồn kho dư dư: dự báo {predicted_demand:.1f}, tồn kho {safe_stock}, nhập {recommended_order:.1f}")
+        else:
+            # Không có dự báo, dùng Q-table
+            recommended_order = base_recommendation
+
+        # 3. Giới hạn trong mức an toàn (0-200)
+        recommended_order = min(max(0, recommended_order), self.max_stock)
+        
+        # 4. Làm tròn lên 5 đơn vị để tiện việc xuất kho
+        recommended_order = int(round(recommended_order / 5) * 5)
 
         return int(recommended_order)

@@ -168,12 +168,12 @@ const ForecastPage = () => {
             medicineId: medicine.medicineId,
             predictedQuantity: prediction.predictedQuantity,
             period: "2026-Q1",
-            confidenceLevel: prediction.confidenceLevel,
+            confidenceLevel: prediction.confidenceLevel || 0.85,
             model: {
               modelId: 1,
               modelName: "DemandPredictor",
               version: "1.0",
-              accuracy: prediction.confidenceLevel,
+              accuracy: prediction.confidenceLevel || 0.85,
             },
           });
         } catch (error) {
