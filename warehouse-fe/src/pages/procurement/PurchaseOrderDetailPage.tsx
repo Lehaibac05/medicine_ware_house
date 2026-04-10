@@ -31,6 +31,7 @@ const normalizeOrderStatus = (status?: string) => {
   if (normalized === "SHIPPING") return "SHIPPING";
   if (normalized === "RECEIVED") return "RECEIVED";
   if (normalized === "APPROVED") return "APPROVED";
+  if (normalized === "CANCELLED") return "CANCELLED";
   return "PENDING";
 };
 
@@ -46,6 +47,8 @@ const statusTag = (status: string) => {
     return <Tag color="geekblue">Đã xác nhận</Tag>;
 
   if (normalized === "PENDING") return <Tag color="gold">Chờ xử lý</Tag>;
+
+  if (normalized === "CANCELLED") return <Tag color="red">Đã hủy</Tag>;
 
   return <Tag>{normalized}</Tag>;
 };
@@ -138,6 +141,7 @@ export default function PurchaseOrderDetailPage() {
   };
 
   const currentStatus = normalizeOrderStatus(order?.status);
+  const canShareWithSupplier = !!order && currentStatus !== "CANCELLED";
 
   const onExportPdf = async () => {
     if (!order) return;
@@ -200,14 +204,14 @@ export default function PurchaseOrderDetailPage() {
         <Button
           onClick={onExportPdf}
           loading={exportingPdf}
-          disabled={!order || currentStatus !== "CONFIRMED"}
+          disabled={!canShareWithSupplier}
         >
           Xuất file PDF
         </Button>
         <Button
           onClick={onSendEmail}
           loading={sendingEmail}
-          disabled={!order || currentStatus !== "CONFIRMED"}
+          disabled={!canShareWithSupplier}
         >
          Gửi Email
         </Button>

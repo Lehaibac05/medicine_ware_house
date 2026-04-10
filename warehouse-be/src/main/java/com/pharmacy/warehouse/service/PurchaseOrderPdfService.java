@@ -36,7 +36,7 @@ public class PurchaseOrderPdfService {
 
     @Transactional(readOnly = true)
     public byte[] generatePurchaseOrderPdf(Long orderId) {
-        PurchaseOrder order = getConfirmedPurchaseOrder(orderId);
+        PurchaseOrder order = getExportablePurchaseOrder(orderId);
         return generatePurchaseOrderPdf(order);
     }
 
@@ -103,14 +103,14 @@ public class PurchaseOrderPdfService {
     }
 
     @Transactional(readOnly = true)
-    public PurchaseOrder getConfirmedPurchaseOrder(Long orderId) {
+    public PurchaseOrder getExportablePurchaseOrder(Long orderId) {
         PurchaseOrder order = purchaseOrderRepository.findByIdWithItems(orderId);
         if (order == null) {
             throw new RuntimeException("Purchase order not found with id: " + orderId);
         }
 
-        if (order.getStatus() != PurchaseOrderStatus.CONFIRMED) {
-            throw new IllegalStateException("Purchase order must be CONFIRMED");
+        if (order.getStatus() == PurchaseOrderStatus.CANCELLED) {
+            throw new IllegalStateException("Không thể xuất PDF cho đơn mua đã hủy");
         }
 
         return order;

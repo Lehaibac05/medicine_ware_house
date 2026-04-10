@@ -13,6 +13,8 @@ public interface BatchRepository extends JpaRepository<Batch, Long> {
 
     List<Batch> findByMedicine_MedicineId(Long medicineId);
 
+    boolean existsByMedicine_MedicineId(Long medicineId);
+
     @Query("""
         SELECT b
         FROM Batch b

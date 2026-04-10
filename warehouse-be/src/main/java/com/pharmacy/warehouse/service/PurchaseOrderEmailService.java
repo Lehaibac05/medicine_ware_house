@@ -27,7 +27,7 @@ public class PurchaseOrderEmailService {
 
     @Transactional
     public void sendPurchaseOrderEmail(Long orderId) {
-        PurchaseOrder order = purchaseOrderPdfService.getConfirmedPurchaseOrder(orderId);
+        PurchaseOrder order = purchaseOrderPdfService.getExportablePurchaseOrder(orderId);
 
         if (fromEmail == null || fromEmail.isBlank()) {
             throw new IllegalStateException("Mail sender is not configured. Set MAIL_USERNAME and MAIL_PASSWORD");

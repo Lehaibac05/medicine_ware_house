@@ -1,8 +1,11 @@
 package com.pharmacy.warehouse.service;
 
 import com.pharmacy.warehouse.model.Medicine;
+import com.pharmacy.warehouse.repository.BatchRepository;
 import com.pharmacy.warehouse.repository.MedicineRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +24,7 @@ import java.util.Locale;
 public class MedicineService {
 
     private final MedicineRepository medicineRepository;
+    private final BatchRepository batchRepository;
     private final SettingsService settingsService;
 
     public Page<Medicine> getMedicines(
@@ -109,7 +113,21 @@ public class MedicineService {
     }
 
     public void delete(Long id) {
-        medicineRepository.deleteById(id);
+        if (!medicineRepository.existsById(id)) {
+            throw new RuntimeException("Không tìm thấy thuốc để xóa");
+        }
+
+        if (batchRepository.existsByMedicine_MedicineId(id)) {
+            throw new IllegalStateException("Không thể xóa thuốc vì đã tồn tại lô thuốc liên quan");
+        }
+
+        try {
+            medicineRepository.deleteById(id);
+        } catch (EmptyResultDataAccessException ex) {
+            throw new RuntimeException("Không tìm thấy thuốc để xóa");
+        } catch (DataIntegrityViolationException ex) {
+            throw new IllegalStateException("Không thể xóa thuốc vì đang có dữ liệu liên quan", ex);
+        }
     }
 
     private void normalizeReorderLevel(Medicine medicine) {
